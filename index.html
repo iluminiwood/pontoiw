@@ -14,7 +14,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);touch-action
 #screen-ponto{display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:1.5rem 1.25rem 1.75rem;}
 .ponto-top{width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;}
 .ponto-brand{font-size:10px;font-weight:700;letter-spacing:.2em;color:var(--accent);text-transform:uppercase;}
-.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--text3);display:inline-block;margin-right:5px;}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--text3);display:inline-block;margin-right:5px;transition:all .3s;}
 .sync-dot.ok{background:var(--green);box-shadow:0 0 6px rgba(74,222,128,.5);}
 .sync-dot.err{background:var(--red);}
 .btn-admin-link{font-size:11px;color:var(--text3);background:none;border:none;cursor:pointer;font-family:var(--font);padding:4px 0;display:flex;align-items:center;gap:4px;}
@@ -87,7 +87,7 @@ tr:last-child td{border-bottom:none;}
 .func-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;flex-shrink:0;}
 .func-name{font-size:14px;font-weight:600;}
 .func-cargo{font-size:11px;color:var(--text2);}
-.func-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:8px;}
+.func-stats{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px;}
 .func-stat{background:var(--surface2);border-radius:var(--r-sm);padding:5px 7px;}
 .func-stat-label{font-size:9px;color:var(--text3);}
 .func-stat-val{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--text);margin-top:1px;}
@@ -101,6 +101,9 @@ tr:last-child td{border-bottom:none;}
 .section-row h3{font-size:13px;font-weight:600;}
 .empty-state{text-align:center;padding:2rem;color:var(--text3);font-size:13px;}
 .loading-state{text-align:center;padding:2rem;color:var(--text2);font-size:13px;}
+.info-banner{border-radius:var(--r-sm);padding:8px 12px;font-size:11px;margin-bottom:1rem;text-align:center;}
+.info-banner.ok{background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2);color:var(--green);}
+.info-banner.warn{background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);color:var(--red);}
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:100;align-items:flex-end;justify-content:center;}
 .modal-overlay.open{display:flex;}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:20px 20px 0 0;padding:1.5rem;width:100%;max-width:480px;padding-bottom:calc(1.5rem + env(safe-area-inset-bottom));}
@@ -109,7 +112,7 @@ tr:last-child td{border-bottom:none;}
 .modal-sub{font-size:12px;color:var(--text2);margin-bottom:1.2rem;}
 .modal-actions{display:flex;gap:8px;margin-top:1rem;}
 .modal-actions .btn-primary{flex:1;}
-.solides-banner{background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.2);border-radius:var(--r-sm);padding:8px 12px;font-size:11px;color:var(--blue);margin-bottom:1rem;text-align:center;}
+.pin-info{font-size:11px;color:var(--text3);margin-top:4px;}
 </style>
 </head>
 <body>
@@ -154,7 +157,7 @@ tr:last-child td{border-bottom:none;}
   <div class="admin-box">
     <div class="admin-title">Acesso gerencial</div>
     <div class="admin-sub">Senha de administrador</div>
-    <div class="field"><label>Senha</label><input type="password" id="admin-pw" placeholder="••••••"></div>
+    <div class="field"><label>Senha</label><input type="password" id="admin-pw" placeholder="••••••" onkeydown="if(event.key==='Enter')adminLogin()"></div>
     <button class="btn-primary" onclick="adminLogin()">Entrar</button>
     <button class="btn-back" onclick="showPonto()">← Voltar</button>
   </div>
@@ -195,7 +198,11 @@ tr:last-child td{border-bottom:none;}
     <div class="modal-sub">Preencha os dados</div>
     <div class="field"><label>Nome completo</label><input type="text" id="f-nome" placeholder="Ex: João Silva"></div>
     <div class="field"><label>Cargo</label><input type="text" id="f-cargo" placeholder="Ex: Operador"></div>
-    <div class="field"><label>PIN (4 dígitos)</label><input type="number" id="f-pin" maxlength="4" placeholder="1234"></div>
+    <div class="field">
+      <label>PIN (4 dígitos)</label>
+      <input type="number" id="f-pin" maxlength="4" placeholder="1234">
+      <div class="pin-info">Cada funcionário precisa de um PIN único para bater ponto</div>
+    </div>
     <div class="field"><label>Carga horária</label>
       <select id="f-carga"><option value="8">8h/dia</option><option value="7.5">7h30/dia</option><option value="6">6h/dia</option><option value="4">4h/dia</option></select>
     </div>
@@ -204,169 +211,82 @@ tr:last-child td{border-bottom:none;}
 </div>
 
 <script>
-// ===================== SUPABASE =====================
 const SUPABASE_URL = 'https://mcoemytfdrfrtbfbpvqr.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jb2VteXRmZHJmcnRiZmJwdnFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3OTgyODcsImV4cCI6MjA5NTM3NDI4N30.uJZKW5oUlexLo_XENDCohlchGKlG54Pwt0gvqpuy-i8';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
 const ADMIN_PASS = '1234';
 const COLORS = ['#e8c547','#4ade80','#60a5fa','#f87171','#fb923c','#c084fc'];
 let pin = '', currentAdvFunc = null, currentTab = 'dashboard';
-let sbOk = false;
+let sbOk = false, funcionarios = [], registros = [], advertencias = [];
 
 // ===================== INIT =====================
 async function init() {
   try {
-    const { data, error } = await sb.from('iw_funcionarios').select('id').limit(1);
+    // Limpa localStorage de dados demo
+    localStorage.removeItem('iw_func');
+    // Testa conexão
+    const { error } = await sb.from('iw_funcionarios').select('id').limit(1);
     sbOk = !error;
     document.getElementById('sync-dot').className = 'sync-dot ' + (sbOk ? 'ok' : 'err');
-    if (!sbOk) {
-      console.warn('Supabase indisponível, usando localStorage:', error?.message);
+    if (sbOk) {
+      await carregarDados();
     }
   } catch(e) {
     sbOk = false;
     document.getElementById('sync-dot').className = 'sync-dot err';
   }
-  seedLocalIfEmpty();
 }
 
-// ===================== DATA LAYER =====================
-// Lê sempre do Supabase se disponível, senão localStorage
-
-async function getFuncionarios() {
-  if (sbOk) {
-    const { data } = await sb.from('iw_funcionarios').select('*').eq('ativo', true).order('nome');
-    if (data && data.length > 0) return data.map(normalizeFunc);
+async function carregarDados() {
+  // Carrega funcionários do Supabase
+  const { data: funcs } = await sb.from('iw_funcionarios').select('*').eq('ativo', true).order('nome');
+  if (funcs) {
+    funcionarios = funcs.map((f, i) => ({
+      id: f.id, nome: f.nome, cargo: f.cargo || '', email: f.email || '',
+      pin: f.pin || '', carga: f.carga || 8, color: COLORS[i % COLORS.length]
+    }));
   }
-  return JSON.parse(localStorage.getItem('iw_func') || '[]');
-}
 
-async function getRegistros(dataFiltro) {
-  if (sbOk) {
-    let q = sb.from('iw_registros_ponto').select('*').order('data_hora', { ascending: false });
-    if (dataFiltro) {
-      q = q.gte('data_hora', dataFiltro + 'T00:00:00Z').lte('data_hora', dataFiltro + 'T23:59:59Z');
-    }
-    const { data } = await q.limit(200);
-    if (data) return data.map(normalizeReg);
-  }
-  const all = JSON.parse(localStorage.getItem('iw_reg') || '[]');
-  return dataFiltro ? all.filter(r => r.data === dataFiltro) : all;
-}
+  // Carrega registros de hoje
+  const hoje = new Date().toISOString().split('T')[0];
+  const { data: regs } = await sb.from('iw_registros_ponto')
+    .select('*').gte('data_hora', hoje + 'T00:00:00Z').lte('data_hora', hoje + 'T23:59:59Z')
+    .order('data_hora');
+  if (regs) registros = regs;
 
-async function getAdvertencias() {
-  if (sbOk) {
-    const { data } = await sb.from('iw_advertencias').select('*').order('criado_em', { ascending: false });
-    if (data) return data;
-  }
-  return JSON.parse(localStorage.getItem('iw_adv') || '[]');
-}
+  // Carrega advertências
+  const { data: advs } = await sb.from('iw_advertencias').select('*').order('criado_em', { ascending: false });
+  if (advs) advertencias = advs;
 
-async function saveAdvertencia(adv) {
-  if (sbOk) {
-    await sb.from('iw_advertencias').upsert({
-      id: adv.id, funcionario_id: adv.funcId, funcionario_nome: adv.funcNome,
-      tipo: adv.tipo, descricao: adv.desc, data_registro: adv.data
-    });
-  }
-  const arr = JSON.parse(localStorage.getItem('iw_adv') || '[]');
-  arr.push(adv);
-  localStorage.setItem('iw_adv', JSON.stringify(arr));
-}
-
-async function deleteAdvertencia(id) {
-  if (sbOk) await sb.from('iw_advertencias').delete().eq('id', id);
-  const arr = JSON.parse(localStorage.getItem('iw_adv') || '[]');
-  localStorage.setItem('iw_adv', JSON.stringify(arr.filter(a => a.id !== id)));
-}
-
-async function saveFuncionario(func) {
-  if (sbOk) {
-    await sb.from('iw_funcionarios').upsert({
-      id: func.id, nome: func.nome, email: '', cargo: func.cargo, ativo: true
-    });
-  }
-  const arr = JSON.parse(localStorage.getItem('iw_func') || '[]');
-  arr.push(func);
-  localStorage.setItem('iw_func', JSON.stringify(arr));
-}
-
-async function deleteFuncionario(id) {
-  if (sbOk) await sb.from('iw_funcionarios').update({ ativo: false }).eq('id', id);
-  const arr = JSON.parse(localStorage.getItem('iw_func') || '[]');
-  localStorage.setItem('iw_func', JSON.stringify(arr.filter(f => f.id !== id)));
-}
-
-async function saveRegistro(reg) {
-  if (sbOk) {
-    await sb.from('iw_registros_ponto').upsert({
-      id: reg.id, funcionario_id: reg.funcId, funcionario_nome: reg.funcNome,
-      data_hora: new Date(reg.entradaTs).toISOString(), tipo: 'ENTRADA', origem: 'PIN'
-    });
-  }
-  const arr = JSON.parse(localStorage.getItem('iw_reg') || '[]');
-  arr.push(reg);
-  localStorage.setItem('iw_reg', JSON.stringify(arr));
-}
-
-async function updateRegistroSaida(reg) {
-  if (sbOk && reg.saidaTs) {
-    await sb.from('iw_registros_ponto').upsert({
-      id: reg.id + 1, funcionario_id: reg.funcId, funcionario_nome: reg.funcNome,
-      data_hora: new Date(reg.saidaTs).toISOString(), tipo: 'SAIDA', origem: 'PIN'
-    });
-  }
-  const arr = JSON.parse(localStorage.getItem('iw_reg') || '[]');
-  const idx = arr.findIndex(r => r.id === reg.id);
-  if (idx >= 0) arr[idx] = reg;
-  localStorage.setItem('iw_reg', JSON.stringify(arr));
-}
-
-// Normaliza formato Supabase → formato interno
-function normalizeFunc(f) {
-  return { id: f.id, nome: f.nome, cargo: f.cargo || '', pin: f.pin || '', carga: f.carga || 8, color: COLORS[f.id % COLORS.length] };
-}
-function normalizeReg(r) {
-  const dt = new Date(r.data_hora);
-  return {
-    id: r.id, funcId: r.funcionario_id, funcNome: r.funcionario_nome,
-    data: dt.toISOString().split('T')[0],
-    entrada: dt.toTimeString().slice(0,5), entradaTs: dt.getTime(),
-    saida: r.tipo === 'SAIDA' ? dt.toTimeString().slice(0,5) : null,
-    saidaTs: r.tipo === 'SAIDA' ? dt.getTime() : null, minutos: null
-  };
-}
-
-function seedLocalIfEmpty() {
-  if (!localStorage.getItem('iw_func')) {
-    localStorage.setItem('iw_func', JSON.stringify([
-      {id:1,nome:'Carlos Silva',cargo:'Operador',pin:'1111',carga:8,color:COLORS[0]},
-      {id:2,nome:'Ana Pereira',cargo:'Montadora',pin:'2222',carga:8,color:COLORS[1]},
-      {id:3,nome:'Marcos Lima',cargo:'Acabamento',pin:'3333',carga:8,color:COLORS[2]},
-    ]));
-  }
+  updateStatusRow();
 }
 
 // ===================== CLOCK =====================
 function tick() {
-  const n=new Date(),pad=x=>String(x).padStart(2,'0');
-  const el=document.getElementById('clock');
-  if(el)el.textContent=pad(n.getHours())+':'+pad(n.getMinutes())+':'+pad(n.getSeconds());
-  const days=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-  const months=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const dd=document.getElementById('datedisp');
-  if(dd)dd.textContent=days[n.getDay()]+', '+n.getDate()+' '+months[n.getMonth()]+' '+n.getFullYear();
-  updateStatusRow();
+  const n = new Date(), pad = x => String(x).padStart(2,'0');
+  const el = document.getElementById('clock');
+  if(el) el.textContent = pad(n.getHours())+':'+pad(n.getMinutes())+':'+pad(n.getSeconds());
+  const days = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const dd = document.getElementById('datedisp');
+  if(dd) dd.textContent = days[n.getDay()]+', '+n.getDate()+' '+months[n.getMonth()]+' '+n.getFullYear();
 }
-setInterval(tick,1000);tick();
+setInterval(tick, 1000); tick();
 
-async function updateStatusRow() {
-  const sr=document.getElementById('status-row');if(!sr)return;
-  const funcionarios = JSON.parse(localStorage.getItem('iw_func')||'[]');
-  const hoje=new Date().toISOString().split('T')[0];
-  const regsH=JSON.parse(localStorage.getItem('iw_reg')||'[]').filter(r=>r.data===hoje);
-  sr.innerHTML=funcionarios.map(f=>{
-    const dentro=regsH.find(r=>r.funcId===f.id&&!r.saida);
+function updateStatusRow() {
+  const sr = document.getElementById('status-row'); if(!sr) return;
+  const hoje = new Date().toISOString().split('T')[0];
+  // Agrupa registros por funcionário — último registro do dia define status
+  const statusMap = {};
+  registros.forEach(r => {
+    const fid = r.funcionario_id;
+    if (!statusMap[fid]) statusMap[fid] = [];
+    statusMap[fid].push(r);
+  });
+  sr.innerHTML = funcionarios.map(f => {
+    const regsF = statusMap[f.id] || [];
+    const ultimo = regsF[regsF.length - 1];
+    const dentro = ultimo && ultimo.tipo === 'ENTRADA';
     return '<div class="status-chip"><div class="status-dot '+(dentro?'in':'out')+'"></div>'+f.nome.split(' ')[0]+'</div>';
   }).join('');
 }
@@ -377,33 +297,41 @@ function pinDel(){pin=pin.slice(0,-1);updateDots();}
 function updateDots(){for(let i=0;i<4;i++)document.getElementById('d'+i).classList.toggle('filled',i<pin.length);}
 
 async function pinConfirm() {
-  if(!pin)return;
-  const funcionarios = JSON.parse(localStorage.getItem('iw_func')||'[]');
-  const func=funcionarios.find(f=>f.pin===pin);
-  const fb=document.getElementById('feedback');
-  if(!func){
-    fb.className='ponto-feedback show-error';fb.textContent='PIN incorreto. Tente novamente.';
-    pin='';updateDots();setTimeout(()=>{fb.className='ponto-feedback';fb.textContent='';},2500);return;
+  if(!pin) return;
+  const func = funcionarios.find(f => f.pin === pin);
+  const fb = document.getElementById('feedback');
+  if(!func) {
+    fb.className='ponto-feedback show-error';
+    fb.textContent='PIN incorreto. Tente novamente.';
+    pin='';updateDots();
+    setTimeout(()=>{fb.className='ponto-feedback';fb.textContent='';},2500);
+    return;
   }
-  const now=new Date(),hoje=now.toISOString().split('T')[0];
-  const regs=JSON.parse(localStorage.getItem('iw_reg')||'[]');
-  const regsH=regs.filter(r=>r.data===hoje);
-  const aberto=regsH.find(r=>r.funcId===func.id&&!r.saida);
-  let msg;
-  if(aberto){
-    aberto.saida=now.toTimeString().slice(0,5);aberto.saidaTs=now.getTime();
-    const diff=Math.round((aberto.saidaTs-aberto.entradaTs)/60000);aberto.minutos=diff;
-    localStorage.setItem('iw_reg',JSON.stringify(regs));
-    await updateRegistroSaida(aberto);
-    msg='✓ Saída — '+func.nome.split(' ')[0]+'. '+Math.floor(diff/60)+'h'+(diff%60?diff%60+'min':'')+' trabalhadas';
-  }else{
-    const novoReg={id:Date.now(),funcId:func.id,funcNome:func.nome,data:hoje,entrada:now.toTimeString().slice(0,5),entradaTs:now.getTime(),saida:null,saidaTs:null,minutos:null};
-    regs.push(novoReg);
-    localStorage.setItem('iw_reg',JSON.stringify(regs));
-    await saveRegistro(novoReg);
-    msg='✓ Entrada — '+func.nome.split(' ')[0]+'. Bom trabalho!';
-  }
-  fb.className='ponto-feedback show-success';fb.textContent=msg;pin='';updateDots();
+  const now = new Date();
+  const hoje = now.toISOString().split('T')[0];
+  // Verifica último registro do funcionário hoje
+  const regsF = registros.filter(r => r.funcionario_id === func.id);
+  const ultimo = regsF[regsF.length - 1];
+  const tipoNovo = (!ultimo || ultimo.tipo === 'SAIDA') ? 'ENTRADA' : 'SAIDA';
+  const novoReg = {
+    id: Date.now(),
+    funcionario_id: func.id,
+    funcionario_nome: func.nome,
+    data_hora: now.toISOString(),
+    tipo: tipoNovo,
+    origem: 'PIN',
+    sincronizado_em: now.toISOString()
+  };
+  // Salva no Supabase
+  if(sbOk) await sb.from('iw_registros_ponto').upsert(novoReg).execute();
+  registros.push(novoReg);
+  updateStatusRow();
+  const hora = now.toTimeString().slice(0,5);
+  const msg = tipoNovo === 'ENTRADA'
+    ? '✓ Entrada — '+func.nome.split(' ')[0]+'. Bom trabalho! '+hora
+    : '✓ Saída — '+func.nome.split(' ')[0]+'. Até amanhã! '+hora;
+  fb.className='ponto-feedback show-success';fb.textContent=msg;
+  pin='';updateDots();
   setTimeout(()=>{fb.className='ponto-feedback';fb.textContent='';},3000);
 }
 
@@ -426,7 +354,7 @@ function adminLogin(){
     document.getElementById('screen-adminlogin').style.display='none';
     document.getElementById('screen-admin').style.display='flex';
     document.getElementById('screen-admin').style.flexDirection='column';
-    switchTab('dashboard');
+    carregarDados().then(()=>switchTab('dashboard'));
   }else{
     const i=document.getElementById('admin-pw');
     i.style.borderColor='var(--red)';setTimeout(()=>i.style.borderColor='var(--border)',1500);
@@ -447,110 +375,121 @@ function switchTab(tab){
   else if(tab==='advertencias')renderAdvertencias(c);
 }
 
-// ===================== TABS =====================
-async function renderDashboard(c) {
-  const funcionarios=JSON.parse(localStorage.getItem('iw_func')||'[]');
-  const hoje=new Date().toISOString().split('T')[0];
-  const rh=JSON.parse(localStorage.getItem('iw_reg')||'[]').filter(r=>r.data===hoje);
-  const advertencias=JSON.parse(localStorage.getItem('iw_adv')||'[]');
-  const presentes=rh.filter(r=>!r.saida).length;
-  const syncBanner = sbOk
-    ? '<div class="solides-banner">🔵 Supabase conectado — dados sincronizados em tempo real</div>'
-    : '<div class="solides-banner" style="border-color:rgba(248,113,113,.2);color:var(--red);background:rgba(248,113,113,.05)">⚠️ Offline — dados locais. Conecte à internet para sincronizar.</div>';
-  c.innerHTML=syncBanner+
+// ===================== DASHBOARD =====================
+function renderDashboard(c) {
+  const hoje = new Date().toISOString().split('T')[0];
+  const statusMap = {};
+  registros.forEach(r => { if(!statusMap[r.funcionario_id]) statusMap[r.funcionario_id]=[]; statusMap[r.funcionario_id].push(r); });
+  const presentes = Object.values(statusMap).filter(regs => regs[regs.length-1].tipo==='ENTRADA').length;
+  const banner = sbOk
+    ? '<div class="info-banner ok">🟢 Supabase conectado — dados em tempo real</div>'
+    : '<div class="info-banner warn">🔴 Offline — reconecte à internet</div>';
+  c.innerHTML = banner +
     '<div class="kpi-grid">'+
     '<div class="kpi-card"><div class="kpi-label">Funcionários</div><div class="kpi-val">'+funcionarios.length+'</div><div class="kpi-sub">cadastrados</div></div>'+
     '<div class="kpi-card"><div class="kpi-label">Presentes</div><div class="kpi-val" style="color:var(--green)">'+presentes+'</div><div class="kpi-sub">agora</div></div>'+
-    '<div class="kpi-card"><div class="kpi-label">Registros hoje</div><div class="kpi-val">'+rh.length+'</div><div class="kpi-sub">movimentos</div></div>'+
+    '<div class="kpi-card"><div class="kpi-label">Registros hoje</div><div class="kpi-val">'+registros.length+'</div><div class="kpi-sub">movimentos</div></div>'+
     '<div class="kpi-card"><div class="kpi-label">Advertências</div><div class="kpi-val" style="color:'+(advertencias.length?'var(--orange)':'var(--text)')+'">'+advertencias.length+'</div><div class="kpi-sub">total</div></div>'+
     '</div>'+
-    '<div class="table-wrap"><div class="table-head"><span class="table-head-title">Hoje</span></div>'+
-    '<table><thead><tr><th>Nome</th><th>Entrada</th><th>Saída</th><th>Status</th></tr></thead><tbody>'+
-    (rh.length?rh.map(r=>'<tr><td>'+r.funcNome.split(' ')[0]+'</td><td style="font-family:var(--mono)">'+r.entrada+'</td><td style="font-family:var(--mono)">'+(r.saida||'—')+'</td><td>'+(r.saida?'<span class="chip chip-green">Saiu</span>':'<span class="chip chip-amber">Dentro</span>')+'</td></tr>').join(''):
-    '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:1.5rem">Nenhum registro hoje ainda</td></tr>')+
+    '<div class="table-wrap"><div class="table-head"><span class="table-head-title">Hoje — '+hoje+'</span></div>'+
+    '<table><thead><tr><th>Nome</th><th>Hora</th><th>Tipo</th></tr></thead><tbody>'+
+    (registros.length ? registros.map(r=>{
+      const hora = new Date(r.data_hora).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      return '<tr><td>'+r.funcionario_nome.split(' ')[0]+'</td><td style="font-family:var(--mono)">'+hora+'</td><td>'+(r.tipo==='ENTRADA'?'<span class="chip chip-green">Entrada</span>':'<span class="chip chip-amber">Saída</span>')+'</td></tr>';
+    }).join('') : '<tr><td colspan="3" style="text-align:center;color:var(--text3);padding:1.5rem">Nenhum registro hoje ainda</td></tr>')+
     '</tbody></table></div>';
 }
 
+// ===================== REGISTROS =====================
 async function renderRegistros(c) {
-  const regs=JSON.parse(localStorage.getItem('iw_reg')||'[]').sort((a,b)=>b.id-a.id).slice(0,60);
-  c.innerHTML='<div class="table-wrap"><div class="table-head"><span class="table-head-title">Histórico</span>'+
-    (sbOk?'<span class="chip chip-blue">Supabase</span>':'')+
-    '</div><table><thead><tr><th>Data</th><th>Nome</th><th>Entrada</th><th>Jornada</th></tr></thead><tbody>'+
-    (regs.length?regs.map(r=>{const j=r.minutos?Math.floor(r.minutos/60)+'h'+(r.minutos%60?r.minutos%60+'m':''):r.saida?'—':'aberto';return'<tr><td style="font-family:var(--mono);font-size:11px">'+r.data+'</td><td>'+r.funcNome.split(' ')[0]+'</td><td style="font-family:var(--mono)">'+r.entrada+'</td><td style="font-family:var(--mono)">'+j+'</td></tr>';}).join(''):
-    '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:1.5rem">Sem registros</td></tr>')+
+  c.innerHTML = '<div class="loading-state">Buscando registros...</div>';
+  let regs = registros;
+  if(sbOk) {
+    const { data } = await sb.from('iw_registros_ponto').select('*').order('data_hora', {ascending:false}).limit(100);
+    if(data) regs = data;
+  }
+  c.innerHTML = '<div class="table-wrap"><div class="table-head"><span class="table-head-title">Histórico</span></div>'+
+    '<table><thead><tr><th>Data</th><th>Nome</th><th>Hora</th><th>Tipo</th></tr></thead><tbody>'+
+    (regs.length ? regs.map(r=>{
+      const dt = new Date(r.data_hora);
+      const data = dt.toLocaleDateString('pt-BR');
+      const hora = dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      return '<tr><td style="font-family:var(--mono);font-size:11px">'+data+'</td><td>'+r.funcionario_nome.split(' ')[0]+'</td><td style="font-family:var(--mono)">'+hora+'</td><td>'+(r.tipo==='ENTRADA'?'<span class="chip chip-green">Entrada</span>':'<span class="chip chip-amber">Saída</span>')+'</td></tr>';
+    }).join('') : '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:1.5rem">Sem registros</td></tr>')+
     '</tbody></table></div>';
 }
 
-async function renderBanco(c) {
-  const funcionarios=JSON.parse(localStorage.getItem('iw_func')||'[]');
-  const registros=JSON.parse(localStorage.getItem('iw_reg')||'[]');
-  c.innerHTML='<div class="func-list" id="bl"></div>';
-  const g=document.getElementById('bl');
+// ===================== BANCO DE HORAS =====================
+function renderBanco(c) {
+  c.innerHTML = '<div class="func-list" id="bl"></div>';
+  const g = document.getElementById('bl');
   if(!funcionarios.length){g.innerHTML='<div class="empty-state">Nenhum funcionário</div>';return;}
-  funcionarios.forEach(f=>{
-    const rf=registros.filter(r=>r.funcId===f.id&&r.minutos);
-    let saldo=0;rf.forEach(r=>saldo+=r.minutos-(f.carga*60));
-    const sh=Math.floor(Math.abs(saldo)/60),sm=Math.abs(saldo)%60;
-    const ss=(saldo>=0?'+':'−')+sh+'h'+(sm?sm+'m':'');
-    const sc=saldo>0?'var(--green)':saldo<0?'var(--red)':'var(--text2)';
-    const media=rf.length?Math.round(rf.reduce((a,r)=>a+r.minutos,0)/rf.length):0;
-    const d=document.createElement('div');d.className='func-card';
-    d.innerHTML='<div class="func-row"><div class="func-avatar" style="background:'+f.color+'22;color:'+f.color+'">'+f.nome[0]+'</div><div><div class="func-name">'+f.nome+'</div><div class="func-cargo">'+f.cargo+'</div></div></div>'+
-    '<div class="func-stats"><div class="func-stat"><div class="func-stat-label">Saldo banco</div><div class="func-stat-val" style="color:'+sc+'">'+ss+'</div></div>'+
-    '<div class="func-stat"><div class="func-stat-label">Dias trab.</div><div class="func-stat-val">'+rf.length+'</div></div>'+
-    '<div class="func-stat"><div class="func-stat-label">Média/dia</div><div class="func-stat-val">'+(media?Math.floor(media/60)+'h'+(media%60?media%60+'m':''):'—')+'</div></div></div>';
+  funcionarios.forEach(f => {
+    const d = document.createElement('div'); d.className = 'func-card';
+    d.innerHTML = '<div class="func-row"><div class="func-avatar" style="background:'+f.color+'22;color:'+f.color+'">'+f.nome[0]+'</div>'+
+      '<div><div class="func-name">'+f.nome+'</div><div class="func-cargo">'+f.cargo+'</div></div></div>'+
+      '<div class="func-stats">'+
+      '<div class="func-stat"><div class="func-stat-label">Carga diária</div><div class="func-stat-val">'+(f.carga||8)+'h</div></div>'+
+      '<div class="func-stat"><div class="func-stat-label">PIN</div><div class="func-stat-val" style="font-family:var(--mono)">'+(f.pin||'—')+'</div></div>'+
+      '</div>';
     g.appendChild(d);
   });
 }
 
-async function renderFuncionarios(c) {
-  const funcionarios=JSON.parse(localStorage.getItem('iw_func')||'[]');
-  const registros=JSON.parse(localStorage.getItem('iw_reg')||'[]');
-  const advertencias=JSON.parse(localStorage.getItem('iw_adv')||'[]');
-  c.innerHTML='<div class="section-row"><h3>Equipe</h3><button class="btn-sm accent" onclick="openModalFunc()">+ Novo</button></div><div class="func-list" id="fl"></div>';
-  const g=document.getElementById('fl');
-  if(!funcionarios.length){g.innerHTML='<div class="empty-state">Nenhum funcionário. Clique em "+ Novo".</div>';return;}
-  funcionarios.forEach(f=>{
-    const rf=registros.filter(r=>r.funcId===f.id&&r.minutos).length;
-    const af=advertencias.filter(a=>a.funcId===f.id).length;
-    const d=document.createElement('div');d.className='func-card';
-    d.innerHTML='<div class="func-row"><div class="func-avatar" style="background:'+f.color+'22;color:'+f.color+'">'+f.nome[0]+'</div>'+
-    '<div style="flex:1"><div class="func-name">'+f.nome+'</div><div class="func-cargo">'+f.cargo+' · PIN <span style="font-family:var(--mono)">'+f.pin+'</span></div></div></div>'+
-    '<div class="func-stats" style="grid-template-columns:1fr 1fr;margin-bottom:8px">'+
-    '<div class="func-stat"><div class="func-stat-label">Dias trab.</div><div class="func-stat-val">'+rf+'</div></div>'+
-    '<div class="func-stat"><div class="func-stat-label">Advertências</div><div class="func-stat-val" style="color:'+(af?'var(--orange)':'var(--text)')+'">'+af+'</div></div></div>'+
-    '<div class="func-actions">'+
-    '<button class="btn-xs" style="color:var(--orange);border-color:rgba(251,146,60,.3)" onclick=\'openModalAdv('+JSON.stringify(f)+')\'>+ Advertência</button>'+
-    '<button class="btn-xs" style="color:var(--red);border-color:rgba(248,113,113,.3)" onclick="removeFuncConfirm('+f.id+')">Remover</button></div>';
+// ===================== FUNCIONÁRIOS =====================
+function renderFuncionarios(c) {
+  c.innerHTML = '<div class="section-row"><h3>Equipe ('+funcionarios.length+')</h3><button class="btn-sm accent" onclick="openModalFunc()">+ Novo</button></div><div class="func-list" id="fl"></div>';
+  const g = document.getElementById('fl');
+  if(!funcionarios.length){g.innerHTML='<div class="empty-state">Nenhum funcionário encontrado no Supabase.</div>';return;}
+  funcionarios.forEach(f => {
+    const af = advertencias.filter(a=>a.funcionario_id===f.id).length;
+    const d = document.createElement('div'); d.className = 'func-card';
+    d.innerHTML = '<div class="func-row"><div class="func-avatar" style="background:'+f.color+'22;color:'+f.color+'">'+f.nome[0]+'</div>'+
+      '<div style="flex:1"><div class="func-name">'+f.nome+'</div>'+
+      '<div class="func-cargo">'+f.cargo+' · PIN <span style="font-family:var(--mono)">'+(f.pin||'<span style="color:var(--orange)">não definido</span>')+'</span></div></div></div>'+
+      '<div class="func-stats">'+
+      '<div class="func-stat"><div class="func-stat-label">Carga</div><div class="func-stat-val">'+(f.carga||8)+'h/dia</div></div>'+
+      '<div class="func-stat"><div class="func-stat-label">Advertências</div><div class="func-stat-val" style="color:'+(af?'var(--orange)':'var(--text)')+'">'+af+'</div></div>'+
+      '</div>'+
+      '<div class="func-actions">'+
+      '<button class="btn-xs" style="color:var(--accent);border-color:rgba(232,197,71,.3)" onclick="editarPin('+f.id+',\''+f.nome+'\')">Definir PIN</button>'+
+      '<button class="btn-xs" style="color:var(--orange);border-color:rgba(251,146,60,.3)" onclick=\'openModalAdv('+JSON.stringify({id:f.id,nome:f.nome})+')\'>+ Advertência</button>'+
+      '</div>';
     g.appendChild(d);
   });
 }
 
-async function removeFuncConfirm(id) {
-  if(!confirm('Remover este funcionário?'))return;
-  await deleteFuncionario(id);
+async function editarPin(id, nome) {
+  const novoPin = prompt('Definir PIN para '+nome+' (4 dígitos):');
+  if(!novoPin || novoPin.length !== 4 || isNaN(parseInt(novoPin))) {
+    alert('PIN inválido. Deve ter exatamente 4 dígitos numéricos.');return;
+  }
+  if(funcionarios.find(f=>f.pin===novoPin && f.id!==id)){alert('PIN já em uso por outro funcionário.');return;}
+  if(sbOk) await sb.from('iw_funcionarios').update({pin: novoPin}).eq('id', id).execute();
+  const f = funcionarios.find(f=>f.id===id);
+  if(f) f.pin = novoPin;
+  alert('PIN definido com sucesso!');
   renderFuncionarios(document.getElementById('tab-content'));
 }
 
-async function renderAdvertencias(c) {
-  const advertencias=JSON.parse(localStorage.getItem('iw_adv')||'[]').sort((a,b)=>b.id-a.id);
-  c.innerHTML='<div class="section-row"><h3>Advertências</h3><span style="font-size:12px;color:var(--text2)">'+advertencias.length+' reg.</span></div><div id="al"></div>';
-  const al=document.getElementById('al');
+// ===================== ADVERTÊNCIAS =====================
+function renderAdvertencias(c) {
+  c.innerHTML = '<div class="section-row"><h3>Advertências</h3><span style="font-size:12px;color:var(--text2)">'+advertencias.length+' reg.</span></div><div id="al"></div>';
+  const al = document.getElementById('al');
   if(!advertencias.length){al.innerHTML='<div class="empty-state">Nenhuma advertência</div>';return;}
   advertencias.forEach(a=>{
     al.innerHTML+='<div class="adv-card">'+
-    '<div class="adv-name">'+a.funcNome.split(' ')[0]+' <span class="chip chip-orange">'+a.tipo+'</span></div>'+
-    '<div class="adv-desc">'+(a.desc||'Sem descrição')+'</div>'+
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">'+
-    '<div class="adv-date">'+a.data+'</div>'+
-    '<button class="btn-xs" style="color:var(--red);border-color:rgba(248,113,113,.3)" onclick="removeAdvConfirm('+a.id+')">Remover</button></div></div>';
+      '<div class="adv-name">'+(a.funcionario_nome||'').split(' ')[0]+' <span class="chip chip-orange">'+(a.tipo||'')+'</span></div>'+
+      '<div class="adv-desc">'+(a.descricao||'Sem descrição')+'</div>'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">'+
+      '<div class="adv-date">'+(a.data_registro||'')+'</div>'+
+      '<button class="btn-xs" style="color:var(--red);border-color:rgba(248,113,113,.3)" onclick="removeAdv('+a.id+')">Remover</button></div></div>';
   });
 }
 
-async function removeAdvConfirm(id) {
-  await deleteAdvertencia(id);
-  const arr=JSON.parse(localStorage.getItem('iw_adv')||'[]').filter(a=>a.id!==id);
-  localStorage.setItem('iw_adv',JSON.stringify(arr));
+async function removeAdv(id){
+  if(sbOk) await sb.from('iw_advertencias').delete().eq('id',id).execute();
+  advertencias = advertencias.filter(a=>a.id!==id);
   renderAdvertencias(document.getElementById('tab-content'));
 }
 
@@ -562,8 +501,15 @@ document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click
 
 async function saveAdvRecord(){
   if(!currentAdvFunc)return;
-  const adv={id:Date.now(),funcId:currentAdvFunc.id,funcNome:currentAdvFunc.nome,tipo:document.getElementById('adv-tipo').value,desc:document.getElementById('adv-desc').value,data:new Date().toLocaleDateString('pt-BR')};
-  await saveAdvertencia(adv);
+  const adv={
+    id: Date.now(), funcionario_id: currentAdvFunc.id, funcionario_nome: currentAdvFunc.nome,
+    tipo: document.getElementById('adv-tipo').value,
+    descricao: document.getElementById('adv-desc').value,
+    data_registro: new Date().toLocaleDateString('pt-BR'),
+    criado_em: new Date().toISOString()
+  };
+  if(sbOk) await sb.from('iw_advertencias').upsert(adv).execute();
+  advertencias.unshift(adv);
   document.getElementById('adv-desc').value='';closeModal();
   if(currentTab==='advertencias')renderAdvertencias(document.getElementById('tab-content'));
   else if(currentTab==='funcionarios')renderFuncionarios(document.getElementById('tab-content'));
@@ -575,16 +521,15 @@ async function saveFuncRecord(){
   const pv=document.getElementById('f-pin').value.trim();
   const carga=parseFloat(document.getElementById('f-carga').value);
   if(!nome||!cargo||pv.length!==4||isNaN(parseInt(pv))){alert('Preencha todos os campos. PIN deve ter 4 dígitos.');return;}
-  const funcionarios=JSON.parse(localStorage.getItem('iw_func')||'[]');
   if(funcionarios.find(f=>f.pin===pv)){alert('PIN já em uso.');return;}
-  const func={id:Date.now(),nome,cargo,pin:pv,carga,color:COLORS[funcionarios.length%COLORS.length]};
-  await saveFuncionario(func);
+  const func={id:Date.now(),nome,cargo,pin:pv,carga,ativo:true,atualizado_em:new Date().toISOString()};
+  if(sbOk) await sb.from('iw_funcionarios').upsert(func).execute();
+  funcionarios.push({...func,color:COLORS[funcionarios.length%COLORS.length]});
   ['f-nome','f-cargo','f-pin'].forEach(id=>document.getElementById(id).value='');
   closeModal();
   renderFuncionarios(document.getElementById('tab-content'));
 }
 
-// ===================== START =====================
 init();
 </script>
 </body>
