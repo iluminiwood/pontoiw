@@ -512,26 +512,77 @@ function calcRanking(todos){
 
 // ===== BATIDAS =====
 async function renderBatidas(c){
-  c.innerHTML='<div class="loading">Carregando histórico completo...</div>';
-  const{data:todos}=await sb.from('iw_registros_ponto').select('*').gte('data_local','2026-02-01').order('id');
-  const regs=todos||[];
+  c.innerHTML=`
+  <div style="display:flex;gap:8px;margin-bottom:.9rem;flex-wrap:wrap;align-items:center">
+    <div class="field" style="margin:0;flex:1;min-width:120px">
+      <select id="b-periodo" onchange="filtrarBatidas()" style="margin:0;padding:8px 10px;font-size:13px">
+        <option value="mes">Mês atual</option>
+        <option value="mes-ant">Mês anterior</option>
+        <option value="semana">Esta semana</option>
+        <option value="tudo">Tudo (fev–hoje)</option>
+      </select>
+    </div>
+    <div class="field" style="margin:0;flex:1;min-width:120px">
+      <select id="b-func" onchange="filtrarBatidas()" style="margin:0;padding:8px 10px;font-size:13px">
+        <option value="">Todos funcionários</option>
+        ${funcionarios.map(f=>`<option value="${f.cpf}">${f.nome.split(' ')[0]}</option>`).join('')}
+      </select>
+    </div>
+  </div>
+  <div id="batidas-content"><div class="loading">Carregando...</div></div>`;
+  filtrarBatidas();
+}
+
+async function filtrarBatidas(){
+  const periodo=document.getElementById('b-periodo')?.value||'mes';
+  const cpfFiltro=document.getElementById('b-func')?.value||'';
+  const el=document.getElementById('batidas-content');
+  if(!el) return;
+  el.innerHTML='<div class="loading">Carregando...</div>';
+
+  const hoje=new Date();
+  let dataIni,dataFim=hoje.toISOString().split('T')[0];
+
+  if(periodo==='mes'){
+    dataIni=hoje.toISOString().slice(0,7)+'-01';
+  } else if(periodo==='mes-ant'){
+    const m=new Date(hoje.getFullYear(),hoje.getMonth()-1,1);
+    dataIni=m.toISOString().split('T')[0];
+    const mfim=new Date(hoje.getFullYear(),hoje.getMonth(),0);
+    dataFim=mfim.toISOString().split('T')[0];
+  } else if(periodo==='semana'){
+    dataIni=getSemana(hoje.toISOString().split('T')[0]);
+  } else {
+    dataIni='2026-02-01';
+  }
+
+  let q=sb.from('iw_registros_ponto').select('*').gte('data_local',dataIni).lte('data_local',dataFim).order('id');
+  if(cpfFiltro) q=q.eq('cpf',cpfFiltro);
+  const{data:regs}=await q;
+  const todos=regs||[];
 
   // Agrupa por cpf -> data -> batidas
   const porCpf={};
-  regs.forEach(r=>{
-    const cpf=r.cpf;
-    if(!porCpf[cpf]) porCpf[cpf]={nome:r.funcionario_nome,dias:{}};
-    if(!porCpf[cpf].dias[r.data_local]) porCpf[cpf].dias[r.data_local]=[];
-    porCpf[cpf].dias[r.data_local].push({
-      hora:r.data_hora_local?.slice(11,16)||'00:00',tipo:r.tipo,nsr:r.nsr
+  todos.forEach(r=>{
+    if(!porCpf[r.cpf]) porCpf[r.cpf]={nome:r.funcionario_nome,dias:{}};
+    if(!porCpf[r.cpf].dias[r.data_local]) porCpf[r.cpf].dias[r.data_local]=[];
+    porCpf[r.cpf].dias[r.data_local].push({
+      id:r.id, nsr:r.nsr, hora:r.data_hora_local?.slice(11,16)||'00:00',
+      tipo:r.tipo, data_local:r.data_local, cpf:r.cpf, nome:r.funcionario_nome
     });
   });
 
   const cpfsAtivos=new Set(funcionarios.map(f=>f.cpf));
+  const fmap={};funcionarios.forEach(f=>{fmap[f.cpf]=f;});
   let html='';
 
-  funcionarios.forEach((f,fi)=>{
-    const pf=porCpf[f.cpf]||{nome:f.nome,dias:{}};
+  const cpfsParaExibir=cpfFiltro?[cpfFiltro]:funcionarios.map(f=>f.cpf);
+
+  cpfsParaExibir.forEach(cpf=>{
+    const f=fmap[cpf];
+    if(!f) return;
+    const pf=porCpf[cpf]||{nome:f.nome,dias:{}};
+    if(Object.keys(pf.dias).length===0) return;
 
     // Agrupa por semana
     const semanas={};
@@ -541,10 +592,9 @@ async function renderBatidas(c){
       semanas[sem].push({data,bats:[...bats].sort((a,b)=>a.hora.localeCompare(b.hora))});
     });
 
-    let saldoFuncTotal=0;
+    let saldoTotal=0;
     let semanasHtml='';
 
-    // Semanas mais recentes primeiro
     Object.entries(semanas).sort((a,b)=>b[0].localeCompare(a[0])).forEach(([semInicio,dias])=>{
       let saldoSem=0;
       let diasHtml='';
@@ -554,22 +604,25 @@ async function renderBatidas(c){
         const trabMin=calcTrabalhado(bats);
         const saldo=jMin>0?trabMin-jMin:0;
         saldoSem+=saldo;
-        saldoFuncTotal+=saldo;
+        saldoTotal+=saldo;
 
-        // Linha de batidas
-        const batsHtml=bats.map(b=>
-          `<span class="bbat ${b.tipo==='ENTRADA'?'ent':'sai'}">${b.hora}${b.tipo==='ENTRADA'?'↑':'↓'}</span>`
-        ).join('<span style="color:var(--t3);font-size:10px;margin:0 1px">·</span>');
+        const batsHtml=bats.map(b=>`
+          <span style="display:inline-flex;align-items:center;gap:2px;cursor:pointer"
+            onclick="editarBatida(${b.nsr||b.id},'${b.hora}','${b.tipo}','${data}','${cpf}','${f.nome.replace(/'/g,"\'")}')"
+            title="Clique para editar">
+            <span class="bbat ${b.tipo==='ENTRADA'?'ent':'sai'}" style="text-decoration:underline dotted">${b.hora}</span>
+            <span style="font-size:9px;color:var(--t3)">${b.tipo==='ENTRADA'?'↑':'↓'}</span>
+          </span>`).join('<span style="color:var(--t3);font-size:10px;margin:0 2px">·</span>');
 
         const saldoCor=saldo>=0?'var(--g)':saldo<-30?'var(--r)':'var(--o)';
-        const trabHtml=trabMin>0?fromMin(trabMin):'—';
-        const saldoHtml=jMin>0?`<span style="color:${saldoCor}">${saldo>=0?'+':''}${fromMin(saldo)}</span>`:'<span style="color:var(--t3)">—</span>';
-
         diasHtml+=`<div class="bdia">
           <span class="bdia-data">${fmtData(data)}</span>
-          <div class="bdia-batidas">${batsHtml}</div>
-          <span class="bdia-hrs">${trabHtml}</span>
-          <span class="bdia-saldo">${saldoHtml}</span>
+          <div class="bdia-batidas">${batsHtml}
+            <span onclick="addBatida('${data}','${cpf}','${f.nome.replace(/'/g,"\'")}')"
+              style="cursor:pointer;font-size:10px;color:var(--t3);margin-left:4px" title="Adicionar batida">＋</span>
+          </div>
+          <span class="bdia-hrs">${trabMin>0?fromMin(trabMin):'—'}</span>
+          <span class="bdia-saldo" style="color:${jMin>0?saldoCor:'var(--t3)'}">${jMin>0?(saldo>=0?'+':'')+fromMin(saldo):'—'}</span>
         </div>`;
       });
 
@@ -577,34 +630,63 @@ async function renderBatidas(c){
       const semFim=new Date(semInicio+'T12:00:00');semFim.setDate(semFim.getDate()+4);
       const semFimFmt=semFim.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
       const semSaldoCor=saldoSem>=0?'var(--g)':saldoSem<-30?'var(--r)':'var(--o)';
-
       semanasHtml+=`<div class="bsemana">
         <div class="bsemana-head">
           <span class="bsemana-lbl">Semana ${semFmt}–${semFimFmt}</span>
           <span class="bsemana-saldo" style="color:${semSaldoCor}">${saldoSem>=0?'+':''}${fromMin(saldoSem)}</span>
-        </div>
-        ${diasHtml}
+        </div>${diasHtml}
       </div>`;
     });
 
-    const saldoCor=saldoFuncTotal>=0?'var(--g)':saldoFuncTotal<-60?'var(--r)':'var(--o)';
+    const saldoCor=saldoTotal>=0?'var(--g)':saldoTotal<-60?'var(--r)':'var(--o)';
     html+=`<div class="bfunc">
       <div class="bfunc-head">
         <div class="fav" style="background:${f.color}22;color:${f.color}">${f.nome[0]}</div>
         <div class="bfunc-info">
           <div class="bfunc-name">${f.nome.split(' ')[0]}</div>
-          <div class="bfunc-sub">${f.cargo||'—'} · ${Object.keys(pf.dias).length} dias registrados</div>
+          <div class="bfunc-sub">${f.cargo||'—'} · ${Object.keys(pf.dias).length} dias</div>
         </div>
         <div class="bfunc-saldo">
-          <div class="bfunc-saldo-lbl">Saldo total</div>
-          <div class="bfunc-saldo-val" style="color:${saldoCor}">${saldoFuncTotal>=0?'+':''}${fromMin(saldoFuncTotal)}</div>
+          <div class="bfunc-saldo-lbl">Saldo período</div>
+          <div class="bfunc-saldo-val" style="color:${saldoCor}">${saldoTotal>=0?'+':''}${fromMin(saldoTotal)}</div>
         </div>
       </div>
-      ${semanasHtml||'<div class="empty" style="padding:1rem">Sem registros</div>'}
+      ${semanasHtml||'<div class="empty" style="padding:1rem">Sem registros no período</div>'}
     </div>`;
   });
 
-  c.innerHTML=html||'<div class="empty">Nenhum registro encontrado</div>';
+  el.innerHTML=html||'<div class="empty">Nenhum registro no período selecionado</div>';
+}
+
+function editarBatida(id, horaAtual, tipoAtual, data, cpf, nome){
+  const novaHora=prompt(`Editar batida de ${nome.split(' ')[0]} em ${fmtData(data)}\nHora atual: ${horaAtual} (${tipoAtual})\n\nNova hora (HH:MM):`, horaAtual);
+  if(!novaHora||!/^\d{2}:\d{2}$/.test(novaHora)) return;
+  const novoTipo=prompt(`Tipo (ENTRADA ou SAIDA):`,tipoAtual)?.toUpperCase();
+  if(!novoTipo||!['ENTRADA','SAIDA'].includes(novoTipo)) return;
+  sb.table('iw_registros_ponto').update({
+    data_hora_local: data+'T'+novaHora,
+    tipo: novoTipo,
+    origem: 'EDITADO_MANUAL'
+  }).eq('id',id).execute().then(()=>{
+    filtrarBatidas();
+  });
+}
+
+function addBatida(data, cpf, nome){
+  const hora=prompt(`Adicionar batida para ${nome.split(' ')[0]} em ${fmtData(data)}\nHora (HH:MM):`);
+  if(!hora||!/^\d{2}:\d{2}$/.test(hora)) return;
+  const tipo=prompt('Tipo (ENTRADA ou SAIDA):')?.toUpperCase();
+  if(!tipo||!['ENTRADA','SAIDA'].includes(tipo)) return;
+  const id=Date.now();
+  sb.table('iw_registros_ponto').insert({
+    id, nsr:null, funcionario_id:null,
+    funcionario_nome: nome, cpf,
+    data_hora: new Date().toISOString(),
+    data_hora_local: data+'T'+hora,
+    data_local: data, tipo,
+    origem:'MANUAL',
+    sincronizado_em:new Date().toISOString()
+  }).execute().then(()=>filtrarBatidas());
 }
 
 // ===== BANCO DE HORAS =====
