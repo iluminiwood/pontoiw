@@ -217,9 +217,9 @@ tr:last-child td{border-bottom:none;}
       <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       <span>Dashboard</span>
     </button>
-    <button class="bni" onclick="goTab('hoje')" id="bni-hoje">
+    <button class="bni" onclick="goTab('batidas')" id="bni-batidas">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
-      <span>Hoje</span>
+      <span>Batidas</span>
     </button>
     <button class="bni" onclick="goTab('banco')" id="bni-banco">
       <svg viewBox="0 0 24 24"><line x1="12" y1="20" x2="12" y2="4"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
@@ -421,7 +421,7 @@ async function doLogin() {
 }
 
 // ======= TABS =======
-const TAB_TITLES={dash:'Dashboard',hoje:'Registros de Hoje',banco:'Banco de Horas',equipe:'Equipe',adv:'Advertências'};
+const TAB_TITLES={dash:'Dashboard',batidas:'Batidas',banco:'Banco de Horas',equipe:'Equipe',adv:'Advertências'};
 function goTab(tab) {
   currentTab=tab;
   document.querySelectorAll('.bni').forEach(b=>b.classList.remove('active'));
@@ -430,7 +430,7 @@ function goTab(tab) {
   const c=document.getElementById('tcontent');
   c.innerHTML='<div class="loading">Carregando...</div>'; c.scrollTop=0;
   if(tab==='dash') renderDash(c);
-  else if(tab==='hoje') renderHoje(c);
+  else if(tab==='batidas') renderBatidas(c);
   else if(tab==='banco') renderBanco(c);
   else if(tab==='equipe') renderEquipe(c);
   else if(tab==='adv') renderAdv(c);
