@@ -463,12 +463,16 @@ function calcSaldoDia(batidas, dow) {
 }
 function atrasoEntrada(hora, dow) {
   const j=jornadaDia(dow); if(!j) return 0;
+  // So verifica atraso se for entrada da manha (antes das 10h)
+  if(toMin(hora) > toMin('10:00')) return 0;
   return Math.max(0, toMin(hora) - toMin(j.entrada));
 }
 function statusEntrada(hora, dow) {
+  // So mostra status de pontualidade para entradas da manha
+  if(toMin(hora) > toMin('10:00')) return {label:'Retorno almoco',cls:'chip-blue'};
   const at=atrasoEntrada(hora,dow);
   if(at===0) return {label:'Pontual',cls:'chip-green'};
-  if(at<=5) return {label:`+${at}min`,cls:'chip-amber'};
+  if(at<=5) return {label:`+${at}min (pontual)`,cls:'chip-green'};
   return {label:`Atraso ${at}min`,cls:'chip-red'};
 }
 
