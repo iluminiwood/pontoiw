@@ -279,12 +279,14 @@ const COLORS = ['#f0c040','#3dd68c','#60a5fa','#f87171','#fb923c','#c084fc','#34
 
 // Jornada IW
 const JORNADA = {
-  // dia semana (0=dom,1=seg,...,5=sex,6=sab) → minutos esperados (entrada 7h, almoço 12-13:30)
-  1:{entrada:'07:00',saida:'17:30',min:570}, // seg
-  2:{entrada:'07:00',saida:'17:30',min:570}, // ter
-  3:{entrada:'07:00',saida:'17:30',min:570}, // qua
-  4:{entrada:'07:00',saida:'17:30',min:570}, // qui
-  5:{entrada:'07:00',saida:'16:30',min:510}, // sex
+  // min = minutos LÍQUIDOS esperados (descontando 1h30 almoço)
+  // Seg-Qui: 7h-17h30 = 10h30 total - 1h30 almoço = 9h = 540min
+  // Sex: 7h-16h30 = 9h30 total - 1h30 almoço = 8h = 480min
+  1:{entrada:'07:00',saida:'17:30',min:540}, // seg
+  2:{entrada:'07:00',saida:'17:30',min:540}, // ter
+  3:{entrada:'07:00',saida:'17:30',min:540}, // qua
+  4:{entrada:'07:00',saida:'17:30',min:540}, // qui
+  5:{entrada:'07:00',saida:'16:30',min:480}, // sex
 };
 const ALMOCO_INICIO = '12:00';
 const ALMOCO_FIM = '13:30';
@@ -328,14 +330,17 @@ setInterval(tick,1000); tick();
 async function updateChips() {
   const chips=document.getElementById('chips'); if(!chips) return;
   const hoje=new Date().toISOString().split('T')[0];
-  const {data:regs} = await sb.from('iw_registros_ponto').select('cpf,tipo,data_local').eq('data_local',hoje).order('id');
+  const {data:regs} = await sb.from('iw_registros_ponto').select('cpf,tipo,data_local,funcionario_nome').eq('data_local',hoje).order('id');
+  // monta mapa por CPF
   const statusMap={};
   (regs||[]).forEach(r=>{
-    if(!statusMap[r.cpf]) statusMap[r.cpf]=[];
-    statusMap[r.cpf].push(r.tipo);
+    const key=r.cpf||r.funcionario_nome;
+    if(!statusMap[key]) statusMap[key]=[];
+    statusMap[key].push(r.tipo);
   });
   chips.innerHTML = funcionarios.map(f=>{
-    const batidas = statusMap[f.cpf||''] || [];
+    const key=f.cpf||f.nome;
+    const batidas = statusMap[key] || statusMap[f.nome.split(' ')[0]] || [];
     const ultimo = batidas[batidas.length-1];
     const dentro = ultimo==='ENTRADA';
     const nome = f.nome.split(' ')[0];
@@ -475,9 +480,13 @@ async function renderDash(c) {
   const {data:regsH}=await sb.from('iw_registros_ponto').select('*').eq('data_local',hojeStr).order('id');
   const regs=regsH||[];
 
-  // presentes agora
+  // presentes agora — indexa por CPF
   const statusMap={};
-  regs.forEach(r=>{if(!statusMap[r.cpf])statusMap[r.cpf]=[];statusMap[r.cpf].push(r);});
+  regs.forEach(r=>{
+    const key=r.cpf||r.funcionario_nome;
+    if(!statusMap[key]) statusMap[key]=[];
+    statusMap[key].push(r);
+  });
   let presentes=0;
   Object.values(statusMap).forEach(rs=>{if(rs[rs.length-1]?.tipo==='ENTRADA')presentes++;});
 
@@ -532,7 +541,7 @@ async function renderDash(c) {
       <div class="card-head"><span class="card-title">Hoje — status em tempo real</span></div>
       <table><thead><tr><th>Funcionário</th><th>Entrada</th><th>Status</th><th>Situação</th></tr></thead><tbody>
       ${funcionarios.map(f=>{
-        const rs=statusMap[f.cpf||f.nome]||[];
+        const rs=statusMap[f.cpf||f.nome]||statusMap[f.nome.split(' ')[0]]||[];
         const entrada=rs.find(r=>r.tipo==='ENTRADA');
         const ultimo=rs[rs.length-1];
         const dentro=ultimo?.tipo==='ENTRADA';
@@ -608,16 +617,17 @@ async function renderBanco(c) {
   const {data:todos}=await sb.from('iw_registros_ponto').select('*').gte('data_local','2026-01-01').order('id');
   const porFunc={};
   (todos||[]).forEach(r=>{
-    if(!porFunc[r.cpf]) porFunc[r.cpf]={nome:r.funcionario_nome,batidas:{}};
-    if(!porFunc[r.cpf].batidas[r.data_local]) porFunc[r.cpf].batidas[r.data_local]=[];
-    porFunc[r.cpf].batidas[r.data_local].push({hora:r.data_hora_local?.slice(11,16)||'00:00',tipo:r.tipo});
+    const key=r.cpf||r.funcionario_nome;
+    if(!porFunc[key]) porFunc[key]={nome:r.funcionario_nome,batidas:{}};
+    if(!porFunc[key].batidas[r.data_local]) porFunc[key].batidas[r.data_local]=[];
+    porFunc[key].batidas[r.data_local].push({hora:r.data_hora_local?.slice(11,16)||'00:00',tipo:r.tipo});
   });
 
   c.innerHTML='<div class="func-list" id="banco-list"></div>';
   const g=document.getElementById('banco-list');
 
   funcionarios.forEach((f,i)=>{
-    const pf=porFunc[f.cpf||'']||{batidas:{}};
+    const pf=porFunc[f.cpf||f.nome]||{batidas:{}};
     let saldo=0,diasTrab=0,extras=0,atrasos=0;
     Object.entries(pf.batidas).forEach(([data,bts])=>{
       const dow=new Date(data+'T12:00:00').getDay();
