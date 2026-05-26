@@ -344,7 +344,7 @@ async function updateChips() {
     const ultimo = batidas[batidas.length-1];
     const dentro = ultimo==='ENTRADA';
     const nome = f.nome.split(' ')[0];
-    return `<div class="s-chip"><div class="s-dot ${dentro?'in':'out'}"></div>${nome}</div>`;
+    return `<div class="s-chip"><div class="s-dot ${batidas.length===0?'out':dentro?'in':'out'}"></div>${nome}</div>`;
   }).join('');
 }
 
@@ -448,17 +448,20 @@ function jornadaDia(dow) {
   return JORNADA[dow] || null;
 }
 function calcSaldoDia(batidas, dow) {
-  // batidas: [{hora, tipo}] ordenadas
   const j = jornadaDia(dow);
   if(!j || !batidas.length) return 0;
-  // calcula minutos trabalhados (soma pares entrada/saída, desconta almoço)
+  // Soma todos os periodos trabalhados (pares ENTRADA->SAIDA)
   let trabalhado = 0;
-  for(let i=0;i<batidas.length-1;i+=2) {
-    if(batidas[i].tipo==='ENTRADA' && batidas[i+1]?.tipo==='SAIDA') {
-      trabalhado += toMin(batidas[i+1].hora) - toMin(batidas[i].hora);
+  const sorted = [...batidas].sort((a,b)=>a.hora.localeCompare(b.hora));
+  for(let i=0;i<sorted.length;i++) {
+    if(sorted[i].tipo==='ENTRADA' && sorted[i+1]?.tipo==='SAIDA') {
+      trabalhado += toMin(sorted[i+1].hora) - toMin(sorted[i].hora);
+      i++; // pula o par
     }
   }
-  // desconta almoço (30min contratual, sistema registra mas não desconta aqui pois já registra saída/volta)
+  // Desconta almoço (90 min) pois está incluído no período trabalhado
+  // Ex: 7h-12h (300min) + 13h30-17h30 (240min) = 540min = 9h liquido
+  // Sem desconto: 7h-17h30 = 630min, menos 90min almoço = 540min
   return trabalhado - j.min;
 }
 function atrasoEntrada(hora, dow) {
@@ -546,12 +549,14 @@ async function renderDash(c) {
       <table><thead><tr><th>Funcionário</th><th>Entrada</th><th>Status</th><th>Situação</th></tr></thead><tbody>
       ${funcionarios.map(f=>{
         const rs=statusMap[f.cpf||f.nome]||statusMap[f.nome.split(' ')[0]]||[];
-        const entrada=rs.find(r=>r.tipo==='ENTRADA');
+        // Primeira entrada do dia (antes das 10h)
+        const primeiraEntrada=rs.find(r=>r.tipo==='ENTRADA' && toMin(r.data_hora_local?.slice(11,16)||'00:00')<=toMin('10:00'));
+        // Ultima batida do dia
         const ultimo=rs[rs.length-1];
         const dentro=ultimo?.tipo==='ENTRADA';
-        const hora=entrada?.data_hora_local?.slice(11,16)||'—';
-        const st=entrada?statusEntrada(hora,dow):{label:'Ausente',cls:'chip-red'};
-        const sit=dentro?'<span class="chip chip-green">No trabalho</span>':entrada?'<span class="chip chip-amber">Saiu</span>':'<span class="chip chip-red">Ausente</span>';
+        const hora=primeiraEntrada?.data_hora_local?.slice(11,16)||'—';
+        const st=primeiraEntrada?statusEntrada(hora,dow):{label:'Ausente',cls:'chip-red'};
+        const sit=rs.length===0?'<span class="chip chip-red">Ausente</span>':dentro?'<span class="chip chip-green">No trabalho</span>':'<span class="chip chip-amber">Saiu</span>';
         return `<tr><td style="font-weight:600">${f.nome.split(' ')[0]}</td><td style="font-family:var(--mono)">${hora}</td><td><span class="chip ${st.cls}">${st.label}</span></td><td>${sit}</td></tr>`;
       }).join('')}
       </tbody></table>
