@@ -114,17 +114,28 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .bsemana-head{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--b2);margin-bottom:4px;}
 .bsemana-lbl{font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.05em;text-transform:uppercase;}
 .bsemana-saldo{font-family:var(--mono);font-size:11px;font-weight:600;}
-.bdia{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(42,42,50,.3);}
+.bdia{display:flex;align-items:center;gap:4px;padding:6px 0;border-bottom:1px solid rgba(42,42,50,.3);}
 .bdia:last-child{border-bottom:none;}
-.bdia-data{font-size:11px;color:var(--t2);width:72px;flex-shrink:0;}
-.bdia-batidas{flex:1;display:flex;flex-wrap:wrap;gap:4px;align-items:center;}
-.bbat{font-family:var(--mono);font-size:11px;cursor:pointer;padding:1px 4px;border-radius:3px;}
+.bdia-data{font-size:11px;color:var(--t2);width:58px;flex-shrink:0;}
+.bdia-batidas{flex:1;display:flex;flex-wrap:nowrap;gap:2px;align-items:center;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.bdia-batidas::-webkit-scrollbar{display:none;}
+.bbat{font-family:var(--mono);font-size:11px;cursor:pointer;padding:1px 3px;border-radius:3px;white-space:nowrap;flex-shrink:0;}
 .bbat.ent{color:var(--g);}
 .bbat.sai{color:var(--r);}
 .bbat.edit{color:var(--pu);text-decoration:underline dotted;}
 .bbat:hover{opacity:.75;}
-.bdia-hrs{font-family:var(--mono);font-size:11px;color:var(--t2);width:42px;text-align:right;flex-shrink:0;}
-.bdia-saldo{font-family:var(--mono);font-size:11px;width:54px;text-align:right;flex-shrink:0;}
+.bdia-hrs{font-family:var(--mono);font-size:10px;color:var(--t2);width:38px;text-align:right;flex-shrink:0;}
+.bdia-saldo{font-family:var(--mono);font-size:10px;width:48px;text-align:right;flex-shrink:0;}
+@media(max-width:480px){
+  .bfunc-saldo-val{font-size:16px;}
+  .bsemana-lbl{font-size:9px;}
+  .filter-bar select{font-size:11px;padding:6px 8px;}
+  .bdia-data{width:52px;font-size:10px;}
+  .tabs{padding:0 .5rem;}
+  .tab{padding:10px 10px;font-size:11px;}
+  .content{padding:.75rem .75rem .5rem;}
+  .bfunc{padding:.75rem .75rem;}
+}
 .advcard{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r12);padding:.85rem 1rem;margin-bottom:8px;}
 .moverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:100;align-items:center;justify-content:center;padding:1rem;}
 .moverlay.open{display:flex;}
