@@ -636,15 +636,17 @@ async function salvarEdicao(){
   if(!editCtx)return;
   const hora=document.getElementById('edit-hora').value;
   const tipo=document.getElementById('edit-tipo').value;
-  await sb.from('iw_registros_ponto').update({
+  const {error:errUpd}=await sb.from('iw_registros_ponto').update({
     data_hora_local:editCtx.data+'T'+hora,tipo,origem:'EDITADO_MANUAL',
     sincronizado_em:new Date().toISOString()
-  }).eq('id',editCtx.id);
+  }).eq('id',editCtx.id).select();
+  if(errUpd){alert('Erro ao salvar: '+errUpd.message);return;}
   closeModals();await reloadBatidas();
 }
 async function deletarBatida(){
   if(!editCtx||!confirm('Excluir esta batida?'))return;
-  await sb.from('iw_registros_ponto').delete().eq('id',editCtx.id);
+  const {error:errDel}=await sb.from('iw_registros_ponto').delete().eq('id',editCtx.id).select();
+  if(errDel){alert('Erro ao excluir: '+errDel.message);return;}
   closeModals();await reloadBatidas();
 }
 
@@ -660,14 +662,15 @@ async function confirmarAdd(){
   const hora=document.getElementById('add-hora').value;
   const tipo=document.getElementById('add-tipo').value;
   if(!hora)return;
-  await sb.from('iw_registros_ponto').insert({
+  const {error:errIns}=await sb.from('iw_registros_ponto').insert({
     id:Date.now(),nsr:null,funcionario_id:null,
     funcionario_nome:addCtx.nome,cpf:addCtx.cpf,
     data_hora:new Date().toISOString(),
     data_hora_local:addCtx.data+'T'+hora,
     data_local:addCtx.data,tipo,origem:'MANUAL',
     sincronizado_em:new Date().toISOString()
-  });
+  }).select();
+  if(errIns){alert('Erro ao adicionar: '+errIns.message);return;}
   closeModals();await reloadBatidas();
 }
 
