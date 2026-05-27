@@ -126,10 +126,10 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .bdia-hrs{font-family:var(--mono);font-size:11px;color:var(--t2);width:42px;text-align:right;flex-shrink:0;}
 .bdia-saldo{font-family:var(--mono);font-size:11px;width:54px;text-align:right;flex-shrink:0;}
 .advcard{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r12);padding:.85rem 1rem;margin-bottom:8px;}
-.moverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:100;align-items:flex-end;justify-content:center;}
+.moverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:100;align-items:center;justify-content:center;padding:1rem;}
 .moverlay.open{display:flex;}
-.modal{background:var(--s1);border:1px solid var(--b1);border-radius:20px 20px 0 0;padding:1.5rem;width:100%;max-width:480px;padding-bottom:calc(1.5rem + env(safe-area-inset-bottom));}
-.mhandle{width:32px;height:3px;background:var(--b2);border-radius:2px;margin:0 auto 1.1rem;}
+.modal{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r16);padding:1.5rem;width:100%;max-width:420px;}
+.mhandle{display:none;}
 .mtitle{font-size:16px;font-weight:800;margin-bottom:3px;}
 .msub{font-size:12px;color:var(--t2);margin-bottom:1rem;}
 .mactions{display:flex;gap:7px;margin-top:.9rem;}
@@ -296,6 +296,14 @@ function getSemana(ds){
   return seg.toISOString().split('T')[0];
 }
 function jornadaMin(ds){return JORNADA[new Date(ds+'T12:00:00').getDay()]||0;}
+function isDiaCompleto(ds, bats){
+  // Dia é incompleto se for hoje E a última batida for ENTRADA
+  const hoje=new Date().toISOString().split('T')[0];
+  if(ds!==hoje) return true;
+  if(!bats||!bats.length) return false;
+  const sorted=[...bats].sort((a,b)=>a.hora.localeCompare(b.hora));
+  return sorted[sorted.length-1].tipo==='SAIDA';
+}
 function saidaPadrao(ds){return new Date(ds+'T12:00:00').getDay()===5?SAIDA_SEX:SAIDA_SEMANA;}
 
 function calcTrab(bats){
@@ -476,7 +484,8 @@ function calcSaldoRegs(regs){
   });
   let total=0;
   Object.values(mapa).forEach(dias=>Object.entries(dias).forEach(([data,bats])=>{
-    if(!isDiaUtil(data))return; // ignora feriados
+    if(!isDiaUtil(data))return;
+    if(!isDiaCompleto(data,bats))return; // ignora dia em andamento
     const j=jornadaMin(data);if(!j)return;
     total+=calcTrab(bats)-j;
   }));
@@ -486,30 +495,34 @@ function calcSaldoRegs(regs){
 function renderRanking(regs){
   const el=document.getElementById('ranking');if(!el)return;
   const cpfsAtivos=new Set(funcionarios.map(f=>f.cpf));
+  const fmap={};funcionarios.forEach(f=>{fmap[f.cpf]=f;});
   const stats={};
   regs.forEach(r=>{
-    if(!cpfsAtivos.has(r.cpf)) return;
-    if(!stats[r.cpf]) stats[r.cpf]={nome:r.funcionario_nome,atrasos:0,dias:new Set()};
+    if(!r.cpf||!cpfsAtivos.has(r.cpf)) return;
+    const f=fmap[r.cpf];if(!f)return;
+    if(!stats[r.cpf]) stats[r.cpf]={nome:f.nome,atrasos:0,dias:new Set()};
     stats[r.cpf].dias.add(r.data_local);
     if(r.tipo==='ENTRADA'){
       const h=r.data_hora_local?.slice(11,16)||'00:00';
       if(toMin(h)<=toMin('10:00')&&toMin(h)-toMin(ENTRADA_PAD)>TOL) stats[r.cpf].atrasos++;
     }
   });
-  const fmap={};funcionarios.forEach(f=>{fmap[f.cpf]=f;});
-  const ranked=Object.entries(stats).map(([cpf,s])=>({cpf,nome:s.nome,atrasos:s.atrasos,dias:s.dias.size})).sort((a,b)=>a.atrasos-b.atrasos||b.dias-a.dias);
+  const ranked=Object.entries(stats)
+    .map(([cpf,s])=>({cpf,nome:s.nome||'—',atrasos:s.atrasos,dias:s.dias.size}))
+    .sort((a,b)=>a.atrasos-b.atrasos||b.dias-a.dias);
   const medals=['🥇','🥈','🥉'];
   el.innerHTML=ranked.length?ranked.map((r,i)=>{
-    const f=fmap[r.cpf]||{color:COLORS[i%7],nome:r.nome};
+    const f=fmap[r.cpf]||{color:COLORS[i%7]};
+    const nome=r.nome||'?';
     const cor=r.atrasos===0?'var(--g)':r.atrasos<3?'var(--o)':'var(--r)';
     return`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(42,42,50,.4)">
       <span style="font-size:10px;color:var(--t3);width:16px">${i+1}</span>
-      <div style="width:28px;height:28px;border-radius:50%;background:${f.color}22;color:${f.color};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">${(r.nome||'?')[0]}</div>
-      <div style="flex:1"><div style="font-size:13px;font-weight:700">${r.nome.split(' ')[0]} ${medals[i]||''}</div>
+      <div style="width:28px;height:28px;border-radius:50%;background:${f.color}22;color:${f.color};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">${nome[0]}</div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:700">${nome.split(' ')[0]} ${medals[i]||''}</div>
         <div style="font-size:10px;color:var(--t2)">${r.dias} dias trabalhados</div></div>
       <span style="font-family:var(--mono);font-size:12px;font-weight:600;color:${cor}">${r.atrasos===0?'Sem atrasos':r.atrasos+' atraso'+(r.atrasos>1?'s':'')}</span>
     </div>`;
-  }).join(''):'<div class="empty">Sem dados</div>';
+  }).join(''):'<div class="empty">Sem dados este mês</div>';
 }
 
 // ===== BATIDAS =====
@@ -569,7 +582,9 @@ async function reloadBatidas(){
     Object.entries(semanas).sort((a,b)=>b[0].localeCompare(a[0])).forEach(([semIni,dias])=>{
       let saldoSem=0,diasHtml='';
       dias.sort((a,b)=>a.data.localeCompare(b.data)).forEach(({data,bats})=>{
-        const jMin=jornadaMin(data),trab=calcTrab(bats),saldo=jMin?trab-jMin:0;
+        const jMin=jornadaMin(data),trab=calcTrab(bats);
+        const completo=isDiaCompleto(data,bats);
+        const saldo=jMin&&completo?trab-jMin:jMin&&!completo&&trab>0?trab-jMin:0;
         saldoSem+=saldo;saldoTotal+=saldo;
         const batsHtml=bats.map(b=>{
           const isEdit=b.origem==='MANUAL'||b.origem==='EDITADO_MANUAL';
@@ -699,6 +714,7 @@ async function reloadBanco(){
       if(!isDiaUtil(ds)) continue; // ignora fins de semana e feriados
       const bats=pf.dias[ds];
       if(!bats||!bats.length){faltas++;continue;}
+      if(!isDiaCompleto(ds,bats))continue; // dia em andamento, não conta
       const j=jornadaMin(ds);
       const t=calcTrab(bats),s=t-j;
       saldo+=s;dias++;
