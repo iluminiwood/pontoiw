@@ -18,6 +18,26 @@
   --font:'Cabinet Grotesk',sans-serif;--mono:'DM Mono',monospace;
   --r4:4px;--r8:8px;--r12:12px;--r16:16px;
 }
+[data-theme="light"]{
+  --bg:#f4f4f6;--s1:#ffffff;--s2:#f0f0f3;--s3:#e8e8ec;
+  --b1:#dcdce8;--b2:#c8c8d8;
+  --acc:#c89a00;--acc2:#d4a800;
+  --g:#16a34a;--r:#dc2626;--o:#ea580c;--bl:#2563eb;--pu:#9333ea;
+  --gd:rgba(22,163,74,.1);--rd:rgba(220,38,38,.1);--od:rgba(234,88,12,.1);
+  --bld:rgba(37,99,235,.1);--ad:rgba(200,154,0,.1);--pud:rgba(147,51,234,.1);
+  --t1:#111118;--t2:#55556a;--t3:#aaaabc;
+}
+.theme-toggle{
+  width:36px;height:20px;border-radius:10px;border:none;cursor:pointer;
+  background:var(--b2);position:relative;transition:background .2s;flex-shrink:0;
+}
+.theme-toggle::after{
+  content:'';position:absolute;top:3px;left:3px;width:14px;height:14px;
+  border-radius:50%;background:var(--t2);transition:all .2s;
+}
+[data-theme="light"] .theme-toggle{background:var(--acc);}
+[data-theme="light"] .theme-toggle::after{left:19px;background:#fff;}
+.theme-icon{font-size:13px;line-height:1;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{width:100%;min-height:100vh;}
 body{font-family:var(--font);background:var(--bg);color:var(--t1);font-size:14px;}
@@ -132,7 +152,10 @@ tr:hover td{background:rgba(255,255,255,.02);}
 
 <div id="login">
   <div class="login-wrap">
-    <div class="login-logo">IW · Gestão de Ponto</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem">
+      <div class="login-logo" style="margin-bottom:0">IW · Gestão de Ponto</div>
+      <button class="theme-toggle" onclick="toggleTheme()" title="Alternar tema"></button>
+    </div>
     <div class="login-title">Bem-vindo</div>
     <div class="login-sub">Área restrita — acesso autorizado</div>
     <div class="field"><label>Senha</label>
@@ -148,6 +171,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <div class="tb-brand">IW · Ponto</div>
     <div class="tb-right">
       <div class="tb-sync"><span class="sdot" id="sdot"></span><span id="slbl">—</span></div>
+      <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn" title="Alternar tema"></button>
       <button class="btn-sm danger" onclick="doLogout()">Sair</button>
     </div>
   </div>
@@ -296,6 +320,26 @@ function getPeriodo(p){
 }
 
 // ===== AUTH =====
+// ===== TEMA =====
+function toggleTheme(){
+  const curr=document.documentElement.getAttribute('data-theme');
+  const next=curr==='light'?'dark':'light';
+  applyTheme(next);
+  localStorage.setItem('iw-theme',next);
+}
+function applyTheme(theme){
+  if(theme==='light'){
+    document.documentElement.setAttribute('data-theme','light');
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+  }
+}
+// Aplica tema salvo ao carregar
+(function(){
+  const saved=localStorage.getItem('iw-theme')||'dark';
+  applyTheme(saved);
+})();
+
 async function sha256(msg){
   const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(msg));
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
@@ -460,7 +504,7 @@ function renderRanking(regs){
     const cor=r.atrasos===0?'var(--g)':r.atrasos<3?'var(--o)':'var(--r)';
     return`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(42,42,50,.4)">
       <span style="font-size:10px;color:var(--t3);width:16px">${i+1}</span>
-      <div style="width:28px;height:28px;border-radius:50%;background:${f.color}22;color:${f.color};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">${r.nome[0]}</div>
+      <div style="width:28px;height:28px;border-radius:50%;background:${f.color}22;color:${f.color};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">${(r.nome||'?')[0]}</div>
       <div style="flex:1"><div style="font-size:13px;font-weight:700">${r.nome.split(' ')[0]} ${medals[i]||''}</div>
         <div style="font-size:10px;color:var(--t2)">${r.dias} dias trabalhados</div></div>
       <span style="font-family:var(--mono);font-size:12px;font-weight:600;color:${cor}">${r.atrasos===0?'Sem atrasos':r.atrasos+' atraso'+(r.atrasos>1?'s':'')}</span>
@@ -580,12 +624,12 @@ async function salvarEdicao(){
   await sb.from('iw_registros_ponto').update({
     data_hora_local:editCtx.data+'T'+hora,tipo,origem:'EDITADO_MANUAL',
     sincronizado_em:new Date().toISOString()
-  }).eq('id',editCtx.id).execute();
+  }).eq('id',editCtx.id);
   closeModals();await reloadBatidas();
 }
 async function deletarBatida(){
   if(!editCtx||!confirm('Excluir esta batida?'))return;
-  await sb.from('iw_registros_ponto').delete().eq('id',editCtx.id).execute();
+  await sb.from('iw_registros_ponto').delete().eq('id',editCtx.id);
   closeModals();await reloadBatidas();
 }
 
@@ -608,7 +652,7 @@ async function confirmarAdd(){
     data_hora_local:addCtx.data+'T'+hora,
     data_local:addCtx.data,tipo,origem:'MANUAL',
     sincronizado_em:new Date().toISOString()
-  }).execute();
+  });
   closeModals();await reloadBatidas();
 }
 
@@ -840,7 +884,7 @@ async function editPin(id,nome){
   const np=prompt(`PIN para ${nome.split(' ')[0]} (4 dígitos):`);
   if(!np||np.length!==4||isNaN(parseInt(np))){alert('PIN inválido.');return;}
   if(funcionarios.find(f=>f.pin===np&&f.id!==id)){alert('PIN já em uso.');return;}
-  await sb.from('iw_funcionarios').update({pin:np}).eq('id',id).execute();
+  await sb.from('iw_funcionarios').update({pin:np}).eq('id',id);
   await loadBase();renderEquipe(document.getElementById('content'));
 }
 
@@ -860,7 +904,7 @@ function renderAdv(c){
   });
 }
 async function delAdv(id){
-  await sb.from('iw_advertencias').delete().eq('id',id).execute();
+  await sb.from('iw_advertencias').delete().eq('id',id);
   advertencias=advertencias.filter(a=>a.id!==id);
   renderAdv(document.getElementById('content'));
 }
@@ -873,7 +917,7 @@ document.querySelectorAll('.moverlay').forEach(m=>m.addEventListener('click',e=>
 async function saveAdv(){
   if(!currentAdvFunc)return;
   const adv={id:Date.now(),funcionario_id:currentAdvFunc.id,funcionario_nome:currentAdvFunc.nome,tipo:document.getElementById('adv-tipo').value,descricao:document.getElementById('adv-desc').value,data_registro:new Date().toLocaleDateString('pt-BR'),criado_em:new Date().toISOString()};
-  await sb.from('iw_advertencias').upsert(adv).execute();
+  await sb.from('iw_advertencias').upsert(adv);
   advertencias.unshift(adv);document.getElementById('adv-desc').value='';closeModals();
   if(currentTab==='adv')renderAdv(document.getElementById('content'));
 }
@@ -884,7 +928,7 @@ async function saveFunc(){
   const cpf=document.getElementById('f-cpf').value.trim();
   if(!nome||!cargo||pv.length!==4||isNaN(parseInt(pv))){alert('Preencha nome, cargo e PIN.');return;}
   if(funcionarios.find(f=>f.pin===pv)){alert('PIN já em uso.');return;}
-  await sb.from('iw_funcionarios').insert({id:Date.now(),nome,cargo,pin:pv,cpf,carga:9,ativo:true,atualizado_em:new Date().toISOString()}).execute();
+  await sb.from('iw_funcionarios').insert({id:Date.now(),nome,cargo,pin:pv,cpf,carga:9,ativo:true,atualizado_em:new Date().toISOString()});
   ['f-nome','f-cargo','f-pin','f-cpf'].forEach(id=>document.getElementById(id).value='');
   closeModals();await loadBase();renderEquipe(document.getElementById('content'));
 }
