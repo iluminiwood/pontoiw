@@ -7,12 +7,13 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Cabinet+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-:root {
+:root{
   --bg:#0a0a0c;--s1:#111114;--s2:#18181c;--s3:#222228;
   --b1:#2a2a32;--b2:#383844;
   --acc:#f0c040;--acc2:#f8d060;
   --g:#3dd68c;--r:#f87171;--o:#fb923c;--bl:#60a5fa;--pu:#c084fc;
-  --gd:rgba(61,214,140,.12);--rd:rgba(248,113,113,.12);--od:rgba(251,146,60,.12);--bld:rgba(96,165,250,.12);--ad:rgba(240,192,64,.12);
+  --gd:rgba(61,214,140,.12);--rd:rgba(248,113,113,.12);--od:rgba(251,146,60,.12);
+  --bld:rgba(96,165,250,.12);--ad:rgba(240,192,64,.12);--pud:rgba(192,132,252,.12);
   --t1:#f0f0f2;--t2:#8888a0;--t3:#44444e;
   --font:'Cabinet Grotesk',sans-serif;--mono:'DM Mono',monospace;
   --r4:4px;--r8:8px;--r12:12px;--r16:16px;
@@ -20,8 +21,6 @@
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{width:100%;min-height:100vh;}
 body{font-family:var(--font);background:var(--bg);color:var(--t1);font-size:14px;}
-
-/* LOGIN */
 #login{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1.5rem;}
 .login-wrap{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r16);padding:2rem 1.75rem;width:100%;max-width:360px;}
 .login-logo{font-size:11px;font-weight:800;letter-spacing:.2em;color:var(--acc);text-transform:uppercase;margin-bottom:1.5rem;}
@@ -29,75 +28,52 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);font-size:14px
 .login-sub{font-size:12px;color:var(--t2);margin-bottom:1.5rem;}
 .field{margin-bottom:1rem;}
 .field label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--t2);display:block;margin-bottom:.4rem;}
-.field input,.field select,.field textarea{
-  width:100%;background:var(--s2);border:1px solid var(--b1);border-radius:var(--r8);
-  padding:11px 12px;font-family:var(--font);font-size:14px;color:var(--t1);outline:none;
-}
+.field input,.field select,.field textarea{width:100%;background:var(--s2);border:1px solid var(--b1);border-radius:var(--r8);padding:11px 12px;font-family:var(--font);font-size:14px;color:var(--t1);outline:none;}
 .field input:focus,.field select:focus{border-color:var(--acc);}
 .field textarea{resize:none;}
-.btn{width:100%;padding:12px;background:var(--acc);border:none;border-radius:var(--r8);
-  font-family:var(--font);font-size:14px;font-weight:800;color:#000;cursor:pointer;}
+.btn{width:100%;padding:12px;background:var(--acc);border:none;border-radius:var(--r8);font-family:var(--font);font-size:14px;font-weight:800;color:#000;cursor:pointer;}
 .btn:active{background:var(--acc2);}
 .err-msg{font-size:12px;color:var(--r);text-align:center;margin-top:.75rem;min-height:18px;}
-
-/* APP */
 #app{display:none;flex-direction:column;min-height:100vh;}
-.topbar{display:flex;align-items:center;justify-content:space-between;
-  padding:.75rem 1.25rem;background:var(--s1);border-bottom:1px solid var(--b1);
-  position:sticky;top:0;z-index:20;}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:.75rem 1.25rem;background:var(--s1);border-bottom:1px solid var(--b1);position:sticky;top:0;z-index:20;}
 .tb-brand{font-size:10px;font-weight:800;letter-spacing:.2em;color:var(--acc);text-transform:uppercase;}
 .tb-right{display:flex;align-items:center;gap:8px;}
 .tb-sync{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t3);}
 .sdot{width:6px;height:6px;border-radius:50%;background:var(--t3);}
 .sdot.ok{background:var(--g);box-shadow:0 0 8px rgba(61,214,140,.5);}
 .sdot.err{background:var(--r);}
-.btn-sm{padding:5px 11px;border-radius:var(--r8);font-family:var(--font);font-size:11px;
-  font-weight:600;cursor:pointer;border:1px solid var(--b1);background:var(--s2);color:var(--t2);}
+.btn-sm{padding:5px 11px;border-radius:var(--r8);font-family:var(--font);font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--b1);background:var(--s2);color:var(--t2);}
 .btn-sm.danger{border-color:rgba(248,113,113,.3);color:var(--r);}
 .btn-sm.accent{border-color:rgba(240,192,64,.3);color:var(--acc);}
-
-/* TABS */
 .tabs{display:flex;background:var(--s1);border-bottom:1px solid var(--b1);overflow-x:auto;padding:0 1rem;}
-.tab{padding:10px 14px;font-size:12px;font-weight:600;color:var(--t2);cursor:pointer;
-  border-bottom:2px solid transparent;white-space:nowrap;transition:all .15s;}
+.tab{padding:10px 14px;font-size:12px;font-weight:600;color:var(--t2);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .15s;}
 .tab:hover{color:var(--t1);}
 .tab.on{color:var(--acc);border-bottom-color:var(--acc);}
-
 .content{flex:1;overflow-y:auto;padding:1rem 1.25rem .5rem;}
-
-/* CARDS */
 .kgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:1rem;}
 .kcard{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r12);padding:.85rem 1rem;}
 .klbl{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--t2);margin-bottom:.3rem;}
 .kval{font-family:var(--mono);font-size:22px;font-weight:500;line-height:1.1;}
 .ksub{font-size:10px;color:var(--t3);margin-top:.2rem;}
-
-/* TABLE */
 .tcard{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r12);overflow:hidden;margin-bottom:1rem;}
-.thead-row{display:flex;align-items:center;justify-content:space-between;
-  padding:.65rem 1rem;border-bottom:1px solid var(--b1);}
+.thead-row{display:flex;align-items:center;justify-content:space-between;padding:.65rem 1rem;border-bottom:1px solid var(--b1);}
 .thead-title{font-size:12px;font-weight:700;}
 table{width:100%;border-collapse:collapse;}
-th{padding:7px 10px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.05em;
-  text-transform:uppercase;color:var(--t2);border-bottom:1px solid var(--b1);}
+th{padding:7px 10px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--t2);border-bottom:1px solid var(--b1);}
 td{padding:9px 10px;border-bottom:1px solid rgba(42,42,50,.5);vertical-align:middle;}
 tr:last-child td{border-bottom:none;}
 tr:hover td{background:rgba(255,255,255,.02);}
-
-/* CHIPS */
 .chip{display:inline-flex;align-items:center;font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;}
 .chip.g{background:var(--gd);color:var(--g);}
 .chip.r{background:var(--rd);color:var(--r);}
 .chip.a{background:var(--ad);color:var(--acc);}
 .chip.o{background:var(--od);color:var(--o);}
 .chip.b{background:var(--bld);color:var(--bl);}
-
-/* FUNC CARDS */
+.chip.pu{background:var(--pud);color:var(--pu);}
 .flist{display:flex;flex-direction:column;gap:8px;margin-bottom:1rem;}
 .fcard{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r12);padding:.9rem 1rem;}
 .frow{display:flex;align-items:center;gap:10px;margin-bottom:.6rem;}
-.fav{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;
-  justify-content:center;font-size:14px;font-weight:800;flex-shrink:0;}
+.fav{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0;}
 .fname{font-size:14px;font-weight:700;}
 .fcargo{font-size:11px;color:var(--t2);}
 .fstats{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:.6rem;}
@@ -105,53 +81,39 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .fstat-l{font-size:9px;color:var(--t3);}
 .fstat-v{font-family:var(--mono);font-size:12px;font-weight:500;margin-top:1px;}
 .factions{display:flex;gap:5px;}
-.btn-xs{padding:5px 9px;font-size:11px;font-weight:600;border-radius:var(--r8);
-  border:1px solid var(--b1);background:var(--s2);color:var(--t2);cursor:pointer;font-family:var(--font);}
-
-/* BATIDAS */
-.bfunc{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r12);
-  padding:.9rem 1rem;margin-bottom:.9rem;}
-.bfunc-head{display:flex;align-items:center;gap:10px;padding-bottom:.75rem;
-  margin-bottom:.75rem;border-bottom:1px solid var(--b1);}
+.btn-xs{padding:5px 9px;font-size:11px;font-weight:600;border-radius:var(--r8);border:1px solid var(--b1);background:var(--s2);color:var(--t2);cursor:pointer;font-family:var(--font);}
+.bfunc{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r12);padding:.9rem 1rem;margin-bottom:.9rem;}
+.bfunc-head{display:flex;align-items:center;gap:10px;padding-bottom:.75rem;margin-bottom:.75rem;border-bottom:1px solid var(--b1);}
 .bfunc-info{flex:1;}
 .bfunc-name{font-size:15px;font-weight:800;}
 .bfunc-sub{font-size:11px;color:var(--t2);}
 .bfunc-saldo{text-align:right;}
 .bfunc-saldo-lbl{font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;}
 .bfunc-saldo-val{font-family:var(--mono);font-size:20px;font-weight:600;}
-
 .bsemana{margin-bottom:.75rem;}
-.bsemana-head{display:flex;justify-content:space-between;align-items:center;
-  padding:5px 0;border-bottom:1px solid var(--b2);margin-bottom:4px;}
+.bsemana-head{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--b2);margin-bottom:4px;}
 .bsemana-lbl{font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.05em;text-transform:uppercase;}
 .bsemana-saldo{font-family:var(--mono);font-size:11px;font-weight:600;}
-
-.bdia{display:flex;align-items:center;gap:6px;padding:5px 0;
-  border-bottom:1px solid rgba(42,42,50,.3);}
+.bdia{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(42,42,50,.3);}
 .bdia:last-child{border-bottom:none;}
 .bdia-data{font-size:11px;color:var(--t2);width:72px;flex-shrink:0;}
-.bdia-batidas{flex:1;display:flex;flex-wrap:wrap;gap:3px;align-items:center;}
-.bbat{font-family:var(--mono);font-size:11px;}
+.bdia-batidas{flex:1;display:flex;flex-wrap:wrap;gap:4px;align-items:center;}
+.bbat{font-family:var(--mono);font-size:11px;cursor:pointer;padding:1px 4px;border-radius:3px;}
 .bbat.ent{color:var(--g);}
 .bbat.sai{color:var(--r);}
-.bdia-hrs{font-family:var(--mono);font-size:11px;color:var(--t2);width:40px;text-align:right;flex-shrink:0;}
-.bdia-saldo{font-family:var(--mono);font-size:11px;width:52px;text-align:right;flex-shrink:0;}
-
-/* ADV */
+.bbat.edit{color:var(--pu);text-decoration:underline dotted;}
+.bbat:hover{opacity:.75;}
+.bdia-hrs{font-family:var(--mono);font-size:11px;color:var(--t2);width:42px;text-align:right;flex-shrink:0;}
+.bdia-saldo{font-family:var(--mono);font-size:11px;width:54px;text-align:right;flex-shrink:0;}
 .advcard{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r12);padding:.85rem 1rem;margin-bottom:8px;}
-
-/* MODAL */
-.moverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:100;
-  align-items:flex-end;justify-content:center;}
+.moverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:100;align-items:flex-end;justify-content:center;}
 .moverlay.open{display:flex;}
-.modal{background:var(--s1);border:1px solid var(--b1);border-radius:20px 20px 0 0;
-  padding:1.5rem;width:100%;max-width:480px;padding-bottom:calc(1.5rem + env(safe-area-inset-bottom));}
+.modal{background:var(--s1);border:1px solid var(--b1);border-radius:20px 20px 0 0;padding:1.5rem;width:100%;max-width:480px;padding-bottom:calc(1.5rem + env(safe-area-inset-bottom));}
 .mhandle{width:32px;height:3px;background:var(--b2);border-radius:2px;margin:0 auto 1.1rem;}
 .mtitle{font-size:16px;font-weight:800;margin-bottom:3px;}
 .msub{font-size:12px;color:var(--t2);margin-bottom:1rem;}
 .mactions{display:flex;gap:7px;margin-top:.9rem;}
 .mactions .btn{flex:1;padding:10px;}
-
 .srow{display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;}
 .srow h3{font-size:13px;font-weight:700;}
 .empty{text-align:center;padding:2.5rem;color:var(--t3);font-size:13px;}
@@ -159,11 +121,15 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .banner{border-radius:var(--r8);padding:7px 12px;font-size:11px;font-weight:500;margin-bottom:.9rem;text-align:center;}
 .banner.ok{background:var(--gd);border:1px solid rgba(61,214,140,.2);color:var(--g);}
 .banner.err{background:var(--rd);border:1px solid rgba(248,113,113,.2);color:var(--r);}
+.filter-bar{display:flex;gap:8px;margin-bottom:.9rem;flex-wrap:wrap;}
+.filter-bar select{background:var(--s2);border:1px solid var(--b1);border-radius:var(--r8);padding:7px 10px;font-family:var(--font);font-size:12px;color:var(--t1);outline:none;cursor:pointer;flex:1;min-width:120px;}
+.filter-bar select:focus{border-color:var(--acc);}
+.atr-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(42,42,50,.3);}
+.atr-row:last-child{border-bottom:none;}
 </style>
 </head>
 <body>
 
-<!-- LOGIN -->
 <div id="login">
   <div class="login-wrap">
     <div class="login-logo">IW · Gestão de Ponto</div>
@@ -177,7 +143,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
   </div>
 </div>
 
-<!-- APP -->
 <div id="app">
   <div class="topbar">
     <div class="tb-brand">IW · Ponto</div>
@@ -190,10 +155,46 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <div class="tab on" onclick="goTab('dash')" id="t-dash">Dashboard</div>
     <div class="tab" onclick="goTab('batidas')" id="t-batidas">Batidas</div>
     <div class="tab" onclick="goTab('banco')" id="t-banco">Banco de Horas</div>
+    <div class="tab" onclick="goTab('atrasos')" id="t-atrasos">Atrasos</div>
     <div class="tab" onclick="goTab('equipe')" id="t-equipe">Equipe</div>
     <div class="tab" onclick="goTab('adv')" id="t-adv">Advertências</div>
   </div>
   <div class="content" id="content"></div>
+</div>
+
+<!-- MODAL EDIT BATIDA -->
+<div class="moverlay" id="m-edit">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div class="mtitle">Editar batida</div>
+    <div class="msub" id="m-edit-sub"></div>
+    <div class="field"><label>Hora (HH:MM)</label><input type="time" id="edit-hora"></div>
+    <div class="field"><label>Tipo</label>
+      <select id="edit-tipo"><option value="ENTRADA">ENTRADA</option><option value="SAIDA">SAÍDA</option></select>
+    </div>
+    <div class="mactions">
+      <button class="btn-sm danger" onclick="deletarBatida()">Excluir</button>
+      <button class="btn-sm" onclick="closeModals()">Cancelar</button>
+      <button class="btn" onclick="salvarEdicao()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ADD BATIDA -->
+<div class="moverlay" id="m-add">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div class="mtitle">Adicionar batida</div>
+    <div class="msub" id="m-add-sub"></div>
+    <div class="field"><label>Hora (HH:MM)</label><input type="time" id="add-hora"></div>
+    <div class="field"><label>Tipo</label>
+      <select id="add-tipo"><option value="ENTRADA">ENTRADA</option><option value="SAIDA">SAÍDA</option></select>
+    </div>
+    <div class="mactions">
+      <button class="btn-sm" onclick="closeModals()">Cancelar</button>
+      <button class="btn" onclick="confirmarAdd()">Adicionar</button>
+    </div>
+  </div>
 </div>
 
 <!-- MODAL ADV -->
@@ -208,9 +209,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
         <option>Conduta inadequada</option><option>Descumprimento de norma</option><option>Outro</option>
       </select>
     </div>
-    <div class="field"><label>Descrição</label>
-      <textarea id="adv-desc" rows="3" placeholder="Descreva o ocorrido..."></textarea>
-    </div>
+    <div class="field"><label>Descrição</label><textarea id="adv-desc" rows="3"></textarea></div>
     <div class="mactions">
       <button class="btn-sm" onclick="closeModals()">Cancelar</button>
       <button class="btn" onclick="saveAdv()">Registrar</button>
@@ -223,11 +222,11 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <div class="modal">
     <div class="mhandle"></div>
     <div class="mtitle">Novo funcionário</div>
-    <div class="msub">Cadastro manual — para bater ponto via PIN</div>
+    <div class="msub">Cadastro manual</div>
     <div class="field"><label>Nome completo</label><input type="text" id="f-nome"></div>
     <div class="field"><label>Cargo</label><input type="text" id="f-cargo"></div>
     <div class="field"><label>PIN (4 dígitos)</label><input type="number" id="f-pin" maxlength="4"></div>
-    <div class="field"><label>CPF (11 dígitos)</label><input type="text" id="f-cpf" maxlength="11" placeholder="Sem pontos ou traços"></div>
+    <div class="field"><label>CPF (11 dígitos)</label><input type="text" id="f-cpf" maxlength="11"></div>
     <div class="mactions">
       <button class="btn-sm" onclick="closeModals()">Cancelar</button>
       <button class="btn" onclick="saveFunc()">Cadastrar</button>
@@ -236,60 +235,58 @@ tr:hover td{background:rgba(255,255,255,.02);}
 </div>
 
 <script>
-// ===== CONFIG =====
 const SB_URL='https://mcoemytfdrfrtbfbpvqr.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jb2VteXRmZHJmcnRiZmJwdnFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3OTgyODcsImV4cCI6MjA5NTM3NDI4N30.uJZKW5oUlexLo_XENDCohlchGKlG54Pwt0gvqpuy-i8';
-const ADMIN_HASH='03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4'; // SHA256 de "1234"
+const ADMIN_HASH='03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4';
 const sb=supabase.createClient(SB_URL,SB_KEY);
 const COLORS=['#f0c040','#3dd68c','#60a5fa','#f87171','#fb923c','#c084fc','#34d399'];
+const JORNADA={1:540,2:540,3:540,4:540,5:480}; // Seg-Qui 9h, Sex 8h
+const ENTRADA_PAD='07:00', SAIDA_SEMANA='17:30', SAIDA_SEX='16:30', TOL=5;
 
-// ===== JORNADA =====
-// Seg(1)-Qui(4): 9h líquidas = 540min | Sex(5): 8h líquidas = 480min
-const JORNADA={1:540,2:540,3:540,4:540,5:480};
-const ENTRADA_PADRAO='07:00';
-const TOLERANCIA=5; // minutos
+let funcionarios=[],advertencias=[],currentTab='dash',sbOk=false;
+let loginAttempts=0,loginBlocked=false,currentAdvFunc=null,sessionTimer=null;
+let editCtx=null, addCtx=null;
 
-function jornadaDia(dataStr){
-  const dow=new Date(dataStr+'T12:00:00').getDay();
-  return JORNADA[dow]||0;
-}
+// ===== HELPERS =====
 function toMin(hhmm){if(!hhmm)return 0;const[h,m]=hhmm.split(':').map(Number);return h*60+m;}
 function fromMin(min){
   const neg=min<0,abs=Math.abs(min);
   const h=Math.floor(abs/60),m=abs%60;
   return (neg?'-':'')+h+'h'+(m?(m<10?'0':'')+m+'min':'');
 }
-function fmtData(dataStr){
-  const d=new Date(dataStr+'T12:00:00');
-  const dias=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-  return dias[d.getDay()]+' '+d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+function fmtData(ds){
+  const d=new Date(ds+'T12:00:00');
+  return ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d.getDay()]+' '+d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
 }
-function getSemana(dataStr){
-  // Retorna segunda-feira da semana
-  const d=new Date(dataStr+'T12:00:00');
+function getSemana(ds){
+  const d=new Date(ds+'T12:00:00');
   const dow=d.getDay()===0?7:d.getDay();
   const seg=new Date(d);seg.setDate(d.getDate()-(dow-1));
   return seg.toISOString().split('T')[0];
 }
+function jornadaMin(ds){return JORNADA[new Date(ds+'T12:00:00').getDay()]||0;}
+function saidaPadrao(ds){return new Date(ds+'T12:00:00').getDay()===5?SAIDA_SEX:SAIDA_SEMANA;}
 
-// Calcula minutos trabalhados num dia a partir das batidas ordenadas
-// Soma pares ENTRADA->SAIDA
-function calcTrabalhado(batidas){
-  const sorted=[...batidas].sort((a,b)=>a.hora.localeCompare(b.hora));
-  let total=0;
-  for(let i=0;i<sorted.length;i++){
-    if(sorted[i].tipo==='ENTRADA'&&sorted[i+1]?.tipo==='SAIDA'){
-      total+=toMin(sorted[i+1].hora)-toMin(sorted[i].hora);
-      i++;
-    }
+function calcTrab(bats){
+  const s=[...bats].sort((a,b)=>a.hora.localeCompare(b.hora));
+  let t=0;
+  for(let i=0;i<s.length-1;i++){
+    if(s[i].tipo==='ENTRADA'&&s[i+1].tipo==='SAIDA'){t+=toMin(s[i+1].hora)-toMin(s[i].hora);i++;}
   }
-  return total;
+  return t;
 }
 
-// ===== STATE =====
-let funcionarios=[],advertencias=[],currentTab='dash',sbOk=false;
-let loginAttempts=0,loginBlocked=false,currentAdvFunc=null;
-let sessionTimer=null;
+function getPeriodo(p){
+  const hoje=new Date(),hs=hoje.toISOString().split('T')[0];
+  if(p==='semana') return {ini:getSemana(hs),fim:hs};
+  if(p==='mes'){const m=hoje.toISOString().slice(0,7);return{ini:m+'-01',fim:hs};}
+  if(p==='mes-ant'){
+    const ma=new Date(hoje.getFullYear(),hoje.getMonth()-1,1);
+    const mf=new Date(hoje.getFullYear(),hoje.getMonth(),0);
+    return{ini:ma.toISOString().split('T')[0],fim:mf.toISOString().split('T')[0]};
+  }
+  return{ini:'2026-02-01',fim:hs};
+}
 
 // ===== AUTH =====
 async function sha256(msg){
@@ -299,38 +296,28 @@ async function sha256(msg){
 async function doLogin(){
   if(loginBlocked){document.getElementById('lerr').textContent='Bloqueado. Aguarde 1 minuto.';return;}
   const pw=document.getElementById('lpw').value;
+  if(!pw){return;}
   const hash=await sha256(pw);
   if(hash===ADMIN_HASH){
     loginAttempts=0;
     document.getElementById('lpw').value='';
     document.getElementById('lerr').textContent='';
     document.getElementById('login').style.display='none';
-    document.getElementById('app').style.display='flex';
-    document.getElementById('app').style.flexDirection='column';
-    await initApp();
-    goTab('dash');
-    resetSession();
+    document.getElementById('app').style.cssText='display:flex;flex-direction:column;';
+    await initApp();goTab('dash');resetSession();
   } else {
     loginAttempts++;
     if(loginAttempts>=3){
       loginBlocked=true;
-      document.getElementById('lerr').textContent='3 tentativas incorretas. Bloqueado por 1 minuto.';
+      document.getElementById('lerr').textContent='Bloqueado por 1 minuto.';
       setTimeout(()=>{loginBlocked=false;loginAttempts=0;document.getElementById('lerr').textContent='';},60000);
     } else {
-      document.getElementById('lerr').textContent=`Senha incorreta. ${3-loginAttempts} tentativa(s) restante(s).`;
+      document.getElementById('lerr').textContent=`Senha incorreta. ${3-loginAttempts} tentativa(s).`;
     }
   }
 }
-function doLogout(){
-  clearTimeout(sessionTimer);
-  document.getElementById('login').style.display='flex';
-  document.getElementById('app').style.display='none';
-  document.getElementById('lpw').value='';
-}
-function resetSession(){
-  clearTimeout(sessionTimer);
-  sessionTimer=setTimeout(()=>{doLogout();alert('Sessão expirada.');},30*60*1000);
-}
+function doLogout(){clearTimeout(sessionTimer);document.getElementById('login').style.display='flex';document.getElementById('app').style.display='none';document.getElementById('lpw').value='';}
+function resetSession(){clearTimeout(sessionTimer);sessionTimer=setTimeout(()=>{doLogout();},30*60*1000);}
 document.addEventListener('click',resetSession);
 
 // ===== INIT =====
@@ -340,11 +327,8 @@ async function initApp(){
     sbOk=!error;
     document.getElementById('sdot').className='sdot'+(sbOk?' ok':' err');
     document.getElementById('slbl').textContent=sbOk?'Online':'Offline';
-    if(sbOk){await loadBase();}
-  }catch(e){
-    document.getElementById('sdot').className='sdot err';
-    document.getElementById('slbl').textContent='Erro';
-  }
+    if(sbOk) await loadBase();
+  }catch(e){document.getElementById('sdot').className='sdot err';}
 }
 async function loadBase(){
   const{data:f}=await sb.from('iw_funcionarios').select('*').eq('ativo',true).order('nome');
@@ -359,69 +343,49 @@ function goTab(tab){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
   document.getElementById('t-'+tab)?.classList.add('on');
   const c=document.getElementById('content');
-  c.innerHTML='<div class="loading">Carregando...</div>';
-  c.scrollTop=0;
-  if(tab==='dash') renderDash(c);
-  else if(tab==='batidas') renderBatidas(c);
-  else if(tab==='banco') renderBanco(c);
-  else if(tab==='equipe') renderEquipe(c);
-  else if(tab==='adv') renderAdv(c);
+  c.innerHTML='<div class="loading">Carregando...</div>';c.scrollTop=0;
+  ({dash:renderDash,batidas:renderBatidas,banco:renderBanco,atrasos:renderAtrasos,equipe:renderEquipe,adv:renderAdv}[tab]||((c)=>c.innerHTML=''))(c);
 }
 
 // ===== DASHBOARD =====
 async function renderDash(c){
   const hoje=new Date().toISOString().split('T')[0];
   const dow=new Date().getDay();
-
-  // Registros de hoje
   const{data:rh}=await sb.from('iw_registros_ponto').select('*').eq('data_local',hoje).order('id');
   const regsHoje=rh||[];
-
-  // Monta mapa CPF -> batidas de hoje
   const mapaHoje={};
-  regsHoje.forEach(r=>{
-    if(!mapaHoje[r.cpf]) mapaHoje[r.cpf]=[];
-    mapaHoje[r.cpf].push({hora:r.data_hora_local?.slice(11,16)||'00:00',tipo:r.tipo});
-  });
+  regsHoje.forEach(r=>{if(!mapaHoje[r.cpf])mapaHoje[r.cpf]=[];mapaHoje[r.cpf].push({hora:r.data_hora_local?.slice(11,16)||'00:00',tipo:r.tipo});});
 
-  // Presentes = última batida do dia é ENTRADA
-  let presentes=0;
-  funcionarios.forEach(f=>{
-    const bats=mapaHoje[f.cpf]||[];
-    if(bats.length && bats[bats.length-1].tipo==='ENTRADA') presentes++;
-  });
-
-  // Atrasos = primeira entrada antes das 10h com atraso > tolerância
-  let atrasos=0;
+  let presentes=0,atrasos=0;
   funcionarios.forEach(f=>{
     const bats=(mapaHoje[f.cpf]||[]).sort((a,b)=>a.hora.localeCompare(b.hora));
-    const entrada=bats.find(b=>b.tipo==='ENTRADA'&&toMin(b.hora)<=toMin('10:00'));
-    if(entrada&&toMin(entrada.hora)-toMin(ENTRADA_PADRAO)>TOLERANCIA) atrasos++;
+    if(bats.length&&bats[bats.length-1].tipo==='ENTRADA') presentes++;
+    const ent=bats.find(b=>b.tipo==='ENTRADA'&&toMin(b.hora)<=toMin('10:00'));
+    if(ent&&toMin(ent.hora)-toMin(ENTRADA_PAD)>TOL) atrasos++;
   });
 
-  // Banco geral — soma saldo de todos os funcionários
-  const{data:todos}=await sb.from('iw_registros_ponto').select('cpf,data_local,data_hora_local,tipo').gte('data_local','2026-02-01').order('id');
-  const saldoGeral=calcSaldoGeral(todos||[]);
+  // Banco geral do mês
+  const mesIni=new Date().toISOString().slice(0,7)+'-01';
+  const{data:rm}=await sb.from('iw_registros_ponto').select('cpf,data_local,data_hora_local,tipo').gte('data_local',mesIni).lte('data_local',hoje);
+  const saldoMes=calcSaldoRegs(rm||[]);
 
-  // Faltas esta semana
-  const inicioSemana=getSemana(hoje);
-  const{data:rSem}=await sb.from('iw_registros_ponto').select('cpf,data_local').gte('data_local',inicioSemana).lte('data_local',hoje);
-  const diasComReg=new Set((rSem||[]).map(r=>r.data_local));
+  // Faltas semana
+  const semIni=getSemana(hoje);
+  const{data:rsem}=await sb.from('iw_registros_ponto').select('data_local').gte('data_local',semIni).lte('data_local',hoje);
+  const diasComReg=new Set((rsem||[]).map(r=>r.data_local));
   let faltas=0;
-  for(let d=new Date(inicioSemana+'T12:00:00');d<=new Date(hoje+'T12:00:00');d.setDate(d.getDate()+1)){
-    const ds=d.toISOString().split('T')[0];
-    const dw=d.getDay();
-    if(dw>=1&&dw<=5&&ds<hoje&&!diasComReg.has(ds)) faltas++;
+  for(let d=new Date(semIni+'T12:00:00');d<new Date(hoje+'T12:00:00');d.setDate(d.getDate()+1)){
+    const ds=d.toISOString().split('T')[0],dw=d.getDay();
+    if(dw>=1&&dw<=5&&!diasComReg.has(ds)) faltas++;
   }
 
-  const saldoCor=saldoGeral>=0?'var(--g)':saldoGeral<-120?'var(--r)':'var(--o)';
-
+  const saldoCor=saldoMes>=0?'var(--g)':saldoMes<-120?'var(--r)':'var(--o)';
   c.innerHTML=`
   <div class="banner ok">● Supabase conectado · ${regsHoje.length} registros hoje</div>
   <div class="kgrid">
-    <div class="kcard"><div class="klbl">Presentes agora</div><div class="kval" style="color:var(--g)">${presentes}</div><div class="ksub">de ${funcionarios.length} funcionários</div></div>
-    <div class="kcard"><div class="klbl">Atrasos hoje</div><div class="kval" style="color:${atrasos>0?'var(--o)':'var(--g)'}">${atrasos}</div><div class="ksub">acima de ${TOLERANCIA}min</div></div>
-    <div class="kcard"><div class="klbl">Banco geral</div><div class="kval" style="font-size:16px;color:${saldoCor}">${saldoGeral>=0?'+':''}${fromMin(saldoGeral)}</div><div class="ksub">toda a equipe</div></div>
+    <div class="kcard"><div class="klbl">Presentes agora</div><div class="kval" style="color:var(--g)">${presentes}</div><div class="ksub">de ${funcionarios.length}</div></div>
+    <div class="kcard"><div class="klbl">Atrasos hoje</div><div class="kval" style="color:${atrasos>0?'var(--o)':'var(--g)'}">${atrasos}</div><div class="ksub">> ${TOL} min</div></div>
+    <div class="kcard"><div class="klbl">Banco mês</div><div class="kval" style="font-size:16px;color:${saldoCor}">${saldoMes>=0?'+':''}${fromMin(saldoMes)}</div><div class="ksub">equipe toda</div></div>
     <div class="kcard"><div class="klbl">Faltas semana</div><div class="kval" style="color:${faltas>0?'var(--r)':'var(--g)'}">${faltas}</div><div class="ksub">dias sem registro</div></div>
   </div>
   <div class="tcard">
@@ -429,301 +393,266 @@ async function renderDash(c){
     <table><thead><tr><th>Funcionário</th><th>Entrada</th><th>Status</th><th>Situação</th></tr></thead>
     <tbody>${funcionarios.map(f=>{
       const bats=(mapaHoje[f.cpf]||[]).sort((a,b)=>a.hora.localeCompare(b.hora));
-      const prEnt=bats.find(b=>b.tipo==='ENTRADA'&&toMin(b.hora)<=toMin('10:00'));
-      const ultimo=bats[bats.length-1];
-      const dentro=ultimo?.tipo==='ENTRADA';
-      const hora=prEnt?.hora||'—';
-      const atMin=prEnt?Math.max(0,toMin(prEnt.hora)-toMin(ENTRADA_PADRAO)):0;
-      const stChip=bats.length===0?'<span class="chip r">Ausente</span>':
-        atMin<=TOLERANCIA?'<span class="chip g">Pontual</span>':
-        `<span class="chip o">+${atMin}min</span>`;
-      const sitChip=bats.length===0?'<span class="chip r">Ausente</span>':
-        dentro?'<span class="chip g">No trabalho</span>':
-        '<span class="chip a">Saiu</span>';
-      return `<tr><td style="font-weight:700">${f.nome.split(' ')[0]}</td>
-        <td style="font-family:var(--mono)">${hora}</td>
-        <td>${stChip}</td><td>${sitChip}</td></tr>`;
+      const ent=bats.find(b=>b.tipo==='ENTRADA'&&toMin(b.hora)<=toMin('10:00'));
+      const ult=bats[bats.length-1];
+      const dentro=ult?.tipo==='ENTRADA';
+      const hora=ent?.hora||'—';
+      const at=ent?Math.max(0,toMin(ent.hora)-toMin(ENTRADA_PAD)):0;
+      const stChip=bats.length===0?'<span class="chip r">Ausente</span>':at<=TOL?'<span class="chip g">Pontual</span>':`<span class="chip o">+${at}min</span>`;
+      const sitChip=bats.length===0?'<span class="chip r">Ausente</span>':dentro?'<span class="chip g">No trabalho</span>':'<span class="chip a">Saiu</span>';
+      return`<tr><td style="font-weight:700">${f.nome.split(' ')[0]}</td><td style="font-family:var(--mono)">${hora}</td><td>${stChip}</td><td>${sitChip}</td></tr>`;
     }).join('')}</tbody></table>
   </div>
-  <div class="tcard" id="ranking-card">
+  <div class="tcard">
     <div class="thead-row"><span class="thead-title">Ranking pontualidade — mês atual</span></div>
-    <div style="padding:.5rem .75rem" id="ranking-body"><span style="color:var(--t3);font-size:12px">Calculando...</span></div>
+    <div id="ranking" style="padding:.5rem .75rem"><span style="color:var(--t3);font-size:12px">Calculando...</span></div>
   </div>`;
 
-  // Ranking async
-  calcRanking(todos||[]);
+  // Ranking separado para não travar
+  renderRanking(rm||[]);
 }
 
-function calcSaldoGeral(regs){
-  // Agrupa por cpf -> data -> batidas
+function calcSaldoRegs(regs){
+  const cpfsAtivos=new Set(funcionarios.map(f=>f.cpf));
   const mapa={};
   regs.forEach(r=>{
+    if(!cpfsAtivos.has(r.cpf)) return;
     if(!mapa[r.cpf]) mapa[r.cpf]={};
     if(!mapa[r.cpf][r.data_local]) mapa[r.cpf][r.data_local]=[];
     mapa[r.cpf][r.data_local].push({hora:r.data_hora_local?.slice(11,16)||'00:00',tipo:r.tipo});
   });
   let total=0;
-  // Só conta funcionários ativos
-  const cpfsAtivos=new Set(funcionarios.map(f=>f.cpf));
-  Object.entries(mapa).forEach(([cpf,dias])=>{
-    if(!cpfsAtivos.has(cpf)) return; // ignora ex-funcionários
-    Object.entries(dias).forEach(([data,bats])=>{
-      const jMin=jornadaDia(data);
-      if(!jMin) return;
-      total+=calcTrabalhado(bats)-jMin;
-    });
-  });
+  Object.values(mapa).forEach(dias=>Object.entries(dias).forEach(([data,bats])=>{
+    const j=jornadaMin(data);if(!j)return;
+    total+=calcTrab(bats)-j;
+  }));
   return total;
 }
 
-function calcRanking(todos){
-  const el=document.getElementById('ranking-body');if(!el)return;
-  const mesAtual=new Date().toISOString().slice(0,7);
-  const mesRegs=todos.filter(r=>r.data_local?.startsWith(mesAtual));
+function renderRanking(regs){
+  const el=document.getElementById('ranking');if(!el)return;
   const cpfsAtivos=new Set(funcionarios.map(f=>f.cpf));
   const stats={};
-  mesRegs.forEach(r=>{
+  regs.forEach(r=>{
     if(!cpfsAtivos.has(r.cpf)) return;
     if(!stats[r.cpf]) stats[r.cpf]={nome:r.funcionario_nome,atrasos:0,dias:new Set()};
     stats[r.cpf].dias.add(r.data_local);
     if(r.tipo==='ENTRADA'){
-      const hora=r.data_hora_local?.slice(11,16)||'00:00';
-      if(toMin(hora)<=toMin('10:00')&&toMin(hora)-toMin(ENTRADA_PADRAO)>TOLERANCIA)
-        stats[r.cpf].atrasos++;
+      const h=r.data_hora_local?.slice(11,16)||'00:00';
+      if(toMin(h)<=toMin('10:00')&&toMin(h)-toMin(ENTRADA_PAD)>TOL) stats[r.cpf].atrasos++;
     }
   });
-  const ranked=Object.entries(stats)
-    .map(([cpf,s])=>({cpf,nome:s.nome,atrasos:s.atrasos,dias:s.dias.size}))
-    .sort((a,b)=>a.atrasos-b.atrasos||b.dias-a.dias);
   const fmap={};funcionarios.forEach(f=>{fmap[f.cpf]=f;});
+  const ranked=Object.entries(stats).map(([cpf,s])=>({cpf,nome:s.nome,atrasos:s.atrasos,dias:s.dias.size})).sort((a,b)=>a.atrasos-b.atrasos||b.dias-a.dias);
   const medals=['🥇','🥈','🥉'];
-  el.innerHTML=ranked.map((r,i)=>{
-    const f=fmap[r.cpf]||{color:COLORS[i%COLORS.length],nome:r.nome};
+  el.innerHTML=ranked.length?ranked.map((r,i)=>{
+    const f=fmap[r.cpf]||{color:COLORS[i%7],nome:r.nome};
     const cor=r.atrasos===0?'var(--g)':r.atrasos<3?'var(--o)':'var(--r)';
-    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(42,42,50,.4)">
+    return`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(42,42,50,.4)">
       <span style="font-size:10px;color:var(--t3);width:16px">${i+1}</span>
       <div style="width:28px;height:28px;border-radius:50%;background:${f.color}22;color:${f.color};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">${r.nome[0]}</div>
       <div style="flex:1"><div style="font-size:13px;font-weight:700">${r.nome.split(' ')[0]} ${medals[i]||''}</div>
         <div style="font-size:10px;color:var(--t2)">${r.dias} dias trabalhados</div></div>
       <span style="font-family:var(--mono);font-size:12px;font-weight:600;color:${cor}">${r.atrasos===0?'Sem atrasos':r.atrasos+' atraso'+(r.atrasos>1?'s':'')}</span>
     </div>`;
-  }).join('')||'<div class="empty">Sem dados</div>';
+  }).join(''):'<div class="empty">Sem dados</div>';
 }
 
 // ===== BATIDAS =====
 async function renderBatidas(c){
   c.innerHTML=`
-  <div style="display:flex;gap:8px;margin-bottom:.9rem;flex-wrap:wrap;align-items:center">
-    <div class="field" style="margin:0;flex:1;min-width:120px">
-      <select id="b-periodo" onchange="filtrarBatidas()" style="margin:0;padding:8px 10px;font-size:13px">
-        <option value="mes">Mês atual</option>
-        <option value="mes-ant">Mês anterior</option>
-        <option value="semana">Esta semana</option>
-        <option value="tudo">Tudo (fev–hoje)</option>
-      </select>
-    </div>
-    <div class="field" style="margin:0;flex:1;min-width:120px">
-      <select id="b-func" onchange="filtrarBatidas()" style="margin:0;padding:8px 10px;font-size:13px">
-        <option value="">Todos funcionários</option>
-        ${funcionarios.map(f=>`<option value="${f.cpf}">${f.nome.split(' ')[0]}</option>`).join('')}
-      </select>
-    </div>
+  <div class="filter-bar">
+    <select id="b-periodo" onchange="reloadBatidas()">
+      <option value="mes">Mês atual</option>
+      <option value="mes-ant">Mês anterior</option>
+      <option value="semana">Esta semana</option>
+      <option value="tudo">Tudo</option>
+    </select>
+    <select id="b-func" onchange="reloadBatidas()">
+      <option value="">Todos funcionários</option>
+      ${funcionarios.map(f=>`<option value="${f.cpf}">${f.nome.split(' ')[0]}</option>`).join('')}
+    </select>
   </div>
-  <div id="batidas-content"><div class="loading">Carregando...</div></div>`;
-  filtrarBatidas();
+  <div id="bat-body"><div class="loading">Carregando...</div></div>`;
+  await reloadBatidas();
 }
 
-async function filtrarBatidas(){
-  const periodo=document.getElementById('b-periodo')?.value||'mes';
-  const cpfFiltro=document.getElementById('b-func')?.value||'';
-  const el=document.getElementById('batidas-content');
-  if(!el) return;
+async function reloadBatidas(){
+  const el=document.getElementById('bat-body');if(!el)return;
   el.innerHTML='<div class="loading">Carregando...</div>';
-
-  const hoje=new Date();
-  let dataIni,dataFim=hoje.toISOString().split('T')[0];
-
-  if(periodo==='mes'){
-    dataIni=hoje.toISOString().slice(0,7)+'-01';
-  } else if(periodo==='mes-ant'){
-    const m=new Date(hoje.getFullYear(),hoje.getMonth()-1,1);
-    dataIni=m.toISOString().split('T')[0];
-    const mfim=new Date(hoje.getFullYear(),hoje.getMonth(),0);
-    dataFim=mfim.toISOString().split('T')[0];
-  } else if(periodo==='semana'){
-    dataIni=getSemana(hoje.toISOString().split('T')[0]);
-  } else {
-    dataIni='2026-02-01';
-  }
-
-  let q=sb.from('iw_registros_ponto').select('*').gte('data_local',dataIni).lte('data_local',dataFim).order('id');
-  if(cpfFiltro) q=q.eq('cpf',cpfFiltro);
+  const per=document.getElementById('b-periodo')?.value||'mes';
+  const cpfF=document.getElementById('b-func')?.value||'';
+  const{ini,fim}=getPeriodo(per);
+  let q=sb.from('iw_registros_ponto').select('*').gte('data_local',ini).lte('data_local',fim).order('id');
+  if(cpfF) q=q.eq('cpf',cpfF);
   const{data:regs}=await q;
   const todos=regs||[];
 
-  // Agrupa por cpf -> data -> batidas
   const porCpf={};
   todos.forEach(r=>{
     if(!porCpf[r.cpf]) porCpf[r.cpf]={nome:r.funcionario_nome,dias:{}};
     if(!porCpf[r.cpf].dias[r.data_local]) porCpf[r.cpf].dias[r.data_local]=[];
-    porCpf[r.cpf].dias[r.data_local].push({
-      id:r.id, nsr:r.nsr, hora:r.data_hora_local?.slice(11,16)||'00:00',
-      tipo:r.tipo, data_local:r.data_local, cpf:r.cpf, nome:r.funcionario_nome
-    });
+    porCpf[r.cpf].dias[r.data_local].push({id:r.id,nsr:r.nsr,hora:r.data_hora_local?.slice(11,16)||'00:00',tipo:r.tipo,origem:r.origem,cpf:r.cpf,nome:r.funcionario_nome,data:r.data_local});
   });
 
-  const cpfsAtivos=new Set(funcionarios.map(f=>f.cpf));
   const fmap={};funcionarios.forEach(f=>{fmap[f.cpf]=f;});
+  const cpfsExib=cpfF?[cpfF]:funcionarios.map(f=>f.cpf);
   let html='';
 
-  const cpfsParaExibir=cpfFiltro?[cpfFiltro]:funcionarios.map(f=>f.cpf);
-
-  cpfsParaExibir.forEach(cpf=>{
-    const f=fmap[cpf];
-    if(!f) return;
+  cpfsExib.forEach(cpf=>{
+    const f=fmap[cpf];if(!f)return;
     const pf=porCpf[cpf]||{nome:f.nome,dias:{}};
-    if(Object.keys(pf.dias).length===0) return;
+    if(!Object.keys(pf.dias).length)return;
 
-    // Agrupa por semana
     const semanas={};
     Object.entries(pf.dias).forEach(([data,bats])=>{
       const sem=getSemana(data);
-      if(!semanas[sem]) semanas[sem]=[];
+      if(!semanas[sem])semanas[sem]=[];
       semanas[sem].push({data,bats:[...bats].sort((a,b)=>a.hora.localeCompare(b.hora))});
     });
 
-    let saldoTotal=0;
-    let semanasHtml='';
-
-    Object.entries(semanas).sort((a,b)=>b[0].localeCompare(a[0])).forEach(([semInicio,dias])=>{
-      let saldoSem=0;
-      let diasHtml='';
-
+    let saldoTotal=0,semHtml='';
+    Object.entries(semanas).sort((a,b)=>b[0].localeCompare(a[0])).forEach(([semIni,dias])=>{
+      let saldoSem=0,diasHtml='';
       dias.sort((a,b)=>a.data.localeCompare(b.data)).forEach(({data,bats})=>{
-        const jMin=jornadaDia(data);
-        const trabMin=calcTrabalhado(bats);
-        const saldo=jMin>0?trabMin-jMin:0;
-        saldoSem+=saldo;
-        saldoTotal+=saldo;
-
-        const batsHtml=bats.map(b=>`
-          <span style="display:inline-flex;align-items:center;gap:2px;cursor:pointer"
-            onclick="editarBatida(${b.nsr||b.id},'${b.hora}','${b.tipo}','${data}','${cpf}','${f.nome.replace(/'/g,"\'")}')"
-            title="Clique para editar">
-            <span class="bbat ${b.tipo==='ENTRADA'?'ent':'sai'}" style="text-decoration:underline dotted">${b.hora}</span>
-            <span style="font-size:9px;color:var(--t3)">${b.tipo==='ENTRADA'?'↑':'↓'}</span>
-          </span>`).join('<span style="color:var(--t3);font-size:10px;margin:0 2px">·</span>');
-
-        const saldoCor=saldo>=0?'var(--g)':saldo<-30?'var(--r)':'var(--o)';
+        const jMin=jornadaMin(data),trab=calcTrab(bats),saldo=jMin?trab-jMin:0;
+        saldoSem+=saldo;saldoTotal+=saldo;
+        const batsHtml=bats.map(b=>{
+          const isEdit=b.origem==='MANUAL'||b.origem==='EDITADO_MANUAL';
+          const cls=isEdit?'edit':b.tipo==='ENTRADA'?'ent':'sai';
+          const seta=b.tipo==='ENTRADA'?'↑':'↓';
+          return`<span class="bbat ${cls}" onclick="abrirEdit(${JSON.stringify(b).replace(/"/g,'&quot;')})" title="${isEdit?'Editado manualmente·':''} Clique para editar">${b.hora}${seta}</span>`;
+        }).join('<span style="color:var(--b2);font-size:9px">·</span>');
+        const sc=saldo>=0?'var(--g)':saldo<-30?'var(--r)':'var(--o)';
         diasHtml+=`<div class="bdia">
           <span class="bdia-data">${fmtData(data)}</span>
           <div class="bdia-batidas">${batsHtml}
-            <span onclick="addBatida('${data}','${cpf}','${f.nome.replace(/'/g,"\'")}')"
-              style="cursor:pointer;font-size:10px;color:var(--t3);margin-left:4px" title="Adicionar batida">＋</span>
+            <span onclick="abrirAdd('${data}','${cpf}','${f.nome.replace(/'/g,"\\'")}')" style="cursor:pointer;font-size:11px;color:var(--t3);padding:1px 3px;border-radius:3px;border:1px dashed var(--b2)" title="Adicionar batida">+</span>
           </div>
-          <span class="bdia-hrs">${trabMin>0?fromMin(trabMin):'—'}</span>
-          <span class="bdia-saldo" style="color:${jMin>0?saldoCor:'var(--t3)'}">${jMin>0?(saldo>=0?'+':'')+fromMin(saldo):'—'}</span>
+          <span class="bdia-hrs">${trab?fromMin(trab):'—'}</span>
+          <span class="bdia-saldo" style="color:${jMin?sc:'var(--t3)'}">${jMin?(saldo>=0?'+':'')+fromMin(saldo):'—'}</span>
         </div>`;
       });
-
-      const semFmt=new Date(semInicio+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
-      const semFim=new Date(semInicio+'T12:00:00');semFim.setDate(semFim.getDate()+4);
-      const semFimFmt=semFim.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
-      const semSaldoCor=saldoSem>=0?'var(--g)':saldoSem<-30?'var(--r)':'var(--o)';
-      semanasHtml+=`<div class="bsemana">
+      const sf=new Date(semIni+'T12:00:00');sf.setDate(sf.getDate()+4);
+      const sc=saldoSem>=0?'var(--g)':saldoSem<-30?'var(--r)':'var(--o)';
+      semHtml+=`<div class="bsemana">
         <div class="bsemana-head">
-          <span class="bsemana-lbl">Semana ${semFmt}–${semFimFmt}</span>
-          <span class="bsemana-saldo" style="color:${semSaldoCor}">${saldoSem>=0?'+':''}${fromMin(saldoSem)}</span>
-        </div>${diasHtml}
-      </div>`;
+          <span class="bsemana-lbl">Semana ${new Date(semIni+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}–${sf.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span>
+          <span class="bsemana-saldo" style="color:${sc}">${saldoSem>=0?'+':''}${fromMin(saldoSem)}</span>
+        </div>${diasHtml}</div>`;
     });
 
-    const saldoCor=saldoTotal>=0?'var(--g)':saldoTotal<-60?'var(--r)':'var(--o)';
+    const sc=saldoTotal>=0?'var(--g)':saldoTotal<-60?'var(--r)':'var(--o)';
     html+=`<div class="bfunc">
       <div class="bfunc-head">
         <div class="fav" style="background:${f.color}22;color:${f.color}">${f.nome[0]}</div>
-        <div class="bfunc-info">
-          <div class="bfunc-name">${f.nome.split(' ')[0]}</div>
-          <div class="bfunc-sub">${f.cargo||'—'} · ${Object.keys(pf.dias).length} dias</div>
-        </div>
-        <div class="bfunc-saldo">
-          <div class="bfunc-saldo-lbl">Saldo período</div>
-          <div class="bfunc-saldo-val" style="color:${saldoCor}">${saldoTotal>=0?'+':''}${fromMin(saldoTotal)}</div>
-        </div>
-      </div>
-      ${semanasHtml||'<div class="empty" style="padding:1rem">Sem registros no período</div>'}
+        <div class="bfunc-info"><div class="bfunc-name">${f.nome.split(' ')[0]}</div><div class="bfunc-sub">${f.cargo||'—'} · ${Object.keys(pf.dias).length} dias</div></div>
+        <div class="bfunc-saldo"><div class="bfunc-saldo-lbl">Saldo período</div><div class="bfunc-saldo-val" style="color:${sc}">${saldoTotal>=0?'+':''}${fromMin(saldoTotal)}</div></div>
+      </div>${semHtml||'<div class="empty" style="padding:1rem">Sem registros</div>'}
     </div>`;
   });
 
-  el.innerHTML=html||'<div class="empty">Nenhum registro no período selecionado</div>';
+  el.innerHTML=html||'<div class="empty">Nenhum registro no período</div>';
 }
 
-function editarBatida(id, horaAtual, tipoAtual, data, cpf, nome){
-  const novaHora=prompt(`Editar batida de ${nome.split(' ')[0]} em ${fmtData(data)}\nHora atual: ${horaAtual} (${tipoAtual})\n\nNova hora (HH:MM):`, horaAtual);
-  if(!novaHora||!/^\d{2}:\d{2}$/.test(novaHora)) return;
-  const novoTipo=prompt(`Tipo (ENTRADA ou SAIDA):`,tipoAtual)?.toUpperCase();
-  if(!novoTipo||!['ENTRADA','SAIDA'].includes(novoTipo)) return;
-  sb.table('iw_registros_ponto').update({
-    data_hora_local: data+'T'+novaHora,
-    tipo: novoTipo,
-    origem: 'EDITADO_MANUAL'
-  }).eq('id',id).execute().then(()=>{
-    filtrarBatidas();
-  });
+// Editar batida
+function abrirEdit(b){
+  editCtx=b;
+  document.getElementById('m-edit-sub').textContent=`${b.nome?.split(' ')[0]} · ${fmtData(b.data)}`;
+  document.getElementById('edit-hora').value=b.hora;
+  document.getElementById('edit-tipo').value=b.tipo;
+  document.getElementById('m-edit').classList.add('open');
 }
-
-function addBatida(data, cpf, nome){
-  const hora=prompt(`Adicionar batida para ${nome.split(' ')[0]} em ${fmtData(data)}\nHora (HH:MM):`);
-  if(!hora||!/^\d{2}:\d{2}$/.test(hora)) return;
-  const tipo=prompt('Tipo (ENTRADA ou SAIDA):')?.toUpperCase();
-  if(!tipo||!['ENTRADA','SAIDA'].includes(tipo)) return;
-  const id=Date.now();
-  sb.table('iw_registros_ponto').insert({
-    id, nsr:null, funcionario_id:null,
-    funcionario_nome: nome, cpf,
-    data_hora: new Date().toISOString(),
-    data_hora_local: data+'T'+hora,
-    data_local: data, tipo,
-    origem:'MANUAL',
+async function salvarEdicao(){
+  if(!editCtx)return;
+  const hora=document.getElementById('edit-hora').value;
+  const tipo=document.getElementById('edit-tipo').value;
+  await sb.from('iw_registros_ponto').update({
+    data_hora_local:editCtx.data+'T'+hora,tipo,origem:'EDITADO_MANUAL',
     sincronizado_em:new Date().toISOString()
-  }).execute().then(()=>filtrarBatidas());
+  }).eq('id',editCtx.id).execute();
+  closeModals();await reloadBatidas();
+}
+async function deletarBatida(){
+  if(!editCtx||!confirm('Excluir esta batida?'))return;
+  await sb.from('iw_registros_ponto').delete().eq('id',editCtx.id).execute();
+  closeModals();await reloadBatidas();
+}
+
+// Adicionar batida
+function abrirAdd(data,cpf,nome){
+  addCtx={data,cpf,nome};
+  document.getElementById('m-add-sub').textContent=`${nome.split(' ')[0]} · ${fmtData(data)}`;
+  document.getElementById('add-hora').value='';
+  document.getElementById('m-add').classList.add('open');
+}
+async function confirmarAdd(){
+  if(!addCtx)return;
+  const hora=document.getElementById('add-hora').value;
+  const tipo=document.getElementById('add-tipo').value;
+  if(!hora)return;
+  await sb.from('iw_registros_ponto').insert({
+    id:Date.now(),nsr:null,funcionario_id:null,
+    funcionario_nome:addCtx.nome,cpf:addCtx.cpf,
+    data_hora:new Date().toISOString(),
+    data_hora_local:addCtx.data+'T'+hora,
+    data_local:addCtx.data,tipo,origem:'MANUAL',
+    sincronizado_em:new Date().toISOString()
+  }).execute();
+  closeModals();await reloadBatidas();
 }
 
 // ===== BANCO DE HORAS =====
 async function renderBanco(c){
-  c.innerHTML='<div class="loading">Calculando banco de horas...</div>';
-  const{data:todos}=await sb.from('iw_registros_ponto').select('*').gte('data_local','2026-02-01').order('id');
-  const regs=todos||[];
+  c.innerHTML=`
+  <div class="filter-bar">
+    <select id="banco-per" onchange="reloadBanco()">
+      <option value="mes">Mês atual</option>
+      <option value="semana">Esta semana</option>
+      <option value="mes-ant">Mês anterior</option>
+      <option value="tudo">Total geral</option>
+    </select>
+  </div>
+  <div id="banco-body"><div class="loading">Carregando...</div></div>`;
+  await reloadBanco();
+}
+
+async function reloadBanco(){
+  const el=document.getElementById('banco-body');if(!el)return;
+  el.innerHTML='<div class="loading">Calculando...</div>';
+  const per=document.getElementById('banco-per')?.value||'mes';
+  const{ini,fim}=getPeriodo(per);
+  const{data:regs}=await sb.from('iw_registros_ponto').select('*').gte('data_local',ini).lte('data_local',fim).order('id');
+  const todos=regs||[];
 
   const porCpf={};
-  regs.forEach(r=>{
-    if(!porCpf[r.cpf]) porCpf[r.cpf]={nome:r.funcionario_nome,dias:{}};
-    if(!porCpf[r.cpf].dias[r.data_local]) porCpf[r.cpf].dias[r.data_local]=[];
+  todos.forEach(r=>{
+    if(!porCpf[r.cpf])porCpf[r.cpf]={nome:r.funcionario_nome,dias:{}};
+    if(!porCpf[r.cpf].dias[r.data_local])porCpf[r.cpf].dias[r.data_local]=[];
     porCpf[r.cpf].dias[r.data_local].push({hora:r.data_hora_local?.slice(11,16)||'00:00',tipo:r.tipo});
   });
 
-  let html='<div class="flist">';
-  let saldoGeral=0;
+  let saldoGeral=0,html='<div class="flist">';
 
-  funcionarios.forEach((f,fi)=>{
+  funcionarios.forEach((f,i)=>{
     const pf=porCpf[f.cpf]||{dias:{}};
-    let saldo=0,dias=0,extras=0,devendo=0,atrasos=0;
+    let saldo=0,dias=0,extras=0,devendo=0,atrasos=0,faltas=0;
 
-    Object.entries(pf.dias).forEach(([data,bats])=>{
-      const jMin=jornadaDia(data);
-      if(!jMin) return;
-      const trab=calcTrabalhado(bats);
-      const s=trab-jMin;
-      saldo+=s;
-      dias++;
-      if(s>0) extras+=s;
-      else if(s<0) devendo+=Math.abs(s);
-      // Verifica atraso
+    // Calcula dias esperados no período
+    const dIni=new Date(ini+'T12:00:00'),dFim=new Date(fim+'T12:00:00');
+    for(let d=new Date(dIni);d<=dFim;d.setDate(d.getDate()+1)){
+      const dw=d.getDay(),ds=d.toISOString().split('T')[0];
+      if(dw<1||dw>5) continue;
+      const bats=pf.dias[ds];
+      if(!bats||!bats.length){faltas++;continue;}
+      const j=jornadaMin(ds);
+      const t=calcTrab(bats),s=t-j;
+      saldo+=s;dias++;
+      if(s>0)extras+=s;else if(s<0)devendo+=Math.abs(s);
       const sorted=[...bats].sort((a,b)=>a.hora.localeCompare(b.hora));
       const ent=sorted.find(b=>b.tipo==='ENTRADA'&&toMin(b.hora)<=toMin('10:00'));
-      if(ent&&toMin(ent.hora)-toMin(ENTRADA_PADRAO)>TOLERANCIA) atrasos++;
-    });
-
+      if(ent&&toMin(ent.hora)-toMin(ENTRADA_PAD)>TOL) atrasos++;
+    }
     saldoGeral+=saldo;
     const sc=saldo>=0?'var(--g)':saldo<-60?'var(--r)':'var(--o)';
     html+=`<div class="fcard">
@@ -732,41 +661,150 @@ async function renderBanco(c){
         <div style="flex:1"><div class="fname">${f.nome.split(' ')[0]}</div><div class="fcargo">${f.cargo||'—'}</div></div>
         <div style="text-align:right">
           <div style="font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.05em">Saldo banco</div>
-          <div style="font-family:var(--mono);font-size:18px;font-weight:600;color:${sc}">${saldo>=0?'+':''}${fromMin(saldo)}</div>
+          <div style="font-family:var(--mono);font-size:20px;font-weight:700;color:${sc}">${saldo>=0?'+':''}${fromMin(saldo)}</div>
         </div>
       </div>
       <div class="fstats">
         <div class="fstat"><div class="fstat-l">Dias trabalhados</div><div class="fstat-v">${dias}</div></div>
         <div class="fstat"><div class="fstat-l">Horas extras</div><div class="fstat-v" style="color:var(--g)">+${fromMin(extras)}</div></div>
-        <div class="fstat"><div class="fstat-l">Horas devendo</div><div class="fstat-v" style="color:${devendo>0?'var(--r)':'var(--t1)'}">${devendo>0?'-'+fromMin(devendo):'0h'}</div></div>
-        <div class="fstat"><div class="fstat-l">Atrasos total</div><div class="fstat-v" style="color:${atrasos>0?'var(--o)':'var(--g)'}">${atrasos}</div></div>
-        <div class="fstat"><div class="fstat-l">Carga semanal</div><div class="fstat-v">44h</div></div>
-        <div class="fstat"><div class="fstat-l">Jornada diária</div><div class="fstat-v">9h/8h sex</div></div>
+        <div class="fstat"><div class="fstat-l">Horas devendo</div><div class="fstat-v" style="color:${devendo?'var(--r)':'var(--t1)'}">${devendo?'-'+fromMin(devendo):'0h'}</div></div>
+        <div class="fstat"><div class="fstat-l">Atrasos</div><div class="fstat-v" style="color:${atrasos?'var(--o)':'var(--g)'}">${atrasos}</div></div>
+        <div class="fstat"><div class="fstat-l">Faltas</div><div class="fstat-v" style="color:${faltas?'var(--r)':'var(--g)'}">${faltas}</div></div>
+        <div class="fstat"><div class="fstat-l">Jornada</div><div class="fstat-v">44h/sem</div></div>
       </div>
     </div>`;
   });
 
   const gc=saldoGeral>=0?'var(--g)':saldoGeral<-120?'var(--r)':'var(--o)';
+  const perLabels={mes:'mês atual',semana:'semana','mes-ant':'mês anterior',tudo:'total geral'};const perLabel=perLabels[per]||per;
   html+=`</div>
   <div class="tcard">
     <div class="thead-row">
-      <span class="thead-title">Saldo total da equipe</span>
+      <span class="thead-title">Saldo total — ${perLabel}</span>
       <span style="font-family:var(--mono);font-size:16px;font-weight:700;color:${gc}">${saldoGeral>=0?'+':''}${fromMin(saldoGeral)}</span>
     </div>
-    <div style="padding:.75rem 1rem;font-size:12px;color:var(--t2);line-height:1.6">
-      Jornada: Seg–Qui 07:00–17:30 · Sex 07:00–16:30 · Almoço 12:00–13:30<br>
-      Horas extras e débitos são acumulados no banco individual de cada funcionário.
+    <div style="padding:.75rem 1rem;font-size:12px;color:var(--t2);line-height:1.8">
+      Seg–Qui: 07:00–17:30 (9h líquidas) · Sex: 07:00–16:30 (8h líquidas)<br>
+      Almoço: 12:00–13:30 · Carga semanal: 44h · Tolerância: ${TOL} min
     </div>
   </div>`;
+  el.innerHTML=html;
+}
 
-  c.innerHTML=html;
+// ===== ATRASOS =====
+async function renderAtrasos(c){
+  c.innerHTML=`
+  <div class="filter-bar">
+    <select id="atr-per" onchange="reloadAtrasos()">
+      <option value="mes">Mês atual</option>
+      <option value="semana">Esta semana</option>
+      <option value="mes-ant">Mês anterior</option>
+      <option value="tudo">Total geral</option>
+    </select>
+  </div>
+  <div id="atr-body"><div class="loading">Carregando...</div></div>`;
+  await reloadAtrasos();
+}
+
+async function reloadAtrasos(){
+  const el=document.getElementById('atr-body');if(!el)return;
+  el.innerHTML='<div class="loading">Calculando...</div>';
+  const per=document.getElementById('atr-per')?.value||'mes';
+  const{ini,fim}=getPeriodo(per);
+  const{data:regs}=await sb.from('iw_registros_ponto').select('*').gte('data_local',ini).lte('data_local',fim).order('id');
+  const todos=regs||[];
+
+  const porCpf={};
+  todos.forEach(r=>{
+    if(!porCpf[r.cpf])porCpf[r.cpf]={nome:r.funcionario_nome,dias:{}};
+    if(!porCpf[r.cpf].dias[r.data_local])porCpf[r.cpf].dias[r.data_local]=[];
+    porCpf[r.cpf].dias[r.data_local].push({hora:r.data_hora_local?.slice(11,16)||'00:00',tipo:r.tipo});
+  });
+
+  const fmap={};funcionarios.forEach(f=>{fmap[f.cpf]=f;});
+  let html='<div class="flist">';
+
+  funcionarios.forEach((f,i)=>{
+    const pf=porCpf[f.cpf]||{dias:{}};
+    const ocorrencias=[];
+
+    const dIni=new Date(ini+'T12:00:00'),dFim=new Date(fim+'T12:00:00');
+    for(let d=new Date(dIni);d<=dFim;d.setDate(d.getDate()+1)){
+      const dw=d.getDay(),ds=d.toISOString().split('T')[0];
+      if(dw<1||dw>5)continue;
+      const bats=pf.dias[ds];
+
+      // Falta
+      if(!bats||!bats.length){
+        ocorrencias.push({tipo:'falta',data:ds,desc:'Falta — sem registro no dia'});
+        continue;
+      }
+
+      const sorted=[...bats].sort((a,b)=>a.hora.localeCompare(b.hora));
+
+      // Atraso na entrada
+      const ent=sorted.find(b=>b.tipo==='ENTRADA'&&toMin(b.hora)<=toMin('10:00'));
+      if(ent){
+        const at=toMin(ent.hora)-toMin(ENTRADA_PAD);
+        if(at>TOL) ocorrencias.push({tipo:'atraso',data:ds,desc:`Entrada às ${ent.hora} — ${at} min de atraso`});
+      }
+
+      // Saída antecipada
+      const saidas=sorted.filter(b=>b.tipo==='SAIDA'&&toMin(b.hora)>=toMin('15:00'));
+      const ultSaida=saidas[saidas.length-1];
+      if(ultSaida){
+        const padSaida=saidaPadrao(ds);
+        const diff=toMin(padSaida)-toMin(ultSaida.hora);
+        if(diff>TOL) ocorrencias.push({tipo:'saida',data:ds,desc:`Saída às ${ultSaida.hora} — ${diff} min antes do horário`});
+      }
+    }
+
+    if(!ocorrencias.length){
+      html+=`<div class="fcard">
+        <div class="frow">
+          <div class="fav" style="background:${f.color}22;color:${f.color}">${f.nome[0]}</div>
+          <div style="flex:1"><div class="fname">${f.nome.split(' ')[0]}</div><div class="fcargo">${f.cargo||'—'}</div></div>
+          <span class="chip g">Sem ocorrências</span>
+        </div>
+      </div>`;
+      return;
+    }
+
+    const nAtrasos=ocorrencias.filter(o=>o.tipo==='atraso').length;
+    const nFaltas=ocorrencias.filter(o=>o.tipo==='falta').length;
+    const nSaidas=ocorrencias.filter(o=>o.tipo==='saida').length;
+
+    const itensHtml=ocorrencias.map(o=>{
+      const cls=o.tipo==='falta'?'r':o.tipo==='atraso'?'o':'b';
+      const icon=o.tipo==='falta'?'✕':o.tipo==='atraso'?'↑':'↓';
+      return`<div class="atr-row">
+        <span class="chip ${cls}" style="flex-shrink:0">${icon}</span>
+        <span style="font-size:11px;color:var(--t2);width:72px;flex-shrink:0">${fmtData(o.data)}</span>
+        <span style="font-size:12px;flex:1">${o.desc}</span>
+      </div>`;
+    }).join('');
+
+    html+=`<div class="fcard">
+      <div class="frow">
+        <div class="fav" style="background:${f.color}22;color:${f.color}">${f.nome[0]}</div>
+        <div style="flex:1"><div class="fname">${f.nome.split(' ')[0]}</div><div class="fcargo">${f.cargo||'—'}</div></div>
+        <div style="display:flex;gap:5px;flex-shrink:0">
+          ${nAtrasos?`<span class="chip o">${nAtrasos} atraso${nAtrasos>1?'s':''}</span>`:''}
+          ${nFaltas?`<span class="chip r">${nFaltas} falta${nFaltas>1?'s':''}</span>`:''}
+          ${nSaidas?`<span class="chip b">${nSaidas} saída ant.</span>`:''}
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--b1);margin-top:.5rem;padding-top:.5rem">${itensHtml}</div>
+    </div>`;
+  });
+
+  html+='</div>';
+  el.innerHTML=html;
 }
 
 // ===== EQUIPE =====
 async function renderEquipe(c){
-  c.innerHTML=`<div class="srow"><h3>Funcionários (${funcionarios.length})</h3>
-    <button class="btn-sm accent" onclick="openModalFunc()">+ Novo</button></div>
-  <div class="flist" id="flist"></div>`;
+  c.innerHTML=`<div class="srow"><h3>Funcionários (${funcionarios.length})</h3><button class="btn-sm accent" onclick="document.getElementById('m-func').classList.add('open')">+ Novo</button></div><div class="flist" id="flist"></div>`;
   const g=document.getElementById('flist');
   if(!funcionarios.length){g.innerHTML='<div class="empty">Nenhum funcionário.</div>';return;}
   funcionarios.forEach(f=>{
@@ -774,14 +812,12 @@ async function renderEquipe(c){
     const d=document.createElement('div');d.className='fcard';
     d.innerHTML=`<div class="frow">
       <div class="fav" style="background:${f.color}22;color:${f.color}">${f.nome[0]}</div>
-      <div style="flex:1">
-        <div class="fname">${f.nome.split(' ')[0]}</div>
-        <div class="fcargo">${f.cargo||'—'} · CPF: <span style="font-family:var(--mono)">${f.cpf||'—'}</span></div>
-      </div>
+      <div style="flex:1"><div class="fname">${f.nome.split(' ')[0]}</div>
+        <div class="fcargo">${f.cargo||'—'} · CPF <span style="font-family:var(--mono)">${f.cpf||'—'}</span></div></div>
     </div>
     <div class="fstats" style="grid-template-columns:1fr 1fr">
       <div class="fstat"><div class="fstat-l">Carga semanal</div><div class="fstat-v">44h</div></div>
-      <div class="fstat"><div class="fstat-l">Advertências</div><div class="fstat-v" style="color:${af>0?'var(--o)':'var(--t1)'}">${af}</div></div>
+      <div class="fstat"><div class="fstat-l">Advertências</div><div class="fstat-v" style="color:${af?'var(--o)':'var(--t1)'}">${af}</div></div>
     </div>
     <div class="factions">
       <button class="btn-xs" style="color:var(--acc);border-color:rgba(240,192,64,.3)" onclick="editPin(${f.id},'${f.nome.replace(/'/g,"\\'")}')">Editar PIN</button>
@@ -790,32 +826,27 @@ async function renderEquipe(c){
     g.appendChild(d);
   });
 }
-
 async function editPin(id,nome){
   const np=prompt(`PIN para ${nome.split(' ')[0]} (4 dígitos):`);
   if(!np||np.length!==4||isNaN(parseInt(np))){alert('PIN inválido.');return;}
   if(funcionarios.find(f=>f.pin===np&&f.id!==id)){alert('PIN já em uso.');return;}
   await sb.from('iw_funcionarios').update({pin:np}).eq('id',id).execute();
-  await loadBase();
-  renderEquipe(document.getElementById('content'));
+  await loadBase();renderEquipe(document.getElementById('content'));
 }
 
 // ===== ADVERTÊNCIAS =====
 function renderAdv(c){
   c.innerHTML=`<div class="srow"><h3>Advertências</h3><span style="font-size:11px;color:var(--t2)">${advertencias.length} total</span></div><div id="al"></div>`;
   const al=document.getElementById('al');
-  if(!advertencias.length){al.innerHTML='<div class="empty">Nenhuma advertência registrada.</div>';return;}
+  if(!advertencias.length){al.innerHTML='<div class="empty">Nenhuma advertência.</div>';return;}
   advertencias.forEach(a=>{
     al.innerHTML+=`<div class="advcard">
-      <div style="font-size:13px;font-weight:700;margin-bottom:3px">
-        ${(a.funcionario_nome||'').split(' ')[0]} <span class="chip o">${a.tipo||''}</span>
-      </div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:3px">${(a.funcionario_nome||'').split(' ')[0]} <span class="chip o">${a.tipo||''}</span></div>
       <div style="font-size:12px;color:var(--t2);line-height:1.5">${a.descricao||'Sem descrição'}</div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
         <span style="font-size:11px;color:var(--t3)">${a.data_registro||''}</span>
         <button class="btn-xs" style="color:var(--r);border-color:rgba(248,113,113,.3)" onclick="delAdv(${a.id})">Remover</button>
-      </div>
-    </div>`;
+      </div></div>`;
   });
 }
 async function delAdv(id){
@@ -825,45 +856,27 @@ async function delAdv(id){
 }
 
 // ===== MODAIS =====
-function openModalAdv(func){
-  currentAdvFunc=func;
-  document.getElementById('m-adv-sub').textContent='Funcionário: '+func.nome.split(' ')[0];
-  document.getElementById('m-adv').classList.add('open');
-}
-function openModalFunc(){document.getElementById('m-func').classList.add('open');}
-function closeModals(){document.querySelectorAll('.moverlay').forEach(m=>m.classList.remove('open'));currentAdvFunc=null;}
+function openModalAdv(func){currentAdvFunc=func;document.getElementById('m-adv-sub').textContent='Funcionário: '+func.nome.split(' ')[0];document.getElementById('m-adv').classList.add('open');}
+function closeModals(){document.querySelectorAll('.moverlay').forEach(m=>m.classList.remove('open'));currentAdvFunc=null;editCtx=null;addCtx=null;}
 document.querySelectorAll('.moverlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)closeModals();}));
 
 async function saveAdv(){
   if(!currentAdvFunc)return;
-  const adv={
-    id:Date.now(),funcionario_id:currentAdvFunc.id,funcionario_nome:currentAdvFunc.nome,
-    tipo:document.getElementById('adv-tipo').value,
-    descricao:document.getElementById('adv-desc').value,
-    data_registro:new Date().toLocaleDateString('pt-BR'),
-    criado_em:new Date().toISOString()
-  };
+  const adv={id:Date.now(),funcionario_id:currentAdvFunc.id,funcionario_nome:currentAdvFunc.nome,tipo:document.getElementById('adv-tipo').value,descricao:document.getElementById('adv-desc').value,data_registro:new Date().toLocaleDateString('pt-BR'),criado_em:new Date().toISOString()};
   await sb.from('iw_advertencias').upsert(adv).execute();
-  advertencias.unshift(adv);
-  document.getElementById('adv-desc').value='';
-  closeModals();
-  if(currentTab==='adv') renderAdv(document.getElementById('content'));
-  else if(currentTab==='equipe') renderEquipe(document.getElementById('content'));
+  advertencias.unshift(adv);document.getElementById('adv-desc').value='';closeModals();
+  if(currentTab==='adv')renderAdv(document.getElementById('content'));
 }
-
 async function saveFunc(){
   const nome=document.getElementById('f-nome').value.trim();
   const cargo=document.getElementById('f-cargo').value.trim();
   const pv=document.getElementById('f-pin').value.trim();
   const cpf=document.getElementById('f-cpf').value.trim();
-  if(!nome||!cargo||pv.length!==4||isNaN(parseInt(pv))){alert('Preencha nome, cargo e PIN (4 dígitos).');return;}
+  if(!nome||!cargo||pv.length!==4||isNaN(parseInt(pv))){alert('Preencha nome, cargo e PIN.');return;}
   if(funcionarios.find(f=>f.pin===pv)){alert('PIN já em uso.');return;}
-  const func={id:Date.now(),nome,cargo,pin:pv,cpf,carga:9,ativo:true,atualizado_em:new Date().toISOString()};
-  await sb.from('iw_funcionarios').upsert(func).execute();
-  closeModals();
+  await sb.from('iw_funcionarios').insert({id:Date.now(),nome,cargo,pin:pv,cpf,carga:9,ativo:true,atualizado_em:new Date().toISOString()}).execute();
   ['f-nome','f-cargo','f-pin','f-cpf'].forEach(id=>document.getElementById(id).value='');
-  await loadBase();
-  renderEquipe(document.getElementById('content'));
+  closeModals();await loadBase();renderEquipe(document.getElementById('content'));
 }
 </script>
 </body>
