@@ -402,7 +402,7 @@ async function initApp(){
 }
 async function loadBase(){
   const{data:f}=await sb.from('iw_funcionarios').select('*').eq('ativo',true).order('nome');
-  funcionarios=(f||[]).map((x,i)=>({...x,color:COLORS[i%COLORS.length]}));
+  funcionarios=(f||[]).map((x,i)=>({...x,color:COLORS[i%COLORS.length],admissao:x.admissao||'2026-02-01'}));
   const{data:a}=await sb.from('iw_advertencias').select('*').order('criado_em',{ascending:false});
   advertencias=a||[];
   const{data:fer}=await sb.from('iw_feriados').select('data');
@@ -494,12 +494,17 @@ function calcSaldoRegs(regs){
     mapa[r.cpf][r.data_local].push({hora:r.data_hora_local?.slice(11,16)||'00:00',tipo:r.tipo});
   });
   let total=0;
-  Object.values(mapa).forEach(dias=>Object.entries(dias).forEach(([data,bats])=>{
-    if(!isDiaUtil(data))return;
-    if(!isDiaCompleto(data,bats))return; // ignora dia em andamento
-    const j=jornadaMin(data);if(!j)return;
-    total+=calcTrab(bats)-j;
-  }));
+  const admissaoMap={};funcionarios.forEach(f=>{admissaoMap[f.cpf]=f.admissao||'2026-02-01';});
+  Object.entries(mapa).forEach(([cpf,dias])=>{
+    const adm=admissaoMap[cpf]||'2026-02-01';
+    Object.entries(dias).forEach(([data,bats])=>{
+      if(data<adm)return; // antes da admissão
+      if(!isDiaUtil(data))return;
+      if(!isDiaCompleto(data,bats))return;
+      const j=jornadaMin(data);if(!j)return;
+      total+=calcTrab(bats)-j;
+    });
+  });
   return total;
 }
 
@@ -722,7 +727,8 @@ async function reloadBanco(){
     let saldo=0,dias=0,extras=0,devendo=0,atrasos=0,faltas=0;
 
     // Calcula dias esperados no período
-    const dIni=new Date(ini+'T12:00:00'),dFim=new Date(fim+'T12:00:00');
+    const admissao=f.admissao||'2026-02-01';
+    const dIni=new Date((ini<admissao?admissao:ini)+'T12:00:00'),dFim=new Date(fim+'T12:00:00');
     for(let d=new Date(dIni);d<=dFim;d.setDate(d.getDate()+1)){
       const ds=d.toISOString().split('T')[0];
       if(!isDiaUtil(ds)) continue; // ignora fins de semana e feriados
@@ -812,7 +818,8 @@ async function reloadAtrasos(){
     const pf=porCpf[f.cpf]||{dias:{}};
     const ocorrencias=[];
 
-    const dIni=new Date(ini+'T12:00:00'),dFim=new Date(fim+'T12:00:00');
+    const admissaoF=f.admissao||'2026-02-01';
+    const dIni=new Date((ini<admissaoF?admissaoF:ini)+'T12:00:00'),dFim=new Date(fim+'T12:00:00');
     for(let d=new Date(dIni);d<=dFim;d.setDate(d.getDate()+1)){
       const ds=d.toISOString().split('T')[0];
       if(!isDiaUtil(ds))continue; // ignora fins de semana e feriados
