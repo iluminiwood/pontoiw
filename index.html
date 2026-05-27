@@ -246,6 +246,13 @@ const ENTRADA_PAD='07:00', SAIDA_SEMANA='17:30', SAIDA_SEX='16:30', TOL=5;
 let funcionarios=[],advertencias=[],currentTab='dash',sbOk=false;
 let loginAttempts=0,loginBlocked=false,currentAdvFunc=null,sessionTimer=null;
 let editCtx=null, addCtx=null;
+let feriados=new Set(); // Set de strings "YYYY-MM-DD"
+
+function isFeriado(ds){return feriados.has(ds);}
+function isDiaUtil(ds){
+  const dw=new Date(ds+'T12:00:00').getDay();
+  return dw>=1&&dw<=5&&!isFeriado(ds);
+}
 
 // ===== HELPERS =====
 function toMin(hhmm){if(!hhmm)return 0;const[h,m]=hhmm.split(':').map(Number);return h*60+m;}
@@ -335,6 +342,8 @@ async function loadBase(){
   funcionarios=(f||[]).map((x,i)=>({...x,color:COLORS[i%COLORS.length]}));
   const{data:a}=await sb.from('iw_advertencias').select('*').order('criado_em',{ascending:false});
   advertencias=a||[];
+  const{data:fer}=await sb.from('iw_feriados').select('data');
+  feriados=new Set((fer||[]).map(x=>x.data));
 }
 
 // ===== TABS =====
@@ -375,8 +384,8 @@ async function renderDash(c){
   const diasComReg=new Set((rsem||[]).map(r=>r.data_local));
   let faltas=0;
   for(let d=new Date(semIni+'T12:00:00');d<new Date(hoje+'T12:00:00');d.setDate(d.getDate()+1)){
-    const ds=d.toISOString().split('T')[0],dw=d.getDay();
-    if(dw>=1&&dw<=5&&!diasComReg.has(ds)) faltas++;
+    const ds=d.toISOString().split('T')[0];
+    if(isDiaUtil(ds)&&!diasComReg.has(ds)) faltas++;
   }
 
   const saldoCor=saldoMes>=0?'var(--g)':saldoMes<-120?'var(--r)':'var(--o)';
@@ -423,6 +432,7 @@ function calcSaldoRegs(regs){
   });
   let total=0;
   Object.values(mapa).forEach(dias=>Object.entries(dias).forEach(([data,bats])=>{
+    if(!isDiaUtil(data))return; // ignora feriados
     const j=jornadaMin(data);if(!j)return;
     total+=calcTrab(bats)-j;
   }));
@@ -641,8 +651,8 @@ async function reloadBanco(){
     // Calcula dias esperados no período
     const dIni=new Date(ini+'T12:00:00'),dFim=new Date(fim+'T12:00:00');
     for(let d=new Date(dIni);d<=dFim;d.setDate(d.getDate()+1)){
-      const dw=d.getDay(),ds=d.toISOString().split('T')[0];
-      if(dw<1||dw>5) continue;
+      const ds=d.toISOString().split('T')[0];
+      if(!isDiaUtil(ds)) continue; // ignora fins de semana e feriados
       const bats=pf.dias[ds];
       if(!bats||!bats.length){faltas++;continue;}
       const j=jornadaMin(ds);
@@ -730,8 +740,8 @@ async function reloadAtrasos(){
 
     const dIni=new Date(ini+'T12:00:00'),dFim=new Date(fim+'T12:00:00');
     for(let d=new Date(dIni);d<=dFim;d.setDate(d.getDate()+1)){
-      const dw=d.getDay(),ds=d.toISOString().split('T')[0];
-      if(dw<1||dw>5)continue;
+      const ds=d.toISOString().split('T')[0];
+      if(!isDiaUtil(ds))continue; // ignora fins de semana e feriados
       const bats=pf.dias[ds];
 
       // Falta
