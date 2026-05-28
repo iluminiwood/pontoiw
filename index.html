@@ -824,6 +824,23 @@ async function reloadBanco(){
     }
     saldoGeral+=saldo;
     const sc=saldo>=0?'var(--g)':saldo<-60?'var(--r)':'var(--o)';
+    const vlrHora=f.salario?f.salario/220:0;
+    const custoExtras=vlrHora?extras/60*vlrHora:0;
+    const custoDevendo=vlrHora?devendo/60*vlrHora:0;
+    const fmtBRL=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const custoHtml=vlrHora?`
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--b1)">
+        <div style="background:var(--gd);border:1px solid rgba(61,214,140,.2);border-radius:var(--r8);padding:.6rem .85rem">
+          <div style="font-size:10px;color:var(--g);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.25rem">💰 Extras a pagar</div>
+          <div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--g)">${fmtBRL(custoExtras)}</div>
+          <div style="font-size:10px;color:var(--t2);margin-top:.2rem">R$ ${vlrHora.toFixed(2)}/hora</div>
+        </div>
+        <div style="background:var(--rd);border:1px solid rgba(248,113,113,.2);border-radius:var(--r8);padding:.6rem .85rem">
+          <div style="font-size:10px;color:var(--r);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.25rem">⏱ Horas em débito</div>
+          <div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--r)">${fmtBRL(custoDevendo)}</div>
+          <div style="font-size:10px;color:var(--t2);margin-top:.2rem">${fromMin(devendo)} não trabalhadas</div>
+        </div>
+      </div>`:'';
     html+=`<div class="fcard">
       <div class="frow">
         <div class="fav" style="background:${f.color}22;color:${f.color}">${f.nome[0]}</div>
@@ -831,6 +848,7 @@ async function reloadBanco(){
         <div style="text-align:right">
           <div style="font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.05em">Saldo banco</div>
           <div style="font-family:var(--mono);font-size:20px;font-weight:700;color:${sc}">${saldo>=0?'+':''}${fromMin(saldo)}</div>
+          ${vlrHora?`<div style="font-size:10px;color:var(--t2);margin-top:2px">${fmtBRL(vlrHora)}/hora</div>`:''}
         </div>
       </div>
       <div class="fstats">
@@ -841,6 +859,7 @@ async function reloadBanco(){
         <div class="fstat"><div class="fstat-l">Faltas</div><div class="fstat-v" style="color:${faltas?'var(--r)':'var(--g)'}">${faltas}</div></div>
         <div class="fstat"><div class="fstat-l">Jornada</div><div class="fstat-v">44h/sem</div></div>
       </div>
+      ${custoHtml}
     </div>`;
   });
 
