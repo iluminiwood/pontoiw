@@ -137,43 +137,59 @@ tr:hover td{background:rgba(255,255,255,.02);}
   .bfunc{padding:.75rem .75rem;}
 }
 @media(min-width:900px){
-  body{font-size:15px;}
-  .content{max-width:1100px;margin:0 auto;padding:1.25rem 2rem;}
-  .kgrid{grid-template-columns:repeat(4,1fr);gap:12px;}
-  .kcard{padding:1.1rem 1.25rem;}
-  .kval{font-size:28px;}
-  .klbl{font-size:11px;}
-  .ksub{font-size:11px;}
-  .tcard{margin-bottom:1.25rem;}
-  th{padding:9px 12px;font-size:11px;}
-  td{padding:11px 12px;font-size:14px;}
-  .flist{gap:12px;}
-  .fcard{padding:1.1rem 1.25rem;}
-  .fname{font-size:16px;}
-  .fstats{gap:8px;}
-  .fstat{padding:7px 10px;}
-  .fstat-l{font-size:10px;}
-  .fstat-v{font-size:14px;}
-  .bfunc{padding:1.1rem 1.25rem;}
-  .bfunc-name{font-size:17px;}
-  .bfunc-saldo-val{font-size:24px;}
-  .bdia-data{width:90px;font-size:12px;}
-  .bbat{font-size:13px;padding:2px 5px;}
-  .bdia-hrs{font-size:12px;width:52px;}
-  .bdia-saldo{font-size:12px;width:62px;}
-  .bsemana-lbl{font-size:11px;}
-  .bsemana-saldo{font-size:13px;}
-  .tabs{padding:0 2rem;}
-  .tab{padding:12px 18px;font-size:13px;}
-  .topbar{padding:.9rem 2rem;}
-  .filter-bar select{font-size:13px;padding:9px 12px;}
-  table{font-size:14px;}
-  .chip{font-size:11px;padding:3px 9px;}
-  .modal{max-width:500px;}
-  .fav{width:42px;height:42px;font-size:16px;}
-  .btn-xs{padding:6px 12px;font-size:12px;}
-  .advcard{padding:1rem 1.25rem;}
-  .atr-row{padding:8px 0;}
+  body{font-size:16px;}
+  .content{max-width:100%;padding:1.5rem 3rem;}
+  .kgrid{grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:1.5rem;}
+  .kcard{padding:1.5rem 1.75rem;border-radius:16px;}
+  .kval{font-size:36px;}
+  .klbl{font-size:12px;margin-bottom:.5rem;}
+  .ksub{font-size:12px;margin-top:.4rem;}
+  .tcard{margin-bottom:1.5rem;border-radius:16px;}
+  .thead-row{padding:.85rem 1.25rem;}
+  .thead-title{font-size:15px;}
+  th{padding:11px 16px;font-size:12px;}
+  td{padding:14px 16px;font-size:15px;}
+  .flist{gap:16px;}
+  .fcard{padding:1.5rem 1.75rem;border-radius:16px;}
+  .frow{margin-bottom:1rem;}
+  .fname{font-size:18px;}
+  .fcargo{font-size:13px;}
+  .fstats{gap:10px;margin-bottom:1rem;}
+  .fstat{padding:10px 14px;border-radius:10px;}
+  .fstat-l{font-size:11px;}
+  .fstat-v{font-size:16px;margin-top:3px;}
+  .factions{gap:8px;}
+  .btn-xs{padding:8px 16px;font-size:13px;border-radius:8px;}
+  .fav{width:48px;height:48px;font-size:18px;}
+  .bfunc{padding:1.5rem 1.75rem;border-radius:16px;margin-bottom:1.25rem;}
+  .bfunc-head{margin-bottom:1rem;padding-bottom:1rem;}
+  .bfunc-name{font-size:18px;}
+  .bfunc-sub{font-size:13px;}
+  .bfunc-saldo-lbl{font-size:11px;}
+  .bfunc-saldo-val{font-size:28px;}
+  .bdia{padding:8px 0;gap:10px;}
+  .bdia-data{width:100px;font-size:13px;}
+  .bbat{font-size:14px;padding:3px 7px;border-radius:4px;}
+  .bdia-hrs{font-size:13px;width:60px;}
+  .bdia-saldo{font-size:13px;width:70px;}
+  .bsemana{margin-bottom:1rem;}
+  .bsemana-head{padding:7px 0;margin-bottom:6px;}
+  .bsemana-lbl{font-size:12px;}
+  .bsemana-saldo{font-size:14px;}
+  .tabs{padding:0 3rem;}
+  .tab{padding:14px 22px;font-size:14px;}
+  .topbar{padding:1rem 3rem;}
+  .tb-brand{font-size:12px;}
+  .filter-bar{gap:12px;margin-bottom:1.25rem;}
+  .filter-bar select{font-size:14px;padding:10px 14px;border-radius:10px;}
+  table{font-size:15px;}
+  .chip{font-size:12px;padding:4px 10px;}
+  .modal{max-width:520px;}
+  .advcard{padding:1.25rem 1.5rem;margin-bottom:10px;border-radius:14px;}
+  .atr-row{padding:10px 0;gap:12px;}
+  .banner{font-size:13px;padding:9px 16px;margin-bottom:1.25rem;}
+  .srow h3{font-size:16px;}
+  .srow{margin-bottom:1rem;}
 }
 .advcard{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r12);padding:.85rem 1rem;margin-bottom:8px;}
 .moverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:100;align-items:center;justify-content:center;padding:1rem;}
