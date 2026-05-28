@@ -495,7 +495,7 @@ function goTab(tab){
 async function renderDash(c){
   const hoje=new Date().toISOString().split('T')[0];
   const dow=new Date().getDay();
-  const{data:rh}=await sb.from('iw_registros_ponto').select('*').eq('data_local',hoje).order('id');
+  const{data:rh}=await sb.from('iw_registros_ponto').select('*').eq('data_local',hoje).order('id').limit(500);
   const regsHoje=rh||[];
   const mapaHoje={};
   regsHoje.forEach(r=>{if(!mapaHoje[r.cpf])mapaHoje[r.cpf]=[];mapaHoje[r.cpf].push({hora:r.data_hora_local?.slice(11,16)||'00:00',tipo:r.tipo});});
@@ -510,7 +510,7 @@ async function renderDash(c){
 
   // Banco geral do mês
   const mesIni=new Date().toISOString().slice(0,7)+'-01';
-  const{data:rm}=await sb.from('iw_registros_ponto').select('cpf,data_local,data_hora_local,tipo').gte('data_local',mesIni).lte('data_local',hoje);
+  const{data:rm}=await sb.from('iw_registros_ponto').select('cpf,data_local,data_hora_local,tipo').gte('data_local',mesIni).lte('data_local',hoje).limit(5000);
   const saldoMes=calcSaldoRegs(rm||[]);
 
   // Faltas semana
@@ -638,7 +638,7 @@ async function reloadBatidas(){
   const per=document.getElementById('b-periodo')?.value||'mes';
   const cpfF=document.getElementById('b-func')?.value||'';
   const{ini,fim}=getPeriodo(per);
-  let q=sb.from('iw_registros_ponto').select('*').gte('data_local',ini).lte('data_local',fim).order('id');
+  let q=sb.from('iw_registros_ponto').select('*').gte('data_local',ini).lte('data_local',fim).order('id').limit(5000);
   if(cpfF) q=q.eq('cpf',cpfF);
   const{data:regs}=await q;
   const todos=regs||[];
@@ -731,12 +731,25 @@ async function salvarEdicao(){
   if(!editCtx)return;
   const hora=document.getElementById('edit-hora').value;
   const tipo=document.getElementById('edit-tipo').value;
-  const {error:errUpd}=await sb.from('iw_registros_ponto').update({
-    data_hora_local:editCtx.data+'T'+hora,tipo,origem:'EDITADO_MANUAL',
+  if(!hora){alert('Informe a hora.');return;}
+  const {data:updData, error:errUpd}=await sb.from('iw_registros_ponto').update({
+    data_hora_local:editCtx.data+'T'+hora,
+    tipo,
+    origem:'EDITADO_MANUAL',
     sincronizado_em:new Date().toISOString()
   }).eq('id',editCtx.id).select();
   if(errUpd){alert('Erro ao salvar: '+errUpd.message);return;}
-  closeModals();await reloadBatidas();
+  if(!updData||updData.length===0){
+    // Tenta buscar pelo nsr como fallback
+    if(editCtx.nsr){
+      await sb.from('iw_registros_ponto').update({
+        data_hora_local:editCtx.data+'T'+hora,tipo,origem:'EDITADO_MANUAL',
+        sincronizado_em:new Date().toISOString()
+      }).eq('nsr',editCtx.nsr).select();
+    }
+  }
+  closeModals();
+  await reloadBatidas();
 }
 async function deletarBatida(){
   if(!editCtx||!confirm('Excluir esta batida?'))return;
@@ -789,7 +802,7 @@ async function reloadBanco(){
   el.innerHTML='<div class="loading">Calculando...</div>';
   const per=document.getElementById('banco-per')?.value||'mes';
   const{ini,fim}=getPeriodo(per);
-  const{data:regs}=await sb.from('iw_registros_ponto').select('*').gte('data_local',ini).lte('data_local',fim).order('id');
+  const{data:regs}=await sb.from('iw_registros_ponto').select('*').gte('data_local',ini).lte('data_local',fim).order('id').limit(5000);
   const todos=regs||[];
 
   const porCpf={};
@@ -937,7 +950,7 @@ async function reloadAtrasos(){
   el.innerHTML='<div class="loading">Calculando...</div>';
   const per=document.getElementById('atr-per')?.value||'mes';
   const{ini,fim}=getPeriodo(per);
-  const{data:regs}=await sb.from('iw_registros_ponto').select('*').gte('data_local',ini).lte('data_local',fim).order('id');
+  const{data:regs}=await sb.from('iw_registros_ponto').select('*').gte('data_local',ini).lte('data_local',fim).order('id').limit(5000);
   const todos=regs||[];
 
   const porCpf={};
