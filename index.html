@@ -262,6 +262,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <div class="field"><label>Cargo</label><input type="text" id="f-cargo"></div>
     <div class="field"><label>PIN (4 dígitos)</label><input type="number" id="f-pin" maxlength="4"></div>
     <div class="field"><label>CPF (11 dígitos)</label><input type="text" id="f-cpf" maxlength="11"></div>
+    <div class="field"><label>Salário mensal (R$)</label><input type="number" id="f-salario" placeholder="0.00" step="0.01"></div>
     <div class="mactions">
       <button class="btn-sm" onclick="closeModals()">Cancelar</button>
       <button class="btn" onclick="saveFunc()">Cadastrar</button>
@@ -308,12 +309,12 @@ function getSemana(ds){
 }
 function jornadaMin(ds){return JORNADA[new Date(ds+'T12:00:00').getDay()]||0;}
 function isDiaCompleto(ds, bats){
-  // Dia é incompleto se for hoje E a última batida for ENTRADA
+  // Hoje nunca conta como débito — só conta no dia seguinte
   const hoje=new Date().toISOString().split('T')[0];
-  if(ds!==hoje) return true;
-  if(!bats||!bats.length) return false;
+  if(ds>=hoje) return false; // hoje e futuro: nunca conta débito
+  if(!bats||!bats.length) return true; // dia anterior sem registro = falta real
   const sorted=[...bats].sort((a,b)=>a.hora.localeCompare(b.hora));
-  return sorted[sorted.length-1].tipo==='SAIDA';
+  return true; // dia anterior com qualquer registro: conta o que tiver
 }
 function saidaPadrao(ds){return new Date(ds+'T12:00:00').getDay()===5?SAIDA_SEX:SAIDA_SEMANA;}
 
@@ -402,7 +403,7 @@ async function initApp(){
 }
 async function loadBase(){
   const{data:f}=await sb.from('iw_funcionarios').select('*').eq('ativo',true).order('nome');
-  funcionarios=(f||[]).map((x,i)=>({...x,color:COLORS[i%COLORS.length],admissao:x.admissao||'2026-02-01'}));
+  funcionarios=(f||[]).map((x,i)=>({...x,color:COLORS[i%COLORS.length],admissao:x.admissao||'2026-02-01',salario:x.salario||0}));
   const{data:a}=await sb.from('iw_advertencias').select('*').order('criado_em',{ascending:false});
   advertencias=a||[];
   const{data:fer}=await sb.from('iw_feriados').select('data');
@@ -624,7 +625,7 @@ async function reloadBatidas(){
         <div class="bsemana-head">
           <span class="bsemana-lbl">Semana ${new Date(semIni+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}–${sf.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span>
           <span class="bsemana-saldo" style="color:${sc}">${saldoSem>=0?'+':''}${fromMin(saldoSem)}</span>
-        </div>${diasHtml}</div>`;
+        </div>${colHeader}${diasHtml}</div>`;
     });
 
     const sc=saldoTotal>=0?'var(--g)':saldoTotal<-60?'var(--r)':'var(--o)';
@@ -767,7 +768,45 @@ async function reloadBanco(){
 
   const gc=saldoGeral>=0?'var(--g)':saldoGeral<-120?'var(--r)':'var(--o)';
   const perLabels={mes:'mês atual',semana:'semana','mes-ant':'mês anterior',tudo:'total geral'};const perLabel=perLabels[per]||per;
-  html+=`</div>
+  
+  // Calcula custo total das horas extras e débitos
+  let custoExtrasTotal=0, custoDevendoTotal=0;
+  funcionarios.forEach(f=>{
+    const pf=porCpf[f.cpf]||{dias:{}};
+    const vlrHora=f.salario?f.salario/220:0;
+    if(!vlrHora) return;
+    const adm=f.admissao||'2026-02-01';
+    const dIni2=new Date((ini<adm?adm:ini)+'T12:00:00'),dFim2=new Date(fim+'T12:00:00');
+    for(let d=new Date(dIni2);d<=dFim2;d.setDate(d.getDate()+1)){
+      const ds=d.toISOString().split('T')[0];
+      if(!isDiaUtil(ds)||!isDiaCompleto(ds,pf.dias[ds])) continue;
+      const bats=pf.dias[ds];if(!bats||!bats.length) continue;
+      const j=jornadaMin(ds),t=calcTrab(bats),s=t-j;
+      if(s>0) custoExtrasTotal+=s/60*vlrHora;
+      else if(s<0) custoDevendoTotal+=Math.abs(s)/60*vlrHora;
+    }
+  });
+
+  const temSalario=funcionarios.some(f=>f.salario>0);
+  const custoHtml=temSalario?`
+  <div class="tcard" style="margin-bottom:.9rem">
+    <div class="thead-row"><span class="thead-title">💰 Análise de custo — ${perLabel}</span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:.75rem 1rem">
+      <div style="background:var(--gd);border:1px solid rgba(61,214,140,.2);border-radius:var(--r8);padding:.75rem">
+        <div style="font-size:10px;color:var(--g);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.3rem">Horas extras a pagar</div>
+        <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--g)">R$ ${custoExtrasTotal.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+        <div style="font-size:10px;color:var(--t2);margin-top:.2rem">custo adicional da equipe</div>
+      </div>
+      <div style="background:var(--rd);border:1px solid rgba(248,113,113,.2);border-radius:var(--r8);padding:.75rem">
+        <div style="font-size:10px;color:var(--r);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.3rem">Horas em débito</div>
+        <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--r)">R$ ${custoDevendoTotal.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+        <div style="font-size:10px;color:var(--t2);margin-top:.2rem">horas não trabalhadas</div>
+      </div>
+    </div>
+    <div style="padding:.5rem 1rem .75rem;font-size:11px;color:var(--t2)">Valor/hora = Salário ÷ 220h (padrão CLT) · Cadastre salários na aba Equipe</div>
+  </div>`:'';
+
+  html+=`</div>${custoHtml}
   <div class="tcard">
     <div class="thead-row">
       <span class="thead-title">Saldo total — ${perLabel}</span>
@@ -917,6 +956,15 @@ async function renderEquipe(c){
     g.appendChild(d);
   });
 }
+async function editSalario(id,nome,atual){
+  const novo=prompt(`Salário mensal de ${nome.split(' ')[0]} (R$):`,atual||'');
+  if(novo===null) return;
+  const val=parseFloat(novo.replace(',','.'));
+  if(isNaN(val)||val<0){alert('Valor inválido.');return;}
+  await sb.from('iw_funcionarios').update({salario:val}).eq('id',id).select();
+  await loadBase();
+  renderEquipe(document.getElementById('content'));
+}
 async function editPin(id,nome){
   const np=prompt(`PIN para ${nome.split(' ')[0]} (4 dígitos):`);
   if(!np||np.length!==4||isNaN(parseInt(np))){alert('PIN inválido.');return;}
@@ -965,7 +1013,8 @@ async function saveFunc(){
   const cpf=document.getElementById('f-cpf').value.trim();
   if(!nome||!cargo||pv.length!==4||isNaN(parseInt(pv))){alert('Preencha nome, cargo e PIN.');return;}
   if(funcionarios.find(f=>f.pin===pv)){alert('PIN já em uso.');return;}
-  await sb.from('iw_funcionarios').insert({id:Date.now(),nome,cargo,pin:pv,cpf,carga:9,ativo:true,atualizado_em:new Date().toISOString()});
+  const sal=parseFloat(document.getElementById('f-salario').value)||0;
+  await sb.from('iw_funcionarios').insert({id:Date.now(),nome,cargo,pin:pv,cpf,carga:9,ativo:true,salario:sal,atualizado_em:new Date().toISOString()});
   ['f-nome','f-cargo','f-pin','f-cpf'].forEach(id=>document.getElementById(id).value='');
   closeModals();await loadBase();renderEquipe(document.getElementById('content'));
 }
