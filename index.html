@@ -952,21 +952,24 @@ async function renderEquipe(c){
       <div style="flex:1"><div class="fname">${f.nome.split(' ')[0]}</div>
         <div class="fcargo">${f.cargo||'—'} · CPF <span style="font-family:var(--mono)">${f.cpf||'—'}</span></div></div>
     </div>
-    <div class="fstats" style="grid-template-columns:1fr 1fr">
+    <div class="fstats" style="grid-template-columns:1fr 1fr 1fr">
       <div class="fstat"><div class="fstat-l">Carga semanal</div><div class="fstat-v">44h</div></div>
-      <div class="fstat"><div class="fstat-l">Advertências</div><div class="fstat-v" style="color:${af?'var(--o)':'var(--t1)'}">${af}</div></div>
+      <div class="fstat"><div class="fstat-l">Sal&aacute;rio</div><div class="fstat-v" style="color:var(--g)">${f.salario?'R$ '+Number(f.salario).toLocaleString('pt-BR'):'—'}</div></div>
+      <div class="fstat"><div class="fstat-l">Valor/hora</div><div class="fstat-v">${f.salario?'R$ '+(f.salario/220).toFixed(2):'—'}</div></div>
     </div>
     <div class="factions">
-      <button class="btn-xs" style="color:var(--acc);border-color:rgba(240,192,64,.3)" onclick="editPin(${f.id},'${f.nome.replace(/'/g,"\\'")}')">Editar PIN</button>
-      <button class="btn-xs" style="color:var(--o);border-color:rgba(251,146,60,.3)" onclick='openModalAdv({id:${f.id},nome:"${f.nome.replace(/"/g,'\\"')}",cpf:"${f.cpf||''}"})'>+ Advertência</button>
+      <button class="btn-xs" style="color:var(--acc);border-color:rgba(240,192,64,.3)" onclick="editPin(${f.id})">PIN</button>
+      <button class="btn-xs" style="color:var(--g);border-color:rgba(61,214,140,.3)" onclick="editSalario(${f.id},${f.salario||0})">Salário</button>
+      <button class="btn-xs" style="color:var(--o);border-color:rgba(251,146,60,.3)" onclick='openModalAdv({id:${f.id},nome:"${f.nome}",cpf:"${f.cpf||''}"})'>+ Adv.</button>
     </div>`;
     g.appendChild(d);
   });
 }
-async function editSalario(id,nome,atual){
-  const novo=prompt(`Salário mensal de ${nome.split(' ')[0]} (R$):`,atual||'');
+async function editSalario(id,atual){
+  const f=funcionarios.find(x=>x.id===id);if(!f)return;
+  const novo=prompt('Salário mensal de '+f.nome.split(' ')[0]+' (R$):', atual||'');
   if(novo===null) return;
-  const val=parseFloat(novo.replace(',','.'));
+  const val=parseFloat(String(novo).replace(',','.'));
   if(isNaN(val)||val<0){alert('Valor inválido.');return;}
   await sb.from('iw_funcionarios').update({salario:val}).eq('id',id).select();
   await loadBase();
