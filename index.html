@@ -136,6 +136,45 @@ tr:hover td{background:rgba(255,255,255,.02);}
   .content{padding:.75rem .75rem .5rem;}
   .bfunc{padding:.75rem .75rem;}
 }
+@media(min-width:900px){
+  body{font-size:15px;}
+  .content{max-width:1100px;margin:0 auto;padding:1.25rem 2rem;}
+  .kgrid{grid-template-columns:repeat(4,1fr);gap:12px;}
+  .kcard{padding:1.1rem 1.25rem;}
+  .kval{font-size:28px;}
+  .klbl{font-size:11px;}
+  .ksub{font-size:11px;}
+  .tcard{margin-bottom:1.25rem;}
+  th{padding:9px 12px;font-size:11px;}
+  td{padding:11px 12px;font-size:14px;}
+  .flist{gap:12px;}
+  .fcard{padding:1.1rem 1.25rem;}
+  .fname{font-size:16px;}
+  .fstats{gap:8px;}
+  .fstat{padding:7px 10px;}
+  .fstat-l{font-size:10px;}
+  .fstat-v{font-size:14px;}
+  .bfunc{padding:1.1rem 1.25rem;}
+  .bfunc-name{font-size:17px;}
+  .bfunc-saldo-val{font-size:24px;}
+  .bdia-data{width:90px;font-size:12px;}
+  .bbat{font-size:13px;padding:2px 5px;}
+  .bdia-hrs{font-size:12px;width:52px;}
+  .bdia-saldo{font-size:12px;width:62px;}
+  .bsemana-lbl{font-size:11px;}
+  .bsemana-saldo{font-size:13px;}
+  .tabs{padding:0 2rem;}
+  .tab{padding:12px 18px;font-size:13px;}
+  .topbar{padding:.9rem 2rem;}
+  .filter-bar select{font-size:13px;padding:9px 12px;}
+  table{font-size:14px;}
+  .chip{font-size:11px;padding:3px 9px;}
+  .modal{max-width:500px;}
+  .fav{width:42px;height:42px;font-size:16px;}
+  .btn-xs{padding:6px 12px;font-size:12px;}
+  .advcard{padding:1rem 1.25rem;}
+  .atr-row{padding:8px 0;}
+}
 .advcard{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r12);padding:.85rem 1rem;margin-bottom:8px;}
 .moverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:100;align-items:center;justify-content:center;padding:1rem;}
 .moverlay.open{display:flex;}
@@ -232,6 +271,21 @@ tr:hover td{background:rgba(255,255,255,.02);}
   </div>
 </div>
 
+<!-- MODAL EDITAR FUNC -->
+<div class="moverlay" id="m-func-edit">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div class="mtitle" id="m-func-edit-title">Editar funcionário</div>
+    <div class="msub" id="m-func-edit-sub"></div>
+    <div class="field"><label>Salário mensal (R$)</label><input type="number" id="fe-salario" placeholder="0.00" step="0.01" min="0"></div>
+    <div class="field"><label>Data de admissão</label><input type="date" id="fe-admissao"></div>
+    <div class="mactions">
+      <button class="btn-sm" onclick="closeModals()">Cancelar</button>
+      <button class="btn" onclick="saveFuncEdit()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL ADV -->
 <div class="moverlay" id="m-adv">
   <div class="modal">
@@ -263,6 +317,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <div class="field"><label>PIN (4 dígitos)</label><input type="number" id="f-pin" maxlength="4"></div>
     <div class="field"><label>CPF (11 dígitos)</label><input type="text" id="f-cpf" maxlength="11"></div>
     <div class="field"><label>Salário mensal (R$)</label><input type="number" id="f-salario" placeholder="0.00" step="0.01"></div>
+    <div class="field"><label>Data de admissão</label><input type="date" id="f-admissao"></div>
     <div class="mactions">
       <button class="btn-sm" onclick="closeModals()">Cancelar</button>
       <button class="btn" onclick="saveFunc()">Cadastrar</button>
@@ -965,13 +1020,21 @@ async function renderEquipe(c){
     g.appendChild(d);
   });
 }
-async function editSalario(id,atual){
+function editSalario(id){
   const f=funcionarios.find(x=>x.id===id);if(!f)return;
-  const novo=prompt('Salário mensal de '+f.nome.split(' ')[0]+' (R$):', atual||'');
-  if(novo===null) return;
-  const val=parseFloat(String(novo).replace(',','.'));
-  if(isNaN(val)||val<0){alert('Valor inválido.');return;}
-  await sb.from('iw_funcionarios').update({salario:val}).eq('id',id).select();
+  document.getElementById('m-func-edit-title').textContent='Editar — '+f.nome.split(' ')[0];
+  document.getElementById('m-func-edit-sub').textContent=f.cargo||'';
+  document.getElementById('fe-salario').value=f.salario||'';
+  document.getElementById('fe-admissao').value=f.admissao||'';
+  document.getElementById('m-func-edit').dataset.funcId=id;
+  document.getElementById('m-func-edit').classList.add('open');
+}
+async function saveFuncEdit(){
+  const id=parseInt(document.getElementById('m-func-edit').dataset.funcId);
+  const sal=parseFloat(document.getElementById('fe-salario').value)||0;
+  const adm=document.getElementById('fe-admissao').value||null;
+  await sb.from('iw_funcionarios').update({salario:sal,admissao:adm}).eq('id',id).select();
+  closeModals();
   await loadBase();
   renderEquipe(document.getElementById('content'));
 }
@@ -1024,8 +1087,9 @@ async function saveFunc(){
   if(!nome||!cargo||pv.length!==4||isNaN(parseInt(pv))){alert('Preencha nome, cargo e PIN.');return;}
   if(funcionarios.find(f=>f.pin===pv)){alert('PIN já em uso.');return;}
   const sal=parseFloat(document.getElementById('f-salario').value)||0;
-  await sb.from('iw_funcionarios').insert({id:Date.now(),nome,cargo,pin:pv,cpf,carga:9,ativo:true,salario:sal,atualizado_em:new Date().toISOString()});
-  ['f-nome','f-cargo','f-pin','f-cpf'].forEach(id=>document.getElementById(id).value='');
+  const adm=document.getElementById('f-admissao').value||new Date().toISOString().split('T')[0];
+  await sb.from('iw_funcionarios').insert({id:Date.now(),nome,cargo,pin:pv,cpf,carga:9,ativo:true,salario:sal,admissao:adm,atualizado_em:new Date().toISOString()});
+  ['f-nome','f-cargo','f-pin','f-cpf','f-salario','f-admissao'].forEach(id=>document.getElementById(id).value='');
   closeModals();await loadBase();renderEquipe(document.getElementById('content'));
 }
 </script>
