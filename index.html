@@ -625,7 +625,14 @@ async function reloadBatidas(){
         <div class="bsemana-head">
           <span class="bsemana-lbl">Semana ${new Date(semIni+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}–${sf.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span>
           <span class="bsemana-saldo" style="color:${sc}">${saldoSem>=0?'+':''}${fromMin(saldoSem)}</span>
-        </div>${colHeader}${diasHtml}</div>`;
+        </div>
+        <div style="display:flex;align-items:center;gap:4px;padding:3px 0;border-bottom:1px solid var(--b2);margin-bottom:2px">
+          <span style="font-size:9px;color:var(--t3);width:58px;flex-shrink:0">DIA</span>
+          <span style="flex:1;font-size:9px;color:var(--t3)">BATIDAS &nbsp;<span style="color:var(--g)">↑ent</span> <span style="color:var(--r)">↓saí</span> <span style="color:var(--pu)">✎edit</span></span>
+          <span style="font-size:9px;color:var(--t3);width:38px;text-align:right;flex-shrink:0">TOTAL</span>
+          <span style="font-size:9px;color:var(--t3);width:48px;text-align:right;flex-shrink:0">SALDO</span>
+        </div>
+        ${diasHtml}</div>`;
     });
 
     const sc=saldoTotal>=0?'var(--g)':saldoTotal<-60?'var(--r)':'var(--o)';
