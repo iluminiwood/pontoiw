@@ -295,6 +295,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <div class="msub" id="m-func-edit-sub"></div>
     <div class="field"><label>Salário mensal (R$)</label><input type="number" id="fe-salario" placeholder="0.00" step="0.01" min="0"></div>
     <div class="field"><label>Data de admissão</label><input type="date" id="fe-admissao"></div>
+    <div class="field"><label>Data de aniversário</label><input type="date" id="fe-aniversario"></div>
     <div class="mactions">
       <button class="btn-sm" onclick="closeModals()">Cancelar</button>
       <button class="btn" onclick="saveFuncEdit()">Salvar</button>
@@ -334,6 +335,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <div class="field"><label>CPF (11 dígitos)</label><input type="text" id="f-cpf" maxlength="11"></div>
     <div class="field"><label>Salário mensal (R$)</label><input type="number" id="f-salario" placeholder="0.00" step="0.01"></div>
     <div class="field"><label>Data de admissão</label><input type="date" id="f-admissao"></div>
+    <div class="field"><label>Data de aniversário</label><input type="date" id="f-aniversario"></div>
     <div class="mactions">
       <button class="btn-sm" onclick="closeModals()">Cancelar</button>
       <button class="btn" onclick="saveFunc()">Cadastrar</button>
@@ -474,7 +476,7 @@ async function initApp(){
 }
 async function loadBase(){
   const{data:f}=await sb.from('iw_funcionarios').select('*').eq('ativo',true).order('nome');
-  funcionarios=(f||[]).map((x,i)=>({...x,color:COLORS[i%COLORS.length],admissao:x.admissao||'2026-02-01',salario:x.salario||0}));
+  funcionarios=(f||[]).map((x,i)=>({...x,color:COLORS[i%COLORS.length],admissao:x.admissao||'2026-02-01',salario:x.salario||0,aniversario:x.aniversario||null}));
   const{data:a}=await sb.from('iw_advertencias').select('*').order('criado_em',{ascending:false});
   advertencias=a||[];
   const{data:fer}=await sb.from('iw_feriados').select('data');
@@ -524,7 +526,29 @@ async function renderDash(c){
   }
 
   const saldoCor=saldoMes>=0?'var(--g)':saldoMes<-120?'var(--r)':'var(--o)';
+  // Aniversariantes do mês
+  const mesAtualNum=new Date().getMonth()+1;
+  const diaAtual=new Date().getDate();
+  const aniversariantes=funcionarios.filter(f=>{
+    if(!f.aniversario) return false;
+    const d=new Date(f.aniversario+'T12:00:00');
+    return d.getMonth()+1===mesAtualNum;
+  });
+  const anivHtml=aniversariantes.length?`
+  <div style="background:linear-gradient(135deg,rgba(240,192,64,.15),rgba(61,214,140,.1));border:1px solid rgba(240,192,64,.3);border-radius:var(--r12);padding:.85rem 1rem;margin-bottom:.9rem;display:flex;align-items:center;gap:10px">
+    <span style="font-size:22px">🎂</span>
+    <div>
+      <div style="font-size:13px;font-weight:700;color:var(--acc)">Aniversariantes de ${new Date().toLocaleDateString('pt-BR',{month:'long'})}</div>
+      <div style="font-size:12px;color:var(--t2);margin-top:2px">${aniversariantes.map(f=>{
+        const d=new Date(f.aniversario+'T12:00:00');
+        const hoje=d.getDate()===diaAtual;
+        return`<span style="margin-right:8px">${hoje?'🎉':''}<b style="color:var(--t1)">${f.nome.split(' ')[0]}</b> (dia ${d.getDate()})${hoje?' — Hoje!':''}</span>`;
+      }).join('')}</div>
+    </div>
+  </div>`:'';
+
   c.innerHTML=`
+  ${anivHtml}
   <div class="banner ok">● Supabase conectado · ${regsHoje.length} registros hoje</div>
   <div class="kgrid">
     <div class="kcard"><div class="klbl">Presentes agora</div><div class="kval" style="color:var(--g)">${presentes}</div><div class="ksub">de ${funcionarios.length}</div></div>
@@ -554,6 +578,63 @@ async function renderDash(c){
 
   // Ranking separado para não travar
   renderRanking(rm||[]);
+  // Feed de notícias
+  carregarNoticias();
+}
+
+// ===== FEED DE NOTÍCIAS =====
+let newsCache=null, newsCacheTime=0;
+async function carregarNoticias(forcar=false){
+  const el=document.getElementById('news-body');if(!el)return;
+  const agora=Date.now();
+  // Cache de 2 horas
+  if(!forcar && newsCache && agora-newsCacheTime<2*60*60*1000){
+    el.innerHTML=newsCache;return;
+  }
+  el.innerHTML='<span style="color:var(--t2);font-size:12px">Buscando novidades...</span>';
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        messages:[{role:'user',content:`Você é um assistente especializado em legislação trabalhista brasileira.
+Gere um resumo com 4 informações importantes e atuais sobre:
+- Legislação trabalhista brasileira recente
+- Saúde mental e psicológica dos trabalhadores (NR-01 atualizada)
+- Direitos e deveres de empregadores e funcionários
+- Novidades do eSocial ou obrigações acessórias
+
+Responda APENAS em JSON válido, sem markdown, sem texto extra:
+{"items":[{"titulo":"...","resumo":"...","categoria":"...","urgente":false}]}
+Máximo 4 items. Categorias: "Legislação", "Saúde", "eSocial", "RH".`}]
+      })
+    });
+    const data=await resp.json();
+    const txt=data.content?.[0]?.text||'{}';
+    let parsed;
+    try{parsed=JSON.parse(txt);}catch(e){
+      // Tenta extrair JSON do texto
+      const m=txt.match(/\{[\s\S]*\}/);
+      parsed=m?JSON.parse(m[0]):{items:[]};
+    }
+    const items=parsed.items||[];
+    const catColors={'Legislação':'var(--bl)','Saúde':'var(--g)','eSocial':'var(--o)','RH':'var(--pu)'};
+    newsCache=items.map(item=>`
+      <div style="padding:.75rem 0;border-bottom:1px solid rgba(42,42,50,.4)">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:.3rem">
+          <span class="chip" style="background:${catColors[item.categoria]||'var(--bld)'}22;color:${catColors[item.categoria]||'var(--bl)'}">${item.categoria}</span>
+          ${item.urgente?'<span class="chip r">Importante</span>':''}
+        </div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:.25rem;color:var(--t1)">${item.titulo}</div>
+        <div style="font-size:12px;color:var(--t2);line-height:1.5">${item.resumo}</div>
+      </div>`).join('')+'<div style="font-size:10px;color:var(--t3);margin-top:.5rem;text-align:right">Atualizado em '+new Date().toLocaleString('pt-BR')+'</div>';
+    newsCacheTime=Date.now();
+    el.innerHTML=newsCache;
+  }catch(e){
+    el.innerHTML='<span style="color:var(--t3);font-size:12px">Não foi possível carregar. <span style="cursor:pointer;color:var(--acc)" onclick="carregarNoticias(true)">Tentar novamente</span></span>';
+  }
 }
 
 function calcSaldoRegs(regs){
@@ -841,6 +922,10 @@ async function reloadBanco(){
     const custoExtras=vlrHora?extras/60*vlrHora:0;
     const custoDevendo=vlrHora?devendo/60*vlrHora:0;
     const fmtBRL=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const saldoLiquido=custoExtras-custoDevendo;
+    const slCor=saldoLiquido>=0?'var(--g)':'var(--r)';
+    const slBg=saldoLiquido>=0?'var(--gd)':'var(--rd)';
+    const slBorder=saldoLiquido>=0?'rgba(61,214,140,.2)':'rgba(248,113,113,.2)';
     const custoHtml=vlrHora?`
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--b1)">
         <div style="background:var(--gd);border:1px solid rgba(61,214,140,.2);border-radius:var(--r8);padding:.6rem .85rem">
@@ -853,6 +938,13 @@ async function reloadBanco(){
           <div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--r)">${fmtBRL(custoDevendo)}</div>
           <div style="font-size:10px;color:var(--t2);margin-top:.2rem">${fromMin(devendo)} não trabalhadas</div>
         </div>
+      </div>
+      <div style="background:${slBg};border:1px solid ${slBorder};border-radius:var(--r8);padding:.6rem .85rem;margin-top:8px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:10px;color:${slCor};font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.25rem">⚖️ Saldo líquido</div>
+          <div style="font-size:10px;color:var(--t2)">Extras a pagar − Horas em débito</div>
+        </div>
+        <div style="font-family:var(--mono);font-size:20px;font-weight:700;color:${slCor}">${saldoLiquido>=0?'+':''}${fmtBRL(Math.abs(saldoLiquido))}</div>
       </div>`:'';
     html+=`<div class="fcard">
       <div class="frow">
@@ -1074,6 +1166,7 @@ function editSalario(id){
   document.getElementById('m-func-edit-sub').textContent=f.cargo||'';
   document.getElementById('fe-salario').value=f.salario||'';
   document.getElementById('fe-admissao').value=f.admissao||'';
+  document.getElementById('fe-aniversario').value=f.aniversario||'';
   document.getElementById('m-func-edit').dataset.funcId=id;
   document.getElementById('m-func-edit').classList.add('open');
 }
@@ -1081,7 +1174,8 @@ async function saveFuncEdit(){
   const id=parseInt(document.getElementById('m-func-edit').dataset.funcId);
   const sal=parseFloat(document.getElementById('fe-salario').value)||0;
   const adm=document.getElementById('fe-admissao').value||null;
-  await sb.from('iw_funcionarios').update({salario:sal,admissao:adm}).eq('id',id).select();
+  const aniv=document.getElementById('fe-aniversario').value||null;
+  await sb.from('iw_funcionarios').update({salario:sal,admissao:adm,aniversario:aniv}).eq('id',id).select();
   closeModals();
   await loadBase();
   renderEquipe(document.getElementById('content'));
@@ -1136,8 +1230,9 @@ async function saveFunc(){
   if(funcionarios.find(f=>f.pin===pv)){alert('PIN já em uso.');return;}
   const sal=parseFloat(document.getElementById('f-salario').value)||0;
   const adm=document.getElementById('f-admissao').value||new Date().toISOString().split('T')[0];
-  await sb.from('iw_funcionarios').insert({id:Date.now(),nome,cargo,pin:pv,cpf,carga:9,ativo:true,salario:sal,admissao:adm,atualizado_em:new Date().toISOString()});
-  ['f-nome','f-cargo','f-pin','f-cpf','f-salario','f-admissao'].forEach(id=>document.getElementById(id).value='');
+  const aniv=document.getElementById('f-aniversario').value||null;
+  await sb.from('iw_funcionarios').insert({id:Date.now(),nome,cargo,pin:pv,cpf,carga:9,ativo:true,salario:sal,admissao:adm,aniversario:aniv,atualizado_em:new Date().toISOString()});
+  ['f-nome','f-cargo','f-pin','f-cpf','f-salario','f-admissao','f-aniversario'].forEach(id=>document.getElementById(id).value='');
   closeModals();await loadBase();renderEquipe(document.getElementById('content'));
 }
 </script>
