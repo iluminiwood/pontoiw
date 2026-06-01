@@ -574,6 +574,13 @@ async function renderDash(c){
   <div class="tcard">
     <div class="thead-row"><span class="thead-title">Ranking pontualidade — mês atual</span></div>
     <div id="ranking" style="padding:.5rem .75rem"><span style="color:var(--t3);font-size:12px">Calculando...</span></div>
+  </div>
+  <div class="tcard" id="news-card">
+    <div class="thead-row">
+      <span class="thead-title">📰 Informações trabalhistas</span>
+      <button class="btn-sm accent" onclick="carregarNoticias(true)">Atualizar</button>
+    </div>
+    <div style="padding:.75rem 1rem" id="news-body"><span style="color:var(--t3);font-size:12px">Carregando...</span></div>
   </div>`;
 
   // Ranking separado para não travar
@@ -582,58 +589,55 @@ async function renderDash(c){
   carregarNoticias();
 }
 
-// ===== FEED DE NOTÍCIAS =====
+// ===== FEED DE NOTICIAS =====
 let newsCache=null, newsCacheTime=0;
-async function carregarNoticias(forcar=false){
-  const el=document.getElementById('news-body');if(!el)return;
-  const agora=Date.now();
-  // Cache de 2 horas
-  if(!forcar && newsCache && agora-newsCacheTime<2*60*60*1000){
-    el.innerHTML=newsCache;return;
-  }
-  el.innerHTML='<span style="color:var(--t2);font-size:12px">Buscando novidades...</span>';
+async function carregarNoticias(forcar){
+  var el=document.getElementById("news-body");
+  if(!el) return;
+  var agr=Date.now();
+  if(!forcar && newsCache && agr-newsCacheTime<2*60*60*1000){el.innerHTML=newsCache;return;}
+  el.innerHTML="<span style=\"color:var(--t2);font-size:12px\">Buscando novidades...</span>";
+  var prompt="Voce e um assistente de RH brasileiro. Gere 4 informacoes importantes e atuais sobre legislacao trabalhista, saude do trabalhador, eSocial ou direitos trabalhistas. Responda SOMENTE em JSON sem markdown: {items:[{titulo:str,resumo:str,categoria:str,urgente:bool}]}. Categorias: Legislacao, Saude, eSocial, RH.";
   try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
+    var resp=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
+        model:"claude-sonnet-4-20250514",
         max_tokens:1000,
-        messages:[{role:'user',content:`Você é um assistente especializado em legislação trabalhista brasileira.
-Gere um resumo com 4 informações importantes e atuais sobre:
-- Legislação trabalhista brasileira recente
-- Saúde mental e psicológica dos trabalhadores (NR-01 atualizada)
-- Direitos e deveres de empregadores e funcionários
-- Novidades do eSocial ou obrigações acessórias
-
-Responda APENAS em JSON válido, sem markdown, sem texto extra:
-{"items":[{"titulo":"...","resumo":"...","categoria":"...","urgente":false}]}
-Máximo 4 items. Categorias: "Legislação", "Saúde", "eSocial", "RH".`}]
+        messages:[{role:"user",content:prompt}]
       })
     });
-    const data=await resp.json();
-    const txt=data.content?.[0]?.text||'{}';
-    let parsed;
-    try{parsed=JSON.parse(txt);}catch(e){
-      // Tenta extrair JSON do texto
-      const m=txt.match(/\{[\s\S]*\}/);
+    var data=await resp.json();
+    var txt=(data.content&&data.content[0]&&data.content[0].text)||"{}";
+    var parsed;
+    try{
+      var m=txt.match(/\{[\s\S]*\}/);
       parsed=m?JSON.parse(m[0]):{items:[]};
-    }
-    const items=parsed.items||[];
-    const catColors={'Legislação':'var(--bl)','Saúde':'var(--g)','eSocial':'var(--o)','RH':'var(--pu)'};
-    newsCache=items.map(item=>`
-      <div style="padding:.75rem 0;border-bottom:1px solid rgba(42,42,50,.4)">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:.3rem">
-          <span class="chip" style="background:${catColors[item.categoria]||'var(--bld)'}22;color:${catColors[item.categoria]||'var(--bl)'}">${item.categoria}</span>
-          ${item.urgente?'<span class="chip r">Importante</span>':''}
-        </div>
-        <div style="font-size:13px;font-weight:700;margin-bottom:.25rem;color:var(--t1)">${item.titulo}</div>
-        <div style="font-size:12px;color:var(--t2);line-height:1.5">${item.resumo}</div>
-      </div>`).join('')+'<div style="font-size:10px;color:var(--t3);margin-top:.5rem;text-align:right">Atualizado em '+new Date().toLocaleString('pt-BR')+'</div>';
+    }catch(e){parsed={items:[]};}
+    var items=parsed.items||[];
+    var catColors={
+      "Legislacao":"var(--bl)","Legislação":"var(--bl)",
+      "Saude":"var(--g)","Saúde":"var(--g)",
+      "eSocial":"var(--o)","RH":"var(--pu)"
+    };
+    if(!items.length){el.innerHTML="<div class=\"empty\">Sem informações disponíveis.</div>";return;}
+    newsCache=items.map(function(item){
+      var cor=catColors[item.categoria]||"var(--bl)";
+      return "<div style=\"padding:.75rem 0;border-bottom:1px solid rgba(42,42,50,.4)\">"
+        +"<div style=\"display:flex;align-items:center;gap:6px;margin-bottom:.3rem\">"
+        +"<span class=\"chip\" style=\"background:"+cor+"22;color:"+cor+"\">"+item.categoria+"</span>"
+        +(item.urgente?"<span class=\"chip r\">Importante</span>":"")
+        +"</div>"
+        +"<div style=\"font-size:13px;font-weight:700;margin-bottom:.25rem;color:var(--t1)\">"+item.titulo+"</div>"
+        +"<div style=\"font-size:12px;color:var(--t2);line-height:1.5\">"+item.resumo+"</div>"
+        +"</div>";
+    }).join("")
+    +"<div style=\"font-size:10px;color:var(--t3);margin-top:.5rem;text-align:right\">Atualizado: "+new Date().toLocaleString("pt-BR")+"</div>";
     newsCacheTime=Date.now();
     el.innerHTML=newsCache;
   }catch(e){
-    el.innerHTML='<span style="color:var(--t3);font-size:12px">Não foi possível carregar. <span style="cursor:pointer;color:var(--acc)" onclick="carregarNoticias(true)">Tentar novamente</span></span>';
+    el.innerHTML="<span style=\"color:var(--t3);font-size:12px\">Não foi possível carregar. <span style=\"cursor:pointer;color:var(--acc)\" onclick=\"carregarNoticias(true)\">Tentar novamente</span></span>";
   }
 }
 
@@ -975,186 +979,37 @@ async function reloadBanco(){
   let custoExtrasTotal=0, custoDevendoTotal=0;
   funcionarios.forEach(f=>{
     const pf=porCpf[f.cpf]||{dias:{}};
-    const vlrHora=f.salario?f.salario/220:0;
-    if(!vlrHora) return;
-    const adm=f.admissao||'2026-02-01';
-    const dIni2=new Date((ini<adm?adm:ini)+'T12:00:00'),dFim2=new Date(fim+'T12:00:00');
-    for(let d=new Date(dIni2);d<=dFim2;d.setDate(d.getDate()+1)){
-      const ds=d.toISOString().split('T')[0];
-      if(!isDiaUtil(ds)||!isDiaCompleto(ds,pf.dias[ds])) continue;
-      const bats=pf.dias[ds];if(!bats||!bats.length) continue;
-      const j=jornadaMin(ds),t=calcTrab(bats),s=t-j;
-      if(s>0) custoExtrasTotal+=s/60*vlrHora;
-      else if(s<0) custoDevendoTotal+=Math.abs(s)/60*vlrHora;
-    }
-  });
-
-  const temSalario=funcionarios.some(f=>f.salario>0);
-  const custoHtml=temSalario?`
-  <div class="tcard" style="margin-bottom:.9rem">
-    <div class="thead-row"><span class="thead-title">💰 Análise de custo — ${perLabel}</span></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:.75rem 1rem">
-      <div style="background:var(--gd);border:1px solid rgba(61,214,140,.2);border-radius:var(--r8);padding:.75rem">
-        <div style="font-size:10px;color:var(--g);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.3rem">Horas extras a pagar</div>
-        <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--g)">R$ ${custoExtrasTotal.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
-        <div style="font-size:10px;color:var(--t2);margin-top:.2rem">custo adicional da equipe</div>
-      </div>
-      <div style="background:var(--rd);border:1px solid rgba(248,113,113,.2);border-radius:var(--r8);padding:.75rem">
-        <div style="font-size:10px;color:var(--r);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.3rem">Horas em débito</div>
-        <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--r)">R$ ${custoDevendoTotal.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
-        <div style="font-size:10px;color:var(--t2);margin-top:.2rem">horas não trabalhadas</div>
-      </div>
-    </div>
-    <div style="padding:.5rem 1rem .75rem;font-size:11px;color:var(--t2)">Valor/hora = Salário ÷ 220h (padrão CLT) · Cadastre salários na aba Equipe</div>
-  </div>`:'';
-
-  html+=`</div>${custoHtml}
-  <div class="tcard">
-    <div class="thead-row">
-      <span class="thead-title">Saldo total — ${perLabel}</span>
-      <span style="font-family:var(--mono);font-size:16px;font-weight:700;color:${gc}">${saldoGeral>=0?'+':''}${fromMin(saldoGeral)}</span>
-    </div>
-    <div style="padding:.75rem 1rem;font-size:12px;color:var(--t2);line-height:1.8">
-      Seg–Qui: 07:00–17:30 (9h líquidas) · Sex: 07:00–16:30 (8h líquidas)<br>
-      Almoço: 12:00–13:30 · Carga semanal: 44h · Tolerância: ${TOL} min
-    </div>
-  </div>`;
-  el.innerHTML=html;
-}
-
-// ===== ATRASOS =====
-async function renderAtrasos(c){
-  c.innerHTML=`
-  <div class="filter-bar">
-    <select id="atr-per" onchange="reloadAtrasos()">
-      <option value="mes">Mês atual</option>
-      <option value="semana">Esta semana</option>
-      <option value="mes-ant">Mês anterior</option>
-      <option value="tudo">Total geral</option>
-    </select>
-  </div>
-  <div id="atr-body"><div class="loading">Carregando...</div></div>`;
-  await reloadAtrasos();
-}
-
-async function reloadAtrasos(){
-  const el=document.getElementById('atr-body');if(!el)return;
-  el.innerHTML='<div class="loading">Calculando...</div>';
-  const per=document.getElementById('atr-per')?.value||'mes';
-  const{ini,fim}=getPeriodo(per);
-  const{data:regs}=await sb.from('iw_registros_ponto').select('*').gte('data_local',ini).lte('data_local',fim).order('id').limit(5000);
-  const todos=regs||[];
-
-  const porCpf={};
-  todos.forEach(r=>{
-    if(!porCpf[r.cpf])porCpf[r.cpf]={nome:r.funcionario_nome,dias:{}};
-    if(!porCpf[r.cpf].dias[r.data_local])porCpf[r.cpf].dias[r.data_local]=[];
-    porCpf[r.cpf].dias[r.data_local].push({hora:r.data_hora_local?.slice(11,16)||'00:00',tipo:r.tipo});
-  });
-
-  const fmap={};funcionarios.forEach(f=>{fmap[f.cpf]=f;});
-  let html='<div class="flist">';
-
-  funcionarios.forEach((f,i)=>{
-    const pf=porCpf[f.cpf]||{dias:{}};
-    const ocorrencias=[];
-
-    const admissaoF=f.admissao||'2026-02-01';
-    const dIni=new Date((ini<admissaoF?admissaoF:ini)+'T12:00:00'),dFim=new Date(fim+'T12:00:00');
-    for(let d=new Date(dIni);d<=dFim;d.setDate(d.getDate()+1)){
-      const ds=d.toISOString().split('T')[0];
-      if(!isDiaUtil(ds))continue; // ignora fins de semana e feriados
-      const bats=pf.dias[ds];
-
-      // Falta
-      if(!bats||!bats.length){
-        ocorrencias.push({tipo:'falta',data:ds,desc:'Falta — sem registro no dia'});
-        continue;
-      }
-
-      const sorted=[...bats].sort((a,b)=>a.hora.localeCompare(b.hora));
-
-      // Atraso na entrada
-      const ent=sorted.find(b=>b.tipo==='ENTRADA'&&toMin(b.hora)<=toMin('10:00'));
-      if(ent){
-        const at=toMin(ent.hora)-toMin(ENTRADA_PAD);
-        if(at>TOL) ocorrencias.push({tipo:'atraso',data:ds,desc:`Entrada às ${ent.hora} — ${at} min de atraso`});
-      }
-
-      // Saída antecipada
-      const saidas=sorted.filter(b=>b.tipo==='SAIDA'&&toMin(b.hora)>=toMin('15:00'));
-      const ultSaida=saidas[saidas.length-1];
-      if(ultSaida){
-        const padSaida=saidaPadrao(ds);
-        const diff=toMin(padSaida)-toMin(ultSaida.hora);
-        if(diff>TOL) ocorrencias.push({tipo:'saida',data:ds,desc:`Saída às ${ultSaida.hora} — ${diff} min antes do horário`});
-      }
-    }
-
-    if(!ocorrencias.length){
-      html+=`<div class="fcard">
-        <div class="frow">
-          <div class="fav" style="background:${f.color}22;color:${f.color}">${f.nome[0]}</div>
-          <div style="flex:1"><div class="fname">${f.nome.split(' ')[0]}</div><div class="fcargo">${f.cargo||'—'}</div></div>
-          <span class="chip g">Sem ocorrências</span>
-        </div>
-      </div>`;
-      return;
-    }
-
-    const nAtrasos=ocorrencias.filter(o=>o.tipo==='atraso').length;
-    const nFaltas=ocorrencias.filter(o=>o.tipo==='falta').length;
-    const nSaidas=ocorrencias.filter(o=>o.tipo==='saida').length;
-
-    const itensHtml=ocorrencias.map(o=>{
-      const cls=o.tipo==='falta'?'r':o.tipo==='atraso'?'o':'b';
-      const icon=o.tipo==='falta'?'✕':o.tipo==='atraso'?'↑':'↓';
-      return`<div class="atr-row">
-        <span class="chip ${cls}" style="flex-shrink:0">${icon}</span>
-        <span style="font-size:11px;color:var(--t2);width:72px;flex-shrink:0">${fmtData(o.data)}</span>
-        <span style="font-size:12px;flex:1">${o.desc}</span>
-      </div>`;
-    }).join('');
-
-    html+=`<div class="fcard">
-      <div class="frow">
-        <div class="fav" style="background:${f.color}22;color:${f.color}">${f.nome[0]}</div>
-        <div style="flex:1"><div class="fname">${f.nome.split(' ')[0]}</div><div class="fcargo">${f.cargo||'—'}</div></div>
-        <div style="display:flex;gap:5px;flex-shrink:0">
-          ${nAtrasos?`<span class="chip o">${nAtrasos} atraso${nAtrasos>1?'s':''}</span>`:''}
-          ${nFaltas?`<span class="chip r">${nFaltas} falta${nFaltas>1?'s':''}</span>`:''}
-          ${nSaidas?`<span class="chip b">${nSaidas} saída ant.</span>`:''}
-        </div>
-      </div>
-      <div style="border-top:1px solid var(--b1);margin-top:.5rem;padding-top:.5rem">${itensHtml}</div>
-    </div>`;
-  });
-
-  html+='</div>';
-  el.innerHTML=html;
-}
-
-// ===== EQUIPE =====
-async function renderEquipe(c){
-  c.innerHTML=`<div class="srow"><h3>Funcionários (${funcionarios.length})</h3><button class="btn-sm accent" onclick="document.getElementById('m-func').classList.add('open')">+ Novo</button></div><div class="flist" id="flist"></div>`;
-  const g=document.getElementById('flist');
-  if(!funcionarios.length){g.innerHTML='<div class="empty">Nenhum funcionário.</div>';return;}
-  funcionarios.forEach(f=>{
-    const af=advertencias.filter(a=>a.funcionario_id===f.id).length;
-    const d=document.createElement('div');d.className='fcard';
+        const vlrHora=f.salario?f.salario/220:0;
+    const fmtDate=ds=>{if(!ds)return'—';const[y,m,d]=ds.split('-');return`${d}/${m}/${y}`;};
+    const fmtAniv=ds=>{if(!ds)return'—';const[y,m,d]=ds.split('-');return`${d}/${m}`;};
+    const salStr=f.salario?'R$ '+Number(f.salario).toLocaleString('pt-BR'):'—';
+    const vhStr=vlrHora?'R$ '+(f.salario/220).toFixed(2):'—';
     d.innerHTML=`<div class="frow">
       <div class="fav" style="background:${f.color}22;color:${f.color}">${f.nome[0]}</div>
-      <div style="flex:1"><div class="fname">${f.nome.split(' ')[0]}</div>
-        <div class="fcargo">${f.cargo||'—'} · CPF <span style="font-family:var(--mono)">${f.cpf||'—'}</span></div></div>
+      <div style="flex:1">
+        <div class="fname">${f.nome.split(' ')[0]}</div>
+        <div class="fcargo">${f.cargo||'—'} · CPF <span style="font-family:var(--mono)">${f.cpf||'—'}</span></div>
+      </div>
     </div>
     <div class="fstats" style="grid-template-columns:1fr 1fr 1fr">
+      <div class="fstat"><div class="fstat-l">Admissão</div><div class="fstat-v" style="font-size:11px">${fmtDate(f.admissao)}</div></div>
+      <div class="fstat"><div class="fstat-l">🎂 Aniversário</div><div class="fstat-v" style="font-size:11px">${fmtAniv(f.aniversario)}</div></div>
+      <div class="fstat"><div class="fstat-l">Advertências</div><div class="fstat-v" style="color:${af?'var(--o)':'var(--t1)'}">${af}</div></div>
+    </div>
+    <div class="fstats" style="grid-template-columns:1fr 1fr 1fr;margin-top:0">
+      <div class="fstat">
+        <div class="fstat-l" style="display:flex;align-items:center;justify-content:space-between">Salário <span onclick="toggleSalario(this)" style="cursor:pointer;font-size:12px" title="Mostrar/ocultar">👁</span></div>
+        <div class="fstat-v sal-hidden" style="color:var(--g);filter:blur(5px);transition:filter .2s">${salStr}</div>
+      </div>
+      <div class="fstat">
+        <div class="fstat-l">Valor/hora</div>
+        <div class="fstat-v sal-hidden" style="filter:blur(5px);transition:filter .2s">${vhStr}</div>
+      </div>
       <div class="fstat"><div class="fstat-l">Carga semanal</div><div class="fstat-v">44h</div></div>
-      <div class="fstat"><div class="fstat-l">Sal&aacute;rio</div><div class="fstat-v" style="color:var(--g)">${f.salario?'R$ '+Number(f.salario).toLocaleString('pt-BR'):'—'}</div></div>
-      <div class="fstat"><div class="fstat-l">Valor/hora</div><div class="fstat-v">${f.salario?'R$ '+(f.salario/220).toFixed(2):'—'}</div></div>
     </div>
     <div class="factions">
       <button class="btn-xs" style="color:var(--acc);border-color:rgba(240,192,64,.3)" onclick="editPin(${f.id})">PIN</button>
-      <button class="btn-xs" style="color:var(--g);border-color:rgba(61,214,140,.3)" onclick="editSalario(${f.id},${f.salario||0})">Salário</button>
+      <button class="btn-xs" style="color:var(--g);border-color:rgba(61,214,140,.3)" onclick="editSalario(${f.id})">Editar</button>
       <button class="btn-xs" style="color:var(--o);border-color:rgba(251,146,60,.3)" onclick='openModalAdv({id:${f.id},nome:"${f.nome}",cpf:"${f.cpf||''}"})'>+ Adv.</button>
     </div>`;
     g.appendChild(d);
