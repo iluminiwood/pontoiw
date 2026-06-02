@@ -613,20 +613,22 @@ async function carregarNoticias(forcar){
   // Usa rss2json.com — converte RSS em JSON com suporte a CORS
   var apiKey=''; // gratuito sem chave para poucos requests
   
-  // Feeds trabalhistas brasileiros válidos
-  var feeds=[
-    {url:'https://www12.senado.leg.br/noticias/tags/Direitos%20Trabalhistas?tipoPaginacao=mais&pageSize=5&format=rss',fonte:'Senado Federal'},
-    {url:'https://www.migalhas.com.br/rss/quentes',fonte:'Migalhas'}
+  // Google News RSS - trabalhista e RH no Brasil (muito confiável)
+  var gnFeeds=[
+    {q:'legislação+trabalhista+brasil',fonte:'Legislação'},
+    {q:'saúde+mental+trabalho+NR01',fonte:'Saúde'},
+    {q:'eSocial+empresas+2026',fonte:'eSocial'}
   ];
-  for(var fi=0;fi<feeds.length;fi++){
+  for(var fi=0;fi<gnFeeds.length;fi++){
     try{
-      var resp=await fetch('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(feeds[fi].url)+'&count=3');
+      var gnUrl='https://news.google.com/rss/search?q='+gnFeeds[fi].q+'&hl=pt-BR&gl=BR&ceid=BR:pt-419';
+      var resp=await fetch('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(gnUrl)+'&count=2');
       if(resp.ok){
         var feed=await resp.json();
-        if(feed.items&&feed.status==='ok'){
-          var fonte=feeds[fi].fonte;
-          todos=todos.concat(feed.items.slice(0,3).map(function(i){
-            var desc=(i.description||i.content||'').replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').trim().slice(0,180);
+        if(feed.items&&feed.status==='ok'&&feed.items.length){
+          var fonte=gnFeeds[fi].fonte;
+          todos=todos.concat(feed.items.slice(0,2).map(function(i){
+            var desc=(i.description||'').replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').trim().slice(0,180);
             return {titulo:i.title,resumo:desc||'Clique para ler mais.',link:i.link,data:i.pubDate,fonte:fonte};
           }));
         }
@@ -634,40 +636,36 @@ async function carregarNoticias(forcar){
     }catch(e){}
   }
 
-  // Se não conseguiu nada, mostra links úteis
+  // Se não conseguiu nada via RSS, mostra banners com informações fixas relevantes
   if(!todos.length){
-    newsCache='<div style="padding:.5rem 0">'
-      +'<div style="font-size:12px;color:var(--t2);margin-bottom:.75rem">Links úteis para consulta:</div>'
-      +[
-        {titulo:'Ministério do Trabalho e Emprego',url:'https://www.gov.br/trabalho-e-emprego',desc:'Legislação, portarias e notícias oficiais'},
-        {titulo:'eSocial',url:'https://www.gov.br/esocial',desc:'Obrigações e tabelas atualizadas'},
-        {titulo:'NR-01 — Saúde Mental',url:'https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/ctpp-nrs/normas-regulamentadoras-nrs/nr-01',desc:'Gestão de riscos psicossociais'},
-        {titulo:'Portal eSocial Empresas',url:'https://esocial.fazenda.gov.br',desc:'Envio de eventos e consultas'}
-      ].map(function(l){
-        return '<a href="'+l.url+'" target="_blank" style="display:flex;flex-direction:column;padding:.6rem 0;border-bottom:1px solid rgba(42,42,50,.3);text-decoration:none">'
-          +'<span style="font-size:13px;font-weight:700;color:var(--acc)">'+l.titulo+' ↗</span>'
-          +'<span style="font-size:11px;color:var(--t2);margin-top:2px">'+l.desc+'</span></a>';
-      }).join('')
-      +'</div>';
-    newsCacheTime=Date.now();
-    el.innerHTML=newsCache;
-    return;
+    var estaticos=[
+      {titulo:'NR-01 atualizada — Saúde Mental obrigatória',resumo:'A nova NR-01 exige que empresas incluam riscos psicossociais no Gerenciamento de Riscos Ocupacionais (GRO). Prazo para adequação já vigente. Empresas devem implementar medidas de prevenção ao estresse e burnout.',fonte:'Legislação',url:'https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/ctpp-nrs/normas-regulamentadoras-nrs/nr-01',urgente:true},
+      {titulo:'Isenção de IR para rendimentos até R$ 5.000',resumo:'A partir de 2026 rendimentos mensais de até R$ 5.000 estão isentos do IRRF. Empresas devem revisar o cálculo da folha e atualizar parametrizações do sistema para aplicar a nova faixa corretamente.',fonte:'Legislação',url:'https://www.gov.br/receitafederal',urgente:true},
+      {titulo:'eSocial — Eventos de SST obrigatórios',resumo:'Todas as empresas devem enviar eventos de Saúde e Segurança do Trabalho pelo eSocial, incluindo ASO, CAT e monitoramento de saúde. Fique em dia para evitar multas e autuações.',fonte:'eSocial',url:'https://www.gov.br/esocial',urgente:false},
+      {titulo:'Redução da jornada de trabalho em debate',resumo:'Proposta de redução da jornada semanal de 44h para 40h e fim da escala 6x1 segue em tramitação no Senado Federal como prioridade legislativa para 2026.',fonte:'Legislação',url:'https://www12.senado.leg.br/noticias/tags/Direitos%20Trabalhistas',urgente:false}
+    ];
+    todos=estaticos;
   }
 
-  // Monta o feed com as notícias encontradas
+  // Monta banners clicáveis
+  var catColors2={'Legislação':'var(--bl)','Saúde':'var(--g)','eSocial':'var(--o)','RH':'var(--pu)','Geral':'var(--acc)'};
   newsCache=todos.slice(0,5).map(function(item){
-    var data=item.data?new Date(item.data).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}):'';
-    return '<div style="padding:.75rem 0;border-bottom:1px solid rgba(42,42,50,.4)">'
-      +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:.3rem">'
-      +'<span class="chip b">'+item.fonte+'</span>'
+    var data=item.data?new Date(item.data).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):'';
+    var cor=catColors2[item.fonte]||'var(--bl)';
+    var url=item.link||item.url||'#';
+    var titulo=(item.titulo||'').replace(/ - .*$/,'').replace(/ – .*$/,'').slice(0,80);
+    var resumo=(item.resumo||'').slice(0,200);
+    return '<a href="'+url+'" target="_blank" style="text-decoration:none;display:block">'
+      +'<div style="border:1px solid '+cor+'33;border-left:3px solid '+cor+';border-radius:var(--r8);padding:.75rem 1rem;margin-bottom:8px;background:'+cor+'08;cursor:pointer">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.35rem">'
+      +'<span style="font-size:10px;font-weight:700;color:'+cor+';text-transform:uppercase;letter-spacing:.05em">'+item.fonte+'</span>'
       +(data?'<span style="font-size:10px;color:var(--t3)">'+data+'</span>':'')
       +'</div>'
-      +'<a href="'+(item.link||'#')+'" target="_blank" style="text-decoration:none">'
-      +'<div style="font-size:13px;font-weight:700;margin-bottom:.25rem;color:var(--t1)">'+item.titulo+' ↗</div></a>'
-      +'<div style="font-size:12px;color:var(--t2);line-height:1.5">'+item.resumo+'</div>'
-      +'</div>';
+      +'<div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:.3rem;line-height:1.3">'+titulo+' <span style="color:'+cor+'">↗</span></div>'
+      +'<div style="font-size:12px;color:var(--t2);line-height:1.5">'+resumo+'</div>'
+      +'</div></a>';
   }).join('')
-  +'<div style="font-size:10px;color:var(--t3);margin-top:.5rem;text-align:right">Atualizado: '+new Date().toLocaleString('pt-BR')+'</div>';
+  +'<div style="font-size:10px;color:var(--t3);margin-top:.25rem;text-align:right">Atualizado: '+new Date().toLocaleString('pt-BR')+'</div>';
   newsCacheTime=Date.now();
   el.innerHTML=newsCache;
 }
