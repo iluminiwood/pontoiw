@@ -520,8 +520,8 @@ async function renderDash(c){
   const{data:rsem}=await sb.from('iw_registros_ponto').select('data_local').gte('data_local',semIni).lte('data_local',hoje);
   const diasComReg=new Set((rsem||[]).map(r=>r.data_local));
   let faltas=0;
-  for(let d=new Date(semIni+'T12:00:00');d<new Date(hoje+'T12:00:00');d.setDate(d.getDate()+1)){
-    const ds=d.toISOString().split('T')[0];
+  for(let dia=new Date(semIni+'T12:00:00');dia<new Date(hoje+'T12:00:00');dia.setDate(dia.getDate()+1)){
+    const ds=dia.toISOString().split('T')[0];
     if(isDiaUtil(ds)&&!diasComReg.has(ds)) faltas++;
   }
 
@@ -590,55 +590,78 @@ async function renderDash(c){
 }
 
 // ===== FEED DE NOTICIAS =====
+// Usa RSS2JSON para converter feeds de notícias trabalhistas em tempo real
 let newsCache=null, newsCacheTime=0;
+const RSS_FEEDS=[
+  {url:'https://www.gov.br/trabalho-e-emprego/pt-br/noticias-e-conteudo/RSS',label:'MTE'},
+  {url:'https://www.jusbrasil.com.br/topicos/rss/direito-trabalhista',label:'JusBrasil'},
+  {url:'https://feeds.feedburner.com/blogdaclaudiaalves',label:'Trabalhista'}
+];
+
 async function carregarNoticias(forcar){
   var el=document.getElementById("news-body");
   if(!el) return;
   var agr=Date.now();
-  if(!forcar && newsCache && agr-newsCacheTime<2*60*60*1000){el.innerHTML=newsCache;return;}
-  el.innerHTML="<span style=\"color:var(--t2);font-size:12px\">Buscando novidades...</span>";
-  var prompt="Voce e um assistente de RH brasileiro. Gere 4 informacoes importantes e atuais sobre legislacao trabalhista, saude do trabalhador, eSocial ou direitos trabalhistas. Responda SOMENTE em JSON sem markdown: {items:[{titulo:str,resumo:str,categoria:str,urgente:bool}]}. Categorias: Legislacao, Saude, eSocial, RH.";
+  if(!forcar && newsCache && agr-newsCacheTime<60*60*1000){el.innerHTML=newsCache;return;}
+  el.innerHTML='<span style="color:var(--t2);font-size:12px">Buscando notícias trabalhistas...</span>';
+  
+  var todos=[];
+  // Usa rss2json.com — converte RSS em JSON com suporte a CORS
+  var apiKey=''; // gratuito sem chave para poucos requests
+  
   try{
-    var resp=await fetch("https://api.anthropic.com/v1/messages",{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({
-        model:"claude-sonnet-4-20250514",
-        max_tokens:1000,
-        messages:[{role:"user",content:prompt}]
-      })
-    });
-    var data=await resp.json();
-    var txt=(data.content&&data.content[0]&&data.content[0].text)||"{}";
-    var parsed;
-    try{
-      var m=txt.match(/\{[\s\S]*\}/);
-      parsed=m?JSON.parse(m[0]):{items:[]};
-    }catch(e){parsed={items:[]};}
-    var items=parsed.items||[];
-    var catColors={
-      "Legislacao":"var(--bl)","Legislação":"var(--bl)",
-      "Saude":"var(--g)","Saúde":"var(--g)",
-      "eSocial":"var(--o)","RH":"var(--pu)"
-    };
-    if(!items.length){el.innerHTML="<div class=\"empty\">Sem informações disponíveis.</div>";return;}
-    newsCache=items.map(function(item){
-      var cor=catColors[item.categoria]||"var(--bl)";
-      return "<div style=\"padding:.75rem 0;border-bottom:1px solid rgba(42,42,50,.4)\">"
-        +"<div style=\"display:flex;align-items:center;gap:6px;margin-bottom:.3rem\">"
-        +"<span class=\"chip\" style=\"background:"+cor+"22;color:"+cor+"\">"+item.categoria+"</span>"
-        +(item.urgente?"<span class=\"chip r\">Importante</span>":"")
-        +"</div>"
-        +"<div style=\"font-size:13px;font-weight:700;margin-bottom:.25rem;color:var(--t1)\">"+item.titulo+"</div>"
-        +"<div style=\"font-size:12px;color:var(--t2);line-height:1.5\">"+item.resumo+"</div>"
-        +"</div>";
-    }).join("")
-    +"<div style=\"font-size:10px;color:var(--t3);margin-top:.5rem;text-align:right\">Atualizado: "+new Date().toLocaleString("pt-BR")+"</div>";
+    // Busca do Ministério do Trabalho
+    var r1=await fetch('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent('https://www.gov.br/trabalho-e-emprego/pt-br/noticias-e-conteudo/RSS')+'&count=3');
+    if(r1.ok){
+      var d1=await r1.json();
+      if(d1.items) todos=todos.concat(d1.items.map(function(i){
+        return {titulo:i.title,resumo:i.description?i.description.replace(/<[^>]+>/g,'').slice(0,150)+'...':'',link:i.link,data:i.pubDate,fonte:'Ministério do Trabalho'};
+      }));
+    }
+  }catch(e){}
+  
+  try{
+    // Busca do Portal RH
+    var r2=await fetch('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent('https://www.portaldatransparencia.gov.br/rss/notas-de-acao-de-gestao')+'&count=2');
+    if(r2.ok){var d2=await r2.json();if(d2.items) todos=todos.concat(d2.items.map(function(i){return{titulo:i.title,resumo:(i.description||'').replace(/<[^>]+>/g,'').slice(0,150)+'...',link:i.link,data:i.pubDate,fonte:'Portal Transparência'};}));}
+  }catch(e){}
+
+  // Se não conseguiu nada, mostra links úteis
+  if(!todos.length){
+    newsCache='<div style="padding:.5rem 0">'
+      +'<div style="font-size:12px;color:var(--t2);margin-bottom:.75rem">Links úteis para consulta:</div>'
+      +[
+        {titulo:'Ministério do Trabalho e Emprego',url:'https://www.gov.br/trabalho-e-emprego',desc:'Legislação, portarias e notícias oficiais'},
+        {titulo:'eSocial',url:'https://www.gov.br/esocial',desc:'Obrigações e tabelas atualizadas'},
+        {titulo:'NR-01 — Saúde Mental',url:'https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/ctpp-nrs/normas-regulamentadoras-nrs/nr-01',desc:'Gestão de riscos psicossociais'},
+        {titulo:'Portal eSocial Empresas',url:'https://esocial.fazenda.gov.br',desc:'Envio de eventos e consultas'}
+      ].map(function(l){
+        return '<a href="'+l.url+'" target="_blank" style="display:flex;flex-direction:column;padding:.6rem 0;border-bottom:1px solid rgba(42,42,50,.3);text-decoration:none">'
+          +'<span style="font-size:13px;font-weight:700;color:var(--acc)">'+l.titulo+' ↗</span>'
+          +'<span style="font-size:11px;color:var(--t2);margin-top:2px">'+l.desc+'</span></a>';
+      }).join('')
+      +'</div>';
     newsCacheTime=Date.now();
     el.innerHTML=newsCache;
-  }catch(e){
-    el.innerHTML="<span style=\"color:var(--t3);font-size:12px\">Não foi possível carregar. <span style=\"cursor:pointer;color:var(--acc)\" onclick=\"carregarNoticias(true)\">Tentar novamente</span></span>";
+    return;
   }
+
+  // Monta o feed com as notícias encontradas
+  newsCache=todos.slice(0,5).map(function(item){
+    var data=item.data?new Date(item.data).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}):'';
+    return '<div style="padding:.75rem 0;border-bottom:1px solid rgba(42,42,50,.4)">'
+      +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:.3rem">'
+      +'<span class="chip b">'+item.fonte+'</span>'
+      +(data?'<span style="font-size:10px;color:var(--t3)">'+data+'</span>':'')
+      +'</div>'
+      +'<a href="'+(item.link||'#')+'" target="_blank" style="text-decoration:none">'
+      +'<div style="font-size:13px;font-weight:700;margin-bottom:.25rem;color:var(--t1)">'+item.titulo+' ↗</div></a>'
+      +'<div style="font-size:12px;color:var(--t2);line-height:1.5">'+item.resumo+'</div>'
+      +'</div>';
+  }).join('')
+  +'<div style="font-size:10px;color:var(--t3);margin-top:.5rem;text-align:right">Atualizado: '+new Date().toLocaleString('pt-BR')+'</div>';
+  newsCacheTime=Date.now();
+  el.innerHTML=newsCache;
 }
 
 function calcSaldoRegs(regs){
@@ -906,8 +929,8 @@ async function reloadBanco(){
     // Calcula dias esperados no período
     const admissao=f.admissao||'2026-02-01';
     const dIni=new Date((ini<admissao?admissao:ini)+'T12:00:00'),dFim=new Date(fim+'T12:00:00');
-    for(let d=new Date(dIni);d<=dFim;d.setDate(d.getDate()+1)){
-      const ds=d.toISOString().split('T')[0];
+    for(let dia=new Date(dIni);dia<=dFim;dia.setDate(dia.getDate()+1)){
+      const ds=dia.toISOString().split('T')[0];
       if(!isDiaUtil(ds)) continue; // ignora fins de semana e feriados
       const bats=pf.dias[ds];
       if(!bats||!bats.length){faltas++;continue;}
@@ -1166,8 +1189,8 @@ async function reloadAtrasos(){
     const admF=f.admissao||'2026-02-01';
     const dIni=new Date((ini<admF?admF:ini)+'T12:00:00'),dFim=new Date(fim+'T12:00:00');
     const hoje=new Date().toISOString().split('T')[0];
-    for(let d=new Date(dIni);d<=dFim;d.setDate(d.getDate()+1)){
-      const ds=d.toISOString().split('T')[0];
+    for(let dia=new Date(dIni);dia<=dFim;dia.setDate(dia.getDate()+1)){
+      const ds=dia.toISOString().split('T')[0];
       if(!isDiaUtil(ds)||ds>=hoje)continue;
       const bats=pf.dias[ds];
       if(!bats||!bats.length){ocorrencias.push({tipo:'falta',data:ds,desc:'Falta — sem registro no dia'});continue;}
