@@ -485,6 +485,10 @@ async function loadBase(){
 
 // ===== TABS =====
 function goTab(tab){
+  // Para auto-refresh da aba batidas ao sair dela
+  if(tab!=='batidas'&&typeof batidasAutoRefresh!=='undefined'&&batidasAutoRefresh){
+    clearInterval(batidasAutoRefresh);batidasAutoRefresh=null;
+  }
   currentTab=tab;
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
   document.getElementById('t-'+tab)?.classList.add('on');
@@ -609,22 +613,26 @@ async function carregarNoticias(forcar){
   // Usa rss2json.com — converte RSS em JSON com suporte a CORS
   var apiKey=''; // gratuito sem chave para poucos requests
   
-  try{
-    // Busca do Ministério do Trabalho
-    var r1=await fetch('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent('https://www.gov.br/trabalho-e-emprego/pt-br/noticias-e-conteudo/RSS')+'&count=3');
-    if(r1.ok){
-      var d1=await r1.json();
-      if(d1.items) todos=todos.concat(d1.items.map(function(i){
-        return {titulo:i.title,resumo:i.description?i.description.replace(/<[^>]+>/g,'').slice(0,150)+'...':'',link:i.link,data:i.pubDate,fonte:'Ministério do Trabalho'};
-      }));
-    }
-  }catch(e){}
-  
-  try{
-    // Busca do Portal RH
-    var r2=await fetch('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent('https://www.portaldatransparencia.gov.br/rss/notas-de-acao-de-gestao')+'&count=2');
-    if(r2.ok){var d2=await r2.json();if(d2.items) todos=todos.concat(d2.items.map(function(i){return{titulo:i.title,resumo:(i.description||'').replace(/<[^>]+>/g,'').slice(0,150)+'...',link:i.link,data:i.pubDate,fonte:'Portal Transparência'};}));}
-  }catch(e){}
+  // Feeds trabalhistas brasileiros válidos
+  var feeds=[
+    {url:'https://www12.senado.leg.br/noticias/tags/Direitos%20Trabalhistas?tipoPaginacao=mais&pageSize=5&format=rss',fonte:'Senado Federal'},
+    {url:'https://www.migalhas.com.br/rss/quentes',fonte:'Migalhas'}
+  ];
+  for(var fi=0;fi<feeds.length;fi++){
+    try{
+      var resp=await fetch('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(feeds[fi].url)+'&count=3');
+      if(resp.ok){
+        var feed=await resp.json();
+        if(feed.items&&feed.status==='ok'){
+          var fonte=feeds[fi].fonte;
+          todos=todos.concat(feed.items.slice(0,3).map(function(i){
+            var desc=(i.description||i.content||'').replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').trim().slice(0,180);
+            return {titulo:i.title,resumo:desc||'Clique para ler mais.',link:i.link,data:i.pubDate,fonte:fonte};
+          }));
+        }
+      }
+    }catch(e){}
+  }
 
   // Se não conseguiu nada, mostra links úteis
   if(!todos.length){
@@ -722,9 +730,11 @@ function renderRanking(regs){
 }
 
 // ===== BATIDAS =====
+let batidasAutoRefresh=null;
 async function renderBatidas(c){
+  if(batidasAutoRefresh) clearInterval(batidasAutoRefresh);
   c.innerHTML=`
-  <div class="filter-bar">
+  <div class="filter-bar" style="align-items:center">
     <select id="b-periodo" onchange="reloadBatidas()">
       <option value="mes">Mês atual</option>
       <option value="mes-ant">Mês anterior</option>
@@ -735,9 +745,18 @@ async function renderBatidas(c){
       <option value="">Todos funcionários</option>
       ${funcionarios.map(f=>`<option value="${f.cpf}">${f.nome.split(' ')[0]}</option>`).join('')}
     </select>
+    <span id="bat-refresh-lbl" style="font-size:11px;color:var(--t3);white-space:nowrap"></span>
   </div>
   <div id="bat-body"><div class="loading">Carregando...</div></div>`;
   await reloadBatidas();
+  // Auto-refresh a cada 2 minutos
+  batidasAutoRefresh=setInterval(async()=>{
+    if(currentTab==='batidas'){
+      await reloadBatidas();
+      const el=document.getElementById('bat-refresh-lbl');
+      if(el) el.textContent='Atualizado: '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    }
+  },2*60*1000);
 }
 
 async function reloadBatidas(){
@@ -746,10 +765,18 @@ async function reloadBatidas(){
   const per=document.getElementById('b-periodo')?.value||'mes';
   const cpfF=document.getElementById('b-func')?.value||'';
   const{ini,fim}=getPeriodo(per);
-  let q=sb.from('iw_registros_ponto').select('*').gte('data_local',ini).lte('data_local',fim).order('id').limit(5000);
-  if(cpfF) q=q.eq('cpf',cpfF);
-  const{data:regs}=await q;
-  const todos=regs||[];
+  // Busca em lotes para garantir todos os registros (Supabase limita a 1000 por vez)
+  let todos=[];
+  let from=0;
+  while(true){
+    let q=sb.from('iw_registros_ponto').select('*').gte('data_local',ini).lte('data_local',fim).order('id').range(from,from+999);
+    if(cpfF) q=q.eq('cpf',cpfF);
+    const{data:lote}=await q;
+    if(!lote||!lote.length) break;
+    todos=todos.concat(lote);
+    if(lote.length<1000) break;
+    from+=1000;
+  }
 
   const porCpf={};
   todos.forEach(r=>{
