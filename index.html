@@ -1138,9 +1138,8 @@ async function saveFunc(){
   ['f-nome','f-cargo','f-pin','f-cpf','f-salario','f-admissao','f-aniversario'].forEach(id=>document.getElementById(id).value='');
   closeModals();await loadBase();renderEquipe(document.getElementById('content'));
 }
-</script>
-</body>
-</htmlasync function renderAtrasos(c){
+
+async function renderAtrasos(c){
   c.innerHTML=`<div class="filter-bar"><select id="atr-per" onchange="reloadAtrasos()">
     <option value="mes">Mês atual</option><option value="semana">Esta semana</option>
     <option value="mes-ant">Mês anterior</option><option value="tudo">Total geral</option>
@@ -1197,4 +1196,6 @@ async function reloadAtrasos(){
   el.innerHTML=html;
 }
 
->
+</script>
+</body>
+</html
