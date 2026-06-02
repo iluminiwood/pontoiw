@@ -594,79 +594,33 @@ async function renderDash(c){
 }
 
 // ===== FEED DE NOTICIAS =====
-// Usa RSS2JSON para converter feeds de notícias trabalhistas em tempo real
-let newsCache=null, newsCacheTime=0;
-const RSS_FEEDS=[
-  {url:'https://www.gov.br/trabalho-e-emprego/pt-br/noticias-e-conteudo/RSS',label:'MTE'},
-  {url:'https://www.jusbrasil.com.br/topicos/rss/direito-trabalhista',label:'JusBrasil'},
-  {url:'https://feeds.feedburner.com/blogdaclaudiaalves',label:'Trabalhista'}
+// Conteúdo curado e atualizado — clique para saber mais
+var NOTICIAS_FIXAS=[
+  {titulo:'NR-01 atualizada — Saúde Mental obrigatória',resumo:'Empresas devem incluir riscos psicossociais no GRO (Gerenciamento de Riscos Ocupacionais). Prevenção ao estresse, burnout e assédio moral são exigências vigentes. Prazo para adequação já em vigor.',fonte:'Saúde',url:'https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/ctpp-nrs/normas-regulamentadoras-nrs/nr-01',urgente:true},
+  {titulo:'Isenção de IR até R$ 5.000 — impacto na folha',resumo:'A partir de 2026 rendimentos mensais de até R$ 5.000 estão isentos do IRRF. Empresas precisam revisar cálculo da folha de pagamento e atualizar parametrizações do sistema para não reter indevidamente.',fonte:'Legislação',url:'https://www.gov.br/receitafederal',urgente:true},
+  {titulo:'eSocial — Eventos de SST obrigatórios para todos',resumo:'Todas as empresas devem enviar eventos de Saúde e Segurança no Trabalho pelo eSocial: ASO (Atestado de Saúde Ocupacional), CAT (Comunicação de Acidente de Trabalho) e monitoramento de saúde dos trabalhadores.',fonte:'eSocial',url:'https://www.gov.br/esocial',urgente:false},
+  {titulo:'Redução da jornada — 40h semanais em debate',resumo:'Proposta de redução da jornada de 44h para 40h semanais e fim da escala 6x1 tramita no Senado como prioridade legislativa. Empresas devem acompanhar os avanços para se preparar com antecedência.',fonte:'Legislação',url:'https://www12.senado.leg.br/noticias/tags/Direitos%20Trabalhistas',urgente:false},
+  {titulo:'FGTS Digital — recolhimento até o dia 20',resumo:'O FGTS Digital substituiu a GFIP. O prazo de recolhimento mensal é até o dia 20 do mês seguinte. Empresas devem manter o cadastro atualizado e realizar os depósitos para evitar multas e encargos.',fonte:'eSocial',url:'https://www.gov.br/trabalho-e-emprego/pt-br/servicos/empregador/fgts',urgente:false},
+  {titulo:'13º Salário — parcelas e prazos em 2026',resumo:'Primeira parcela do 13º deve ser paga entre fevereiro e novembro. Segunda parcela até 20 de dezembro. Empresas podem optar por antecipar nas férias. Atenção ao cálculo correto com base no salário integral.',fonte:'RH',url:'https://www.gov.br/trabalho-e-emprego',urgente:false}
 ];
-
+let newsCache=null, newsCacheTime=0;
 async function carregarNoticias(forcar){
   var el=document.getElementById("news-body");
   if(!el) return;
-  var agr=Date.now();
-  if(!forcar && newsCache && agr-newsCacheTime<60*60*1000){el.innerHTML=newsCache;return;}
-  el.innerHTML='<span style="color:var(--t2);font-size:12px">Buscando notícias trabalhistas...</span>';
-  
-  var todos=[];
-  // Usa rss2json.com — converte RSS em JSON com suporte a CORS
-  var apiKey=''; // gratuito sem chave para poucos requests
-  
-  // Google News RSS - trabalhista e RH no Brasil (muito confiável)
-  var gnFeeds=[
-    {q:'legislação+trabalhista+brasil',fonte:'Legislação'},
-    {q:'saúde+mental+trabalho+NR01',fonte:'Saúde'},
-    {q:'eSocial+empresas+2026',fonte:'eSocial'}
-  ];
-  for(var fi=0;fi<gnFeeds.length;fi++){
-    try{
-      var gnUrl='https://news.google.com/rss/search?q='+gnFeeds[fi].q+'&hl=pt-BR&gl=BR&ceid=BR:pt-419';
-      var resp=await fetch('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(gnUrl)+'&count=2');
-      if(resp.ok){
-        var feed=await resp.json();
-        if(feed.items&&feed.status==='ok'&&feed.items.length){
-          var fonte=gnFeeds[fi].fonte;
-          todos=todos.concat(feed.items.slice(0,2).map(function(i){
-            var desc=(i.description||'').replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').trim().slice(0,180);
-            return {titulo:i.title,resumo:desc||'Clique para ler mais.',link:i.link,data:i.pubDate,fonte:fonte};
-          }));
-        }
-      }
-    }catch(e){}
-  }
-
-  // Se não conseguiu nada via RSS, mostra banners com informações fixas relevantes
-  if(!todos.length){
-    var estaticos=[
-      {titulo:'NR-01 atualizada — Saúde Mental obrigatória',resumo:'A nova NR-01 exige que empresas incluam riscos psicossociais no Gerenciamento de Riscos Ocupacionais (GRO). Prazo para adequação já vigente. Empresas devem implementar medidas de prevenção ao estresse e burnout.',fonte:'Legislação',url:'https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/ctpp-nrs/normas-regulamentadoras-nrs/nr-01',urgente:true},
-      {titulo:'Isenção de IR para rendimentos até R$ 5.000',resumo:'A partir de 2026 rendimentos mensais de até R$ 5.000 estão isentos do IRRF. Empresas devem revisar o cálculo da folha e atualizar parametrizações do sistema para aplicar a nova faixa corretamente.',fonte:'Legislação',url:'https://www.gov.br/receitafederal',urgente:true},
-      {titulo:'eSocial — Eventos de SST obrigatórios',resumo:'Todas as empresas devem enviar eventos de Saúde e Segurança do Trabalho pelo eSocial, incluindo ASO, CAT e monitoramento de saúde. Fique em dia para evitar multas e autuações.',fonte:'eSocial',url:'https://www.gov.br/esocial',urgente:false},
-      {titulo:'Redução da jornada de trabalho em debate',resumo:'Proposta de redução da jornada semanal de 44h para 40h e fim da escala 6x1 segue em tramitação no Senado Federal como prioridade legislativa para 2026.',fonte:'Legislação',url:'https://www12.senado.leg.br/noticias/tags/Direitos%20Trabalhistas',urgente:false}
-    ];
-    todos=estaticos;
-  }
-
-  // Monta banners clicáveis
-  var catColors2={'Legislação':'var(--bl)','Saúde':'var(--g)','eSocial':'var(--o)','RH':'var(--pu)','Geral':'var(--acc)'};
-  newsCache=todos.slice(0,5).map(function(item){
-    var data=item.data?new Date(item.data).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):'';
+  if(!forcar && newsCache){el.innerHTML=newsCache;return;}
+  var catColors2={'Legislação':'var(--bl)','Saúde':'var(--g)','eSocial':'var(--o)','RH':'var(--pu)'};
+  newsCache=NOTICIAS_FIXAS.map(function(item){
     var cor=catColors2[item.fonte]||'var(--bl)';
-    var url=item.link||item.url||'#';
-    var titulo=(item.titulo||'').replace(/ - .*$/,'').replace(/ – .*$/,'').slice(0,80);
-    var resumo=(item.resumo||'').slice(0,200);
-    return '<a href="'+url+'" target="_blank" style="text-decoration:none;display:block">'
+    return '<a href="'+item.url+'" target="_blank" style="text-decoration:none;display:block">'
       +'<div style="border:1px solid '+cor+'33;border-left:3px solid '+cor+';border-radius:var(--r8);padding:.75rem 1rem;margin-bottom:8px;background:'+cor+'08;cursor:pointer">'
       +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.35rem">'
       +'<span style="font-size:10px;font-weight:700;color:'+cor+';text-transform:uppercase;letter-spacing:.05em">'+item.fonte+'</span>'
-      +(data?'<span style="font-size:10px;color:var(--t3)">'+data+'</span>':'')
+      +(item.urgente?'<span class="chip r" style="font-size:9px">Importante</span>':'')
       +'</div>'
-      +'<div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:.3rem;line-height:1.3">'+titulo+' <span style="color:'+cor+'">↗</span></div>'
-      +'<div style="font-size:12px;color:var(--t2);line-height:1.5">'+resumo+'</div>'
+      +'<div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:.35rem;line-height:1.3">'+item.titulo+' <span style="color:'+cor+'">↗</span></div>'
+      +'<div style="font-size:12px;color:var(--t2);line-height:1.5">'+item.resumo+'</div>'
       +'</div></a>';
-  }).join('')
-  +'<div style="font-size:10px;color:var(--t3);margin-top:.25rem;text-align:right">Atualizado: '+new Date().toLocaleString('pt-BR')+'</div>';
-  newsCacheTime=Date.now();
+  }).join('');
   el.innerHTML=newsCache;
 }
 
