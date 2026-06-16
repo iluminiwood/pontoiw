@@ -518,11 +518,14 @@ async function doLogin(){
     document.getElementById('login').style.display='none';
     document.getElementById('app').style.cssText='display:flex;flex-direction:column;';
     await initApp();
-    // Esconde todas as abas exceto EPIs
+    // Mostra só as abas permitidas para o encarregado
     document.querySelectorAll('.tab').forEach(t=>t.style.display='none');
-    const tabEpis=document.getElementById('t-epis');
-    if(tabEpis){tabEpis.style.display='';tabEpis.classList.add('on');}
-    goTab('epis');
+    ['t-dash','t-atrasos','t-epis','t-adv'].forEach(id=>{
+      const tab=document.getElementById(id);
+      if(tab) tab.style.display='';
+    });
+    document.getElementById('t-dash')?.classList.add('on');
+    goTab('dash');
     resetSession();
     return;
   }
@@ -677,8 +680,8 @@ async function renderDash(c){
 
   // Ranking separado para não travar
   renderRanking(rm||[]);
-  // Feed de notícias
-  carregarNoticias();
+  // Feed de notícias — só para admin
+  if(perfilUsuario==='admin') carregarNoticias();
 }
 
 // ===== FEED DE NOTICIAS =====
