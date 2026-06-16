@@ -268,14 +268,8 @@ body.light #nav-admin,body.light #nav-enc{
 body.light .ni{color:rgba(0,0,0,.28);}
 body.light .nl{color:rgba(0,0,0,.28);}
 body.light .nb.on .ni,body.light .nb.on .nl{color:#b87800;}
-@media(min-width:900px){
-  #nav-admin,#nav-enc{display:none!important;}
-  .tabs-pc{display:flex!important;}
-}
-@media(max-width:899px){
-  .tabs-pc{display:none!important;}
-  .content-wrap{padding-bottom:100px!important;}
-}
+
+
 
 .tabs-pc{flex-direction:row;overflow-x:auto;border-bottom:1px solid var(--b1);padding:0 1rem;scrollbar-width:none;flex-shrink:0;}
 .tabs-pc::-webkit-scrollbar{display:none;}
@@ -317,7 +311,7 @@ body.light .nb.on .ni,body.light .nb.on .nl{color:#b87800;}
   <!-- TABS PC — visíveis só no desktop via CSS -->
   <div class="tabs-pc" id="tabs-pc-admin" style="display:none"></div>
   <div class="tabs-pc" id="tabs-pc-enc" style="display:none"></div>
-  <div class="content" id="content" class="content-wrap"></div>
+  <div class="content" id="content" class="content" style="padding-bottom:96px"></div>
 </div>
 
 <!-- MODAL EDIT BATIDA -->
@@ -586,7 +580,7 @@ async function doLogin(){
     // Carrega dados ANTES de mostrar qualquer coisa
     await initApp();
     initNavPC('enc');
-    document.getElementById('nav-enc').style.display='';
+    document.getElementById('nav-enc').style.display='flex';
     goTab('dash');
     resetSession();
     return;
@@ -600,7 +594,7 @@ async function doLogin(){
     document.getElementById('app').style.cssText='display:flex;flex-direction:column;';
     await initApp();
     initNavPC('admin');
-    document.getElementById('nav-admin').style.display='';
+    document.getElementById('nav-admin').style.display='flex';
     goTab('dash');resetSession();
   } else {
     loginAttempts++;
