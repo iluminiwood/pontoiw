@@ -534,7 +534,6 @@ async function doLogin(){
     document.getElementById('app').style.cssText='display:flex;flex-direction:column;';
     // Carrega dados ANTES de mostrar qualquer coisa
     await initApp();
-    initNavPC('enc');
     document.getElementById('tabs-enc').style.display='flex';
     goTab('dash');
     resetSession();
@@ -548,7 +547,6 @@ async function doLogin(){
     document.getElementById('login').style.display='none';
     document.getElementById('app').style.cssText='display:flex;flex-direction:column;';
     await initApp();
-    initNavPC('admin');
     document.getElementById('tabs-admin').style.display='flex';
     goTab('dash');resetSession();
   } else {
