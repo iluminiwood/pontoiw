@@ -248,6 +248,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <div class="tab" onclick="goTab('atrasos')" id="t-atrasos">Atrasos</div>
     <div class="tab" onclick="goTab('equipe')" id="t-equipe">Equipe</div>
     <div class="tab" onclick="goTab('ferias')" id="t-ferias">Férias</div>
+    <div class="tab" onclick="goTab('epis')" id="t-epis">EPIs</div>
     <div class="tab" onclick="goTab('adv')" id="t-adv">Advertências</div>
   </div>
   <div class="content" id="content"></div>
@@ -300,6 +301,42 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <div class="mactions">
       <button class="btn-sm" onclick="closeModals()">Cancelar</button>
       <button class="btn" onclick="saveFuncEdit()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NOVA ENTREGA EPI -->
+<div class="moverlay" id="m-epi-entrega">
+  <div class="modal" style="max-width:480px">
+    <div class="mhandle"></div>
+    <div class="mtitle" id="m-epi-title">Nova entrega de EPI</div>
+    <div class="msub" id="m-epi-sub"></div>
+    <div id="epi-checklist" style="max-height:220px;overflow-y:auto;margin:.75rem 0"></div>
+    <div class="field"><label>Observação</label><input type="text" id="epi-obs" placeholder="Opcional"></div>
+    <div class="field"><label>Assinatura do funcionário</label>
+      <canvas id="epi-canvas" width="400" height="120" style="border:1px solid var(--b2);border-radius:8px;cursor:crosshair;touch-action:none;width:100%;background:#fff"></canvas>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn-sm" onclick="limparAssinatura()">Limpar</button>
+        <span style="font-size:11px;color:var(--t3);align-self:center">Vire o celular para o funcionário assinar</span>
+      </div>
+    </div>
+    <div class="mactions">
+      <button class="btn-sm" onclick="closeModals()">Cancelar</button>
+      <button class="btn" onclick="salvarEntrega()">Salvar entrega</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CADASTRO EPI -->
+<div class="moverlay" id="m-epi-cad">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div class="mtitle">Cadastrar EPI</div>
+    <div class="field"><label>Nome do EPI</label><input type="text" id="epi-nome" placeholder="Ex: Luva de malha de aço"></div>
+    <div class="field"><label>Certificado de Aprovação (CA)</label><input type="text" id="epi-ca" placeholder="Ex: CA 12345"></div>
+    <div class="mactions">
+      <button class="btn-sm" onclick="closeModals()">Cancelar</button>
+      <button class="btn" onclick="salvarEpiCad()">Salvar</button>
     </div>
   </div>
 </div>
@@ -379,7 +416,10 @@ let funcionarios=[],advertencias=[],currentTab='dash',sbOk=false;
 let loginAttempts=0,loginBlocked=false,currentAdvFunc=null,sessionTimer=null;
 let editCtx=null, addCtx=null;
 let feriados=new Set();
-let diasFeriasCpf=new Set(); // dias de férias por cpf_data // Set de strings "YYYY-MM-DD"
+let diasFeriasCpf=new Set();
+let perfilUsuario='admin'; // 'admin' ou 'encarregado'
+const HASH_ADMIN='03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4';
+const HASH_ENC='c33670090565d2f1e5404c12c3a6a1b0710338799fb6803f59401f15a455c6f6'; // Set de strings "YYYY-MM-DD"
 
 function isFeriado(ds){return feriados.has(ds);}
 function isDiaUtil(ds){
@@ -525,7 +565,7 @@ function goTab(tab){
   document.getElementById('t-'+tab)?.classList.add('on');
   const c=document.getElementById('content');
   c.innerHTML='<div class="loading">Carregando...</div>';c.scrollTop=0;
-  ({dash:renderDash,batidas:renderBatidas,banco:renderBanco,atrasos:renderAtrasos,equipe:renderEquipe,ferias:renderFerias,adv:renderAdv}[tab]||((c)=>c.innerHTML=''))(c);
+  ({dash:renderDash,batidas:renderBatidas,banco:renderBanco,atrasos:renderAtrasos,equipe:renderEquipe,ferias:renderFerias,epis:renderEpis,adv:renderAdv}[tab]||((c)=>c.innerHTML=''))(c);
 }
 
 // ===== DASHBOARD =====
@@ -1338,6 +1378,189 @@ async function delFerias(id){
   await sb.from('iw_ferias_dias').delete().eq('ferias_id',id);
   await sb.from('iw_ferias').delete().eq('id',id);
   renderFerias(document.getElementById('content'));
+}
+
+// ===== EPIs =====
+let episList=[], epiCtxFunc=null, epiDrawing=false, epiLastX=0, epiLastY=0;
+
+async function renderEpis(c){
+  c.innerHTML='<div class="loading">Carregando EPIs...</div>';
+  const{data:epis}=await sb.from('iw_epis').select('*').eq('ativo',true).order('nome');
+  episList=epis||[];
+  const{data:entregas}=await sb.from('iw_epi_entregas').select('*').order('criado_em',{ascending:false}).limit(100);
+  const listaEntregas=entregas||[];
+  const isAdmin=perfilUsuario==='admin';
+
+  let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px">
+    <div>
+      <div style="font-size:18px;font-weight:700">Controle de EPIs</div>
+      <div style="font-size:12px;color:var(--t2);margin-top:2px">${episList.length} EPIs cadastrados</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${isAdmin?`<button class="btn-sm" onclick="document.getElementById('m-epi-cad').classList.add('open')">+ Cadastrar EPI</button>`:''}
+    </div>
+  </div>`;
+
+  // Cards por funcionário (botão nova entrega)
+  html+=`<div style="margin-bottom:1.25rem">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:.6rem">Registrar nova entrega</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px">`;
+  funcionarios.forEach(f=>{
+    html+=`<button onclick="abrirEntrega('${f.cpf}','${f.nome.replace(/'/g,"\'")}',${f.id})"
+      style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--r12);padding:.75rem;text-align:left;cursor:pointer;transition:border-color .15s"
+      onmouseover="this.style.borderColor='var(--acc)'" onmouseout="this.style.borderColor='var(--b1)'">
+      <div style="width:32px;height:32px;border-radius:50%;background:${f.color}22;color:${f.color};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;margin-bottom:.4rem">${f.nome[0]}</div>
+      <div style="font-size:12px;font-weight:700;color:var(--t1)">${f.nome.split(' ')[0]}</div>
+      <div style="font-size:10px;color:var(--t3);margin-top:2px">+ Nova entrega</div>
+    </button>`;
+  });
+  html+=`</div></div>`;
+
+  // Histórico de entregas
+  html+=`<div class="tcard"><div class="thead-row"><span class="thead-title">Histórico de entregas</span></div>`;
+  if(!listaEntregas.length){
+    html+=`<div class="empty">Nenhuma entrega registrada.</div>`;
+  } else {
+    listaEntregas.forEach(e=>{
+      const itens=e.itens||[];
+      const data=new Date(e.criado_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+      html+=`<div style="padding:.75rem 1rem;border-bottom:1px solid var(--b1);display:flex;align-items:flex-start;gap:12px">
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:.3rem;flex-wrap:wrap">
+            <span style="font-size:13px;font-weight:700">${e.funcionario_nome.split(' ')[0]}</span>
+            <span style="font-size:11px;color:var(--t3)">${data}</span>
+            ${e.encarregado?`<span style="font-size:11px;color:var(--t2)">por ${e.encarregado}</span>`:''}
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:${e.assinatura?'.4rem':'0'}">
+            ${itens.map(i=>`<span class="chip b" style="font-size:10px">${i.nome} ×${i.qtd}${i.validade?' · val:'+i.validade:''}</span>`).join('')}
+          </div>
+          ${e.observacao?`<div style="font-size:11px;color:var(--t2)">${e.observacao}</div>`:''}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
+          ${e.assinatura?`<div style="background:#fff;border:1px solid var(--b2);border-radius:6px;padding:2px"><img src="${e.assinatura}" style="width:80px;height:40px;object-fit:contain"></div>`:''}
+          ${isAdmin?`<button class="btn-xs" style="color:var(--r);border-color:rgba(248,113,113,.3);font-size:10px" onclick="delEntrega(${e.id})">✕</button>`:''}
+        </div>
+      </div>`;
+    });
+  }
+  html+=`</div>`;
+
+  // Lista de EPIs cadastrados (só admin)
+  if(isAdmin && episList.length){
+    html+=`<div class="tcard" style="margin-top:1rem"><div class="thead-row"><span class="thead-title">EPIs cadastrados</span></div>`;
+    episList.forEach(ep=>{
+      html+=`<div style="display:flex;align-items:center;gap:8px;padding:.6rem 1rem;border-bottom:1px solid var(--b1)">
+        <div style="flex:1"><span style="font-size:13px;font-weight:600">${ep.nome}</span>${ep.ca?` <span style="font-size:11px;color:var(--t3)">· ${ep.ca}</span>`:''}</div>
+        <button class="btn-xs" style="color:var(--r);border-color:rgba(248,113,113,.3)" onclick="desativarEpi(${ep.id})">Remover</button>
+      </div>`;
+    });
+    html+=`</div>`;
+  }
+
+  c.innerHTML=html;
+}
+
+function abrirEntrega(cpf,nome,funcId){
+  epiCtxFunc={cpf,nome,funcId};
+  document.getElementById('m-epi-title').textContent='Entrega para '+nome.split(' ')[0];
+  document.getElementById('m-epi-sub').textContent='Marque os EPIs entregues';
+  document.getElementById('epi-obs').value='';
+
+  // Monta checklist
+  const cl=document.getElementById('epi-checklist');
+  cl.innerHTML=episList.map(ep=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--b1)">
+      <input type="checkbox" id="epi-chk-${ep.id}" style="width:16px;height:16px;flex-shrink:0">
+      <label for="epi-chk-${ep.id}" style="flex:1;font-size:13px;cursor:pointer">${ep.nome}${ep.ca?' <span style="font-size:10px;color:var(--t3)">'+ep.ca+'</span>':''}</label>
+      <input type="number" id="epi-qtd-${ep.id}" placeholder="Qtd" min="1" value="1"
+        style="width:52px;padding:4px 6px;background:var(--s2);border:1px solid var(--b1);border-radius:6px;color:var(--t1);font-size:12px">
+      <input type="date" id="epi-val-${ep.id}"
+        style="width:130px;padding:4px 6px;background:var(--s2);border:1px solid var(--b1);border-radius:6px;color:var(--t1);font-size:12px">
+    </div>`).join('');
+
+  // Limpa canvas de assinatura
+  limparAssinatura();
+  iniciarCanvas();
+  document.getElementById('m-epi-entrega').classList.add('open');
+}
+
+function iniciarCanvas(){
+  const canvas=document.getElementById('epi-canvas');
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  ctx.strokeStyle='#111';ctx.lineWidth=2;ctx.lineCap='round';ctx.lineJoin='round';
+
+  function getPos(e){
+    const r=canvas.getBoundingClientRect();
+    const scaleX=canvas.width/r.width, scaleY=canvas.height/r.height;
+    if(e.touches){return{x:(e.touches[0].clientX-r.left)*scaleX,y:(e.touches[0].clientY-r.top)*scaleY};}
+    return{x:(e.clientX-r.left)*scaleX,y:(e.clientY-r.top)*scaleY};
+  }
+  canvas.onmousedown=canvas.ontouchstart=e=>{e.preventDefault();epiDrawing=true;const p=getPos(e);epiLastX=p.x;epiLastY=p.y;};
+  canvas.onmousemove=canvas.ontouchmove=e=>{e.preventDefault();if(!epiDrawing)return;const p=getPos(e);ctx.beginPath();ctx.moveTo(epiLastX,epiLastY);ctx.lineTo(p.x,p.y);ctx.stroke();epiLastX=p.x;epiLastY=p.y;};
+  canvas.onmouseup=canvas.ontouchend=()=>{epiDrawing=false;};
+}
+
+function limparAssinatura(){
+  const canvas=document.getElementById('epi-canvas');
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+}
+
+async function salvarEntrega(){
+  if(!epiCtxFunc)return;
+  const itens=[];
+  episList.forEach(ep=>{
+    const chk=document.getElementById('epi-chk-'+ep.id);
+    if(chk&&chk.checked){
+      const qtd=parseInt(document.getElementById('epi-qtd-'+ep.id)?.value)||1;
+      const val=document.getElementById('epi-val-'+ep.id)?.value||null;
+      itens.push({id:ep.id,nome:ep.nome,ca:ep.ca,qtd,validade:val});
+    }
+  });
+  if(!itens.length){alert('Selecione pelo menos um EPI.');return;}
+
+  // Captura assinatura
+  const canvas=document.getElementById('epi-canvas');
+  const assinatura=canvas?canvas.toDataURL('image/png'):null;
+  const obs=document.getElementById('epi-obs').value;
+
+  await sb.from('iw_epi_entregas').insert({
+    id:Date.now(),
+    funcionario_id:epiCtxFunc.funcId,
+    funcionario_nome:epiCtxFunc.nome,
+    cpf:epiCtxFunc.cpf,
+    encarregado: perfilUsuario==='admin'?'Admin':'Encarregado',
+    itens,
+    assinatura,
+    observacao:obs||null,
+    criado_em:new Date().toISOString()
+  });
+
+  closeModals();
+  renderEpis(document.getElementById('content'));
+}
+
+async function salvarEpiCad(){
+  const nome=document.getElementById('epi-nome').value.trim();
+  const ca=document.getElementById('epi-ca').value.trim();
+  if(!nome){alert('Informe o nome do EPI.');return;}
+  await sb.from('iw_epis').insert({nome,ca:ca||null});
+  closeModals();
+  renderEpis(document.getElementById('content'));
+}
+
+async function desativarEpi(id){
+  if(!confirm('Remover este EPI da lista?'))return;
+  await sb.from('iw_epis').update({ativo:false}).eq('id',id);
+  renderEpis(document.getElementById('content'));
+}
+
+async function delEntrega(id){
+  if(!confirm('Excluir este registro de entrega?'))return;
+  await sb.from('iw_epi_entregas').delete().eq('id',id);
+  renderEpis(document.getElementById('content'));
 }
 
 function renderAdv(c){
