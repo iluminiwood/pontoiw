@@ -407,6 +407,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
 const SB_URL='https://mcoemytfdrfrtbfbpvqr.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jb2VteXRmZHJmcnRiZmJwdnFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3OTgyODcsImV4cCI6MjA5NTM3NDI4N30.uJZKW5oUlexLo_XENDCohlchGKlG54Pwt0gvqpuy-i8';
 const ADMIN_HASH='03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4';
+const ENC_HASH='c33670090565d2f1e5404c12c3a6a1b0710338799fb6803f59401f15a455c6f6';
 const sb=supabase.createClient(SB_URL,SB_KEY);
 const COLORS=['#f0c040','#3dd68c','#60a5fa','#f87171','#fb923c','#c084fc','#34d399'];
 const JORNADA={1:540,2:540,3:540,4:540,5:480}; // Seg-Qui 9h, Sex 8h
@@ -417,9 +418,7 @@ let loginAttempts=0,loginBlocked=false,currentAdvFunc=null,sessionTimer=null;
 let editCtx=null, addCtx=null;
 let feriados=new Set();
 let diasFeriasCpf=new Set();
-let perfilUsuario='admin'; // 'admin' ou 'encarregado'
-const HASH_ADMIN='03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4';
-const HASH_ENC='c33670090565d2f1e5404c12c3a6a1b0710338799fb6803f59401f15a455c6f6'; // Set de strings "YYYY-MM-DD"
+let perfilUsuario='admin'; // 'admin' ou 'encarregado' // Set de strings "YYYY-MM-DD"
 
 function isFeriado(ds){return feriados.has(ds);}
 function isDiaUtil(ds){
@@ -510,7 +509,25 @@ async function doLogin(){
   const pw=document.getElementById('lpw').value;
   if(!pw){return;}
   const hash=await sha256(pw);
+  if(hash===ENC_HASH){
+    // Login encarregado — só vê aba EPIs
+    perfilUsuario='encarregado';
+    loginAttempts=0;
+    document.getElementById('lpw').value='';
+    document.getElementById('lerr').textContent='';
+    document.getElementById('login').style.display='none';
+    document.getElementById('app').style.cssText='display:flex;flex-direction:column;';
+    await initApp();
+    // Esconde todas as abas exceto EPIs
+    document.querySelectorAll('.tab').forEach(t=>t.style.display='none');
+    const tabEpis=document.getElementById('t-epis');
+    if(tabEpis){tabEpis.style.display='';tabEpis.classList.add('on');}
+    goTab('epis');
+    resetSession();
+    return;
+  }
   if(hash===ADMIN_HASH){
+    perfilUsuario='admin';
     loginAttempts=0;
     document.getElementById('lpw').value='';
     document.getElementById('lerr').textContent='';
