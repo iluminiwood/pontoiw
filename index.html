@@ -176,8 +176,9 @@ tr:hover td{background:rgba(255,255,255,.02);}
   .bsemana-head{padding:7px 0;margin-bottom:6px;}
   .bsemana-lbl{font-size:12px;}
   .bsemana-saldo{font-size:14px;}
-  .tabs{padding:0 3rem;}
-  .tab{padding:14px 22px;font-size:14px;}
+  #bottom-nav{max-width:760px;padding:10px 8px;}
+  .nav-label{font-size:10px;max-width:70px;}
+  .nav-icon{width:24px;height:24px;}
   .topbar{padding:1rem 3rem;}
   .tb-brand{font-size:12px;}
   .filter-bar{gap:12px;margin-bottom:1.25rem;}
@@ -241,16 +242,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
       <button class="btn-sm danger" onclick="doLogout()">Sair</button>
     </div>
   </div>
-  <div class="tabs">
-    <div class="tab on" onclick="goTab('dash')" id="t-dash">Dashboard</div>
-    <div class="tab" onclick="goTab('batidas')" id="t-batidas">Batidas</div>
-    <div class="tab" onclick="goTab('banco')" id="t-banco">Banco de Horas</div>
-    <div class="tab" onclick="goTab('atrasos')" id="t-atrasos">Atrasos</div>
-    <div class="tab" onclick="goTab('equipe')" id="t-equipe">Equipe</div>
-    <div class="tab" onclick="goTab('ferias')" id="t-ferias">Férias</div>
-    <div class="tab" onclick="goTab('epis')" id="t-epis">EPIs</div>
-    <div class="tab" onclick="goTab('adv')" id="t-adv">Advertências</div>
-  </div>
+  <!-- nav removido daqui — está no bottom nav abaixo -->
   <div class="content" id="content"></div>
 </div>
 
@@ -517,14 +509,18 @@ async function doLogin(){
     document.getElementById('lerr').textContent='';
     document.getElementById('login').style.display='none';
     document.getElementById('app').style.cssText='display:flex;flex-direction:column;';
+    // Carrega dados ANTES de mostrar qualquer coisa
     await initApp();
-    // Mostra só as abas permitidas para o encarregado
-    document.querySelectorAll('.tab').forEach(t=>t.style.display='none');
+    // Esconde todos os botões do nav
+    document.querySelectorAll('.nav-btn').forEach(t=>{t.style.display='none';t.classList.remove('on');});
+    // Mostra só as abas permitidas
     ['t-dash','t-atrasos','t-epis','t-adv'].forEach(id=>{
-      const tab=document.getElementById(id);
-      if(tab) tab.style.display='';
+      const btn=document.getElementById(id);
+      if(btn) btn.style.display='';
     });
-    document.getElementById('t-dash')?.classList.add('on');
+    // Mostra nav
+    const navEnc=document.getElementById('bottom-nav');
+    if(navEnc) navEnc.style.display='';
     goTab('dash');
     resetSession();
     return;
@@ -536,7 +532,12 @@ async function doLogin(){
     document.getElementById('lerr').textContent='';
     document.getElementById('login').style.display='none';
     document.getElementById('app').style.cssText='display:flex;flex-direction:column;';
-    await initApp();goTab('dash');resetSession();
+    await initApp();
+    // Mostra nav com todos os botões
+    document.querySelectorAll('.nav-btn').forEach(t=>{t.style.display='';t.classList.remove('on');});
+    const nav=document.getElementById('bottom-nav');
+    if(nav) nav.style.display='';
+    goTab('dash');resetSession();
   } else {
     loginAttempts++;
     if(loginAttempts>=3){
@@ -548,7 +549,24 @@ async function doLogin(){
     }
   }
 }
-function doLogout(){clearTimeout(sessionTimer);document.getElementById('login').style.display='flex';document.getElementById('app').style.display='none';document.getElementById('lpw').value='';}
+function doLogout(){
+  clearTimeout(sessionTimer);
+  // Reseta perfil
+  perfilUsuario='admin';
+  // Esconde app, mostra login
+  document.getElementById('login').style.display='flex';
+  document.getElementById('app').style.display='none';
+  document.getElementById('lpw').value='';
+  document.getElementById('lerr').textContent='';
+  // Reseta nav — mostra todos os botões, remove destaque
+  document.querySelectorAll('.nav-btn').forEach(t=>{
+    t.style.display='';
+    t.classList.remove('on');
+  });
+  // Esconde o nav enquanto não logado
+  const nav=document.getElementById('bottom-nav');
+  if(nav) nav.style.display='none';
+}
 function resetSession(){clearTimeout(sessionTimer);sessionTimer=setTimeout(()=>{doLogout();},30*60*1000);}
 document.addEventListener('click',resetSession);
 
@@ -581,7 +599,7 @@ function goTab(tab){
     clearInterval(batidasAutoRefresh);batidasAutoRefresh=null;
   }
   currentTab=tab;
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.nav-btn').forEach(t=>t.classList.remove('on'));
   document.getElementById('t-'+tab)?.classList.add('on');
   const c=document.getElementById('content');
   c.innerHTML='<div class="loading">Carregando...</div>';c.scrollTop=0;
