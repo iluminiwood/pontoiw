@@ -176,9 +176,9 @@ tr:hover td{background:rgba(255,255,255,.02);}
   .bsemana-head{padding:7px 0;margin-bottom:6px;}
   .bsemana-lbl{font-size:12px;}
   .bsemana-saldo{font-size:14px;}
-  #bottom-nav{max-width:760px;padding:10px 8px;}
-  .nav-label{font-size:10px;max-width:70px;}
-  .nav-icon{width:24px;height:24px;}
+  #nav-admin, #nav-enc{max-width:760px;padding:10px 8px;bottom:20px;}
+  .nl{font-size:10px;max-width:70px;}
+  .ni{width:22px;height:22px;}
   .topbar{padding:1rem 3rem;}
   .tb-brand{font-size:12px;}
   .filter-bar{gap:12px;margin-bottom:1.25rem;}
@@ -511,16 +511,7 @@ async function doLogin(){
     document.getElementById('app').style.cssText='display:flex;flex-direction:column;';
     // Carrega dados ANTES de mostrar qualquer coisa
     await initApp();
-    // Esconde todos os botões do nav
-    document.querySelectorAll('.nav-btn').forEach(t=>{t.style.display='none';t.classList.remove('on');});
-    // Mostra só as abas permitidas
-    ['t-dash','t-atrasos','t-epis','t-adv'].forEach(id=>{
-      const btn=document.getElementById(id);
-      if(btn) btn.style.display='';
-    });
-    // Mostra nav
-    const navEnc=document.getElementById('bottom-nav');
-    if(navEnc) navEnc.style.display='';
+    document.getElementById('nav-enc').style.display='flex';
     goTab('dash');
     resetSession();
     return;
@@ -533,10 +524,7 @@ async function doLogin(){
     document.getElementById('login').style.display='none';
     document.getElementById('app').style.cssText='display:flex;flex-direction:column;';
     await initApp();
-    // Mostra nav com todos os botões
-    document.querySelectorAll('.nav-btn').forEach(t=>{t.style.display='';t.classList.remove('on');});
-    const nav=document.getElementById('bottom-nav');
-    if(nav) nav.style.display='';
+    document.getElementById('nav-admin').style.display='flex';
     goTab('dash');resetSession();
   } else {
     loginAttempts++;
@@ -563,9 +551,9 @@ function doLogout(){
     t.style.display='';
     t.classList.remove('on');
   });
-  // Esconde o nav enquanto não logado
-  const nav=document.getElementById('bottom-nav');
-  if(nav) nav.style.display='none';
+  // Esconde ambos os navs
+  document.getElementById('nav-admin').style.display='none';
+  document.getElementById('nav-enc').style.display='none';
 }
 function resetSession(){clearTimeout(sessionTimer);sessionTimer=setTimeout(()=>{doLogout();},30*60*1000);}
 document.addEventListener('click',resetSession);
@@ -599,8 +587,10 @@ function goTab(tab){
     clearInterval(batidasAutoRefresh);batidasAutoRefresh=null;
   }
   currentTab=tab;
-  document.querySelectorAll('.nav-btn').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.nb').forEach(t=>t.classList.remove('on'));
+  // Ativa no nav correto (admin usa t-X, enc usa t-X-e)
   document.getElementById('t-'+tab)?.classList.add('on');
+  document.getElementById('t-'+tab+'-e')?.classList.add('on');
   const c=document.getElementById('content');
   c.innerHTML='<div class="loading">Carregando...</div>';c.scrollTop=0;
   ({dash:renderDash,batidas:renderBatidas,banco:renderBanco,atrasos:renderAtrasos,equipe:renderEquipe,ferias:renderFerias,epis:renderEpis,adv:renderAdv}[tab]||((c)=>c.innerHTML=''))(c);
