@@ -232,16 +232,45 @@ tr:hover td{background:rgba(255,255,255,.02);}
       <div class="login-logo" style="margin-bottom:0">IW · Gestão de Ponto</div>
       <button class="theme-toggle" onclick="toggleTheme()" title="Alternar tema"></button>
     </div>
-    <div class="login-title">Bem-vindo</div>
-    <div class="login-sub">Área restrita — acesso autorizado</div>
-    <div class="field"><label>E-mail</label>
-      <input type="email" id="lemail" placeholder="seu@email.com" onkeydown="if(event.key==='Enter')doLogin()" autocomplete="username">
+
+    <div id="view-login">
+      <div class="login-title">Bem-vindo</div>
+      <div class="login-sub">Área restrita — acesso autorizado</div>
+      <div class="field"><label>E-mail</label>
+        <input type="email" id="lemail" placeholder="seu@email.com" onkeydown="if(event.key==='Enter')doLogin()" autocomplete="username">
+      </div>
+      <div class="field"><label>Senha</label>
+        <input type="password" id="lpw" placeholder="••••••" onkeydown="if(event.key==='Enter')doLogin()" autocomplete="current-password">
+      </div>
+      <button class="btn" id="login-btn" onclick="doLogin()">Entrar</button>
+      <div class="err-msg" id="lerr"></div>
+      <div style="text-align:center;margin-top:1.1rem;font-size:13px;color:var(--t2)">
+        Não tem conta? <span style="color:var(--acc);cursor:pointer;font-weight:700" onclick="toggleAuthView('signup')">Criar conta</span>
+      </div>
     </div>
-    <div class="field"><label>Senha</label>
-      <input type="password" id="lpw" placeholder="••••••" onkeydown="if(event.key==='Enter')doLogin()" autocomplete="current-password">
+
+    <div id="view-signup" style="display:none">
+      <div class="login-title">Criar conta</div>
+      <div class="login-sub">Comece a usar em poucos minutos</div>
+      <div class="field"><label>Nome da empresa</label>
+        <input type="text" id="sempresa" placeholder="Ex: Ilumini Wood" onkeydown="if(event.key==='Enter')doSignup()">
+      </div>
+      <div class="field"><label>Seu nome</label>
+        <input type="text" id="snome" placeholder="Seu nome completo" onkeydown="if(event.key==='Enter')doSignup()">
+      </div>
+      <div class="field"><label>E-mail</label>
+        <input type="email" id="semail" placeholder="seu@email.com" onkeydown="if(event.key==='Enter')doSignup()" autocomplete="username">
+      </div>
+      <div class="field"><label>Senha</label>
+        <input type="password" id="spw" placeholder="Mínimo 6 caracteres" onkeydown="if(event.key==='Enter')doSignup()" autocomplete="new-password">
+      </div>
+      <button class="btn" id="signup-btn" onclick="doSignup()">Criar conta</button>
+      <div class="err-msg" id="serr"></div>
+      <div style="text-align:center;margin-top:1.1rem;font-size:13px;color:var(--t2)">
+        Já tem conta? <span style="color:var(--acc);cursor:pointer;font-weight:700" onclick="toggleAuthView('login')">Entrar</span>
+      </div>
     </div>
-    <button class="btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <div class="err-msg" id="lerr"></div>
+
   </div>
 </div>
 
@@ -525,6 +554,67 @@ async function sha256(msg){
   const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(msg));
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
+function toggleAuthView(view){
+  document.getElementById('view-login').style.display=view==='login'?'':'none';
+  document.getElementById('view-signup').style.display=view==='signup'?'':'none';
+  document.getElementById('lerr').textContent='';
+  document.getElementById('serr').textContent='';
+}
+
+async function doSignup(){
+  const empresa=document.getElementById('sempresa').value.trim();
+  const nome=document.getElementById('snome').value.trim();
+  const email=document.getElementById('semail').value.trim();
+  const pw=document.getElementById('spw').value;
+  const errEl=document.getElementById('serr');
+  errEl.textContent='';
+
+  if(!empresa||!nome||!email||!pw){errEl.textContent='Preencha todos os campos.';return;}
+  if(pw.length<6){errEl.textContent='Senha deve ter ao menos 6 caracteres.';return;}
+
+  const btn=document.getElementById('signup-btn');
+  if(btn){btn.disabled=true;btn.textContent='Criando...';}
+
+  const{data,error}=await sb.auth.signUp({email,password:pw});
+
+  if(error){
+    if(btn){btn.disabled=false;btn.textContent='Criar conta';}
+    errEl.textContent=error.message.includes('already')||error.message.includes('registered')?'Este e-mail já está cadastrado.':'Erro ao criar conta: '+error.message;
+    return;
+  }
+
+  if(!data.session){
+    if(btn){btn.disabled=false;btn.textContent='Criar conta';}
+    errEl.textContent='Verifique seu e-mail para confirmar a conta antes de entrar.';
+    return;
+  }
+
+  const{error:rpcErr}=await sb.rpc('criar_empresa_e_perfil',{nome_empresa:empresa,nome_usuario:nome});
+  if(rpcErr){
+    if(btn){btn.disabled=false;btn.textContent='Criar conta';}
+    errEl.textContent='Erro ao configurar empresa: '+rpcErr.message;
+    await sb.auth.signOut();
+    return;
+  }
+
+  const{data:profile}=await sb.from('profiles').select('*').eq('id',data.user.id).single();
+  if(!profile){
+    if(btn){btn.disabled=false;btn.textContent='Criar conta';}
+    errEl.textContent='Erro ao carregar perfil. Tente fazer login.';
+    return;
+  }
+
+  perfilUsuario=profile.role;
+  empresaAtual=profile.empresa_id;
+  document.getElementById('login').style.display='none';
+  document.getElementById('app').style.cssText='display:flex;flex-direction:column;';
+  await initApp();
+  document.getElementById('tabs-admin').style.display='flex';
+  goTab('dash');
+  resetSession();
+  if(btn){btn.disabled=false;btn.textContent='Criar conta';}
+}
+
 async function doLogin(){
   if(loginBlocked){document.getElementById('lerr').textContent='Bloqueado. Aguarde 1 minuto.';return;}
   const email=document.getElementById('lemail').value.trim();
@@ -607,6 +697,8 @@ async function doLogout(){
   document.getElementById('lemail').value='';
   document.getElementById('lpw').value='';
   document.getElementById('lerr').textContent='';
+  ['sempresa','snome','semail','spw'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  toggleAuthView('login');
   document.querySelectorAll('.tab').forEach(t=>{t.style.display='';t.classList.remove('on');});
   document.getElementById('tabs-admin').style.display='none';
   document.getElementById('tabs-enc').style.display='none';
