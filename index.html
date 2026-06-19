@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="shortcut icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>IW · Gestão de Ponto</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Cabinet+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -231,8 +234,11 @@ tr:hover td{background:rgba(255,255,255,.02);}
     </div>
     <div class="login-title">Bem-vindo</div>
     <div class="login-sub">Área restrita — acesso autorizado</div>
+    <div class="field"><label>E-mail</label>
+      <input type="email" id="lemail" placeholder="seu@email.com" onkeydown="if(event.key==='Enter')doLogin()" autocomplete="username">
+    </div>
     <div class="field"><label>Senha</label>
-      <input type="password" id="lpw" placeholder="••••••" onkeydown="if(event.key==='Enter')doLogin()">
+      <input type="password" id="lpw" placeholder="••••••" onkeydown="if(event.key==='Enter')doLogin()" autocomplete="current-password">
     </div>
     <button class="btn" onclick="doLogin()">Entrar</button>
     <div class="err-msg" id="lerr"></div>
@@ -433,7 +439,7 @@ let loginAttempts=0,loginBlocked=false,currentAdvFunc=null,sessionTimer=null;
 let editCtx=null, addCtx=null;
 let feriados=new Set();
 let diasFeriasCpf=new Set();
-let perfilUsuario='admin'; // 'admin' ou 'encarregado' // Set de strings "YYYY-MM-DD"
+let perfilUsuario='admin'; let empresaAtual=null; // 'admin' ou 'encarregado' // Set de strings "YYYY-MM-DD"
 
 function isFeriado(ds){return feriados.has(ds);}
 function isDiaUtil(ds){
@@ -521,65 +527,89 @@ async function sha256(msg){
 }
 async function doLogin(){
   if(loginBlocked){document.getElementById('lerr').textContent='Bloqueado. Aguarde 1 minuto.';return;}
+  const email=document.getElementById('lemail').value.trim();
   const pw=document.getElementById('lpw').value;
-  if(!pw){return;}
-  const hash=await sha256(pw);
-  if(hash===ENC_HASH){
-    // Login encarregado — só vê aba EPIs
-    perfilUsuario='encarregado';
-    loginAttempts=0;
-    document.getElementById('lpw').value='';
-    document.getElementById('lerr').textContent='';
-    document.getElementById('login').style.display='none';
-    document.getElementById('app').style.cssText='display:flex;flex-direction:column;';
-    // Carrega dados ANTES de mostrar qualquer coisa
-    await initApp();
-    document.getElementById('tabs-enc').style.display='flex';
-    goTab('dash');
-    resetSession();
-    return;
-  }
-  if(hash===ADMIN_HASH){
-    perfilUsuario='admin';
-    loginAttempts=0;
-    document.getElementById('lpw').value='';
-    document.getElementById('lerr').textContent='';
-    document.getElementById('login').style.display='none';
-    document.getElementById('app').style.cssText='display:flex;flex-direction:column;';
-    await initApp();
-    document.getElementById('tabs-admin').style.display='flex';
-    goTab('dash');resetSession();
-  } else {
+  if(!email||!pw){document.getElementById('lerr').textContent='Preencha e-mail e senha.';return;}
+
+  const{data,error}=await sb.auth.signInWithPassword({email,password:pw});
+
+  if(error){
     loginAttempts++;
     if(loginAttempts>=3){
       loginBlocked=true;
       document.getElementById('lerr').textContent='Bloqueado por 1 minuto.';
       setTimeout(()=>{loginBlocked=false;loginAttempts=0;document.getElementById('lerr').textContent='';},60000);
     } else {
-      document.getElementById('lerr').textContent=`Senha incorreta. ${3-loginAttempts} tentativa(s).`;
+      document.getElementById('lerr').textContent=`E-mail ou senha incorretos. ${3-loginAttempts} tentativa(s).`;
     }
+    return;
   }
-}
-function doLogout(){
-  clearTimeout(sessionTimer);
-  // Reseta perfil
-  perfilUsuario='admin';
-  // Esconde app, mostra login
-  document.getElementById('login').style.display='flex';
-  document.getElementById('app').style.display='none';
+
+  // Busca o perfil (empresa + papel) do usuário autenticado
+  const{data:profile,error:profErr}=await sb.from('profiles').select('*').eq('id',data.user.id).single();
+  if(profErr||!profile){
+    document.getElementById('lerr').textContent='Usuário sem empresa vinculada. Contate o suporte.';
+    await sb.auth.signOut();
+    return;
+  }
+
+  perfilUsuario=profile.role;
+  empresaAtual=profile.empresa_id;
+  loginAttempts=0;
   document.getElementById('lpw').value='';
   document.getElementById('lerr').textContent='';
-  // Reseta nav — mostra todos os botões, remove destaque
-  document.querySelectorAll('.nav-btn').forEach(t=>{
-    t.style.display='';
-    t.classList.remove('on');
-  });
-  // Esconde ambas as tabs
+  document.getElementById('login').style.display='none';
+  document.getElementById('app').style.cssText='display:flex;flex-direction:column;';
+  await initApp();
+  if(perfilUsuario==='encarregado'){
+    document.getElementById('tabs-enc').style.display='flex';
+  } else {
+    document.getElementById('tabs-admin').style.display='flex';
+  }
+  goTab('dash');
+  resetSession();
+}
+
+async function checkExistingSession(){
+  try{
+    const{data:{session}}=await sb.auth.getSession();
+    if(!session) return false;
+    const{data:profile}=await sb.from('profiles').select('*').eq('id',session.user.id).single();
+    if(!profile){await sb.auth.signOut();return false;}
+    perfilUsuario=profile.role;
+    empresaAtual=profile.empresa_id;
+    document.getElementById('login').style.display='none';
+    document.getElementById('app').style.cssText='display:flex;flex-direction:column;';
+    await initApp();
+    if(perfilUsuario==='encarregado'){
+      document.getElementById('tabs-enc').style.display='flex';
+    } else {
+      document.getElementById('tabs-admin').style.display='flex';
+    }
+    goTab('dash');
+    resetSession();
+    return true;
+  }catch(e){return false;}
+}
+async function doLogout(){
+  clearTimeout(sessionTimer);
+  await sb.auth.signOut();
+  perfilUsuario='admin';
+  empresaAtual=null;
+  document.getElementById('login').style.display='flex';
+  document.getElementById('app').style.display='none';
+  document.getElementById('lemail').value='';
+  document.getElementById('lpw').value='';
+  document.getElementById('lerr').textContent='';
+  document.querySelectorAll('.tab').forEach(t=>{t.style.display='';t.classList.remove('on');});
   document.getElementById('tabs-admin').style.display='none';
   document.getElementById('tabs-enc').style.display='none';
 }
 function resetSession(){clearTimeout(sessionTimer);sessionTimer=setTimeout(()=>{doLogout();},30*60*1000);}
 document.addEventListener('click',resetSession);
+
+// Verifica se já existe sessão ativa ao carregar a página
+checkExistingSession();
 
 // ===== INIT =====
 async function initApp(){
