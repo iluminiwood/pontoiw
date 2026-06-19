@@ -240,7 +240,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <div class="field"><label>Senha</label>
       <input type="password" id="lpw" placeholder="••••••" onkeydown="if(event.key==='Enter')doLogin()" autocomplete="current-password">
     </div>
-    <button class="btn" onclick="doLogin()">Entrar</button>
+    <button class="btn" id="login-btn" onclick="doLogin()">Entrar</button>
     <div class="err-msg" id="lerr"></div>
   </div>
 </div>
@@ -531,9 +531,13 @@ async function doLogin(){
   const pw=document.getElementById('lpw').value;
   if(!email||!pw){document.getElementById('lerr').textContent='Preencha e-mail e senha.';return;}
 
+  const btn=document.getElementById('login-btn');
+  if(btn){btn.disabled=true;btn.textContent='Entrando...';}
+
   const{data,error}=await sb.auth.signInWithPassword({email,password:pw});
 
   if(error){
+    if(btn){btn.disabled=false;btn.textContent='Entrar';}
     loginAttempts++;
     if(loginAttempts>=3){
       loginBlocked=true;
@@ -548,6 +552,7 @@ async function doLogin(){
   // Busca o perfil (empresa + papel) do usuário autenticado
   const{data:profile,error:profErr}=await sb.from('profiles').select('*').eq('id',data.user.id).single();
   if(profErr||!profile){
+    if(btn){btn.disabled=false;btn.textContent='Entrar';}
     document.getElementById('lerr').textContent='Usuário sem empresa vinculada. Contate o suporte.';
     await sb.auth.signOut();
     return;
@@ -568,6 +573,7 @@ async function doLogin(){
   }
   goTab('dash');
   resetSession();
+  if(btn){btn.disabled=false;btn.textContent='Entrar';}
 }
 
 async function checkExistingSession(){
@@ -622,14 +628,16 @@ async function initApp(){
   }catch(e){document.getElementById('sdot').className='sdot err';}
 }
 async function loadBase(){
-  const{data:f}=await sb.from('iw_funcionarios').select('*').eq('ativo',true).order('nome');
+  // Busca tudo em paralelo em vez de sequencial — bem mais rápido
+  const[{data:f},{data:a},{data:fer},{data:ferDias}]=await Promise.all([
+    sb.from('iw_funcionarios').select('*').eq('ativo',true).order('nome'),
+    sb.from('iw_advertencias').select('*').order('criado_em',{ascending:false}),
+    sb.from('iw_feriados').select('data'),
+    sb.from('iw_ferias_dias').select('cpf,data').limit(2000)
+  ]);
   funcionarios=(f||[]).map((x,i)=>({...x,color:COLORS[i%COLORS.length],admissao:x.admissao||'2026-02-01',salario:x.salario||0,aniversario:x.aniversario||null}));
-  const{data:a}=await sb.from('iw_advertencias').select('*').order('criado_em',{ascending:false});
   advertencias=a||[];
-  const{data:fer}=await sb.from('iw_feriados').select('data');
   feriados=new Set((fer||[]).map(x=>x.data));
-  // Carrega dias de férias para excluir dos cálculos
-  const{data:ferDias}=await sb.from('iw_ferias_dias').select('cpf,data').limit(2000);
   diasFeriasCpf=new Set((ferDias||[]).map(x=>x.cpf+'_'+x.data));
 }
 
