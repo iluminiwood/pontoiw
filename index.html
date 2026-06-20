@@ -1726,6 +1726,171 @@ function copiarLinkTotem(link){
   navigator.clipboard.writeText(link).then(()=>toast('Link copiado!','ok')).catch(()=>toast('Não foi possível copiar.','err'));
 }
 
+// ===== ATESTADOS E AFASTAMENTOS =====
+let afastCtx=null;
+
+async function renderAfastamentos(c){
+  c.innerHTML='<div class="loading">Carregando...</div>';
+  const{data:lista}=await sb.from('iw_afastamentos').select('*').order('data_inicio',{ascending:false}).limit(300);
+  const afastamentos=lista||[];
+  const hoje=new Date().toISOString().split('T')[0];
+
+  const porFunc={};
+  afastamentos.forEach(a=>{
+    if(!porFunc[a.cpf]) porFunc[a.cpf]={nome:a.funcionario_nome,lista:[]};
+    porFunc[a.cpf].lista.push(a);
+  });
+
+  function fmtD(ds){if(!ds)return'—';const[y,m,d]=ds.split('-');return d+'/'+m+'/'+y;}
+  function diasRestantes(a){
+    if(!a.data_fim) return null;
+    return Math.ceil((new Date(a.data_fim+'T12:00:00')-new Date(hoje+'T12:00:00'))/(1000*60*60*24));
+  }
+
+  const ativos=afastamentos.filter(a=>a.data_inicio<=hoje && (!a.data_fim||a.data_fim>=hoje));
+  let bannerHtml='';
+  if(ativos.length){
+    bannerHtml=`<div style="background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.25);border-radius:var(--r12);padding:.85rem 1rem;margin-bottom:1.25rem">
+      <div style="font-size:12px;font-weight:800;color:var(--r);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">Afastados no momento</div>
+      ${ativos.map(a=>{
+        const rest=diasRestantes(a);
+        const retornaHoje=a.data_fim===hoje;
+        return `<div style="font-size:13px;color:var(--t1);padding:3px 0">
+          <b>${a.funcionario_nome.split(' ')[0]}</b> — ${a.tipo}
+          ${retornaHoje?' · <span style="color:var(--acc);font-weight:700">Retorna hoje!</span>':rest!=null?' · retorna em '+rest+' dia(s) ('+fmtD(a.data_fim)+')':' · sem previsão'}
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  let html=bannerHtml;
+
+  funcionarios.forEach(f=>{
+    const pf=porFunc[f.cpf]||{lista:[]};
+    const lista=pf.lista;
+    html+=`<div class="fcard" style="margin-bottom:.75rem">
+      <div class="frow">
+        <div class="fav" style="background:${f.color}22;color:${f.color}">${f.nome[0]}</div>
+        <div style="flex:1"><div class="fname">${f.nome.split(' ')[0]}</div><div class="fcargo">${f.cargo||'—'}</div></div>
+      </div>`;
+
+    if(lista.length){
+      html+=`<div style="border-top:1px solid var(--b1);margin-top:.5rem;padding-top:.5rem">`;
+      lista.forEach(a=>{
+        const ativo=a.data_inicio<=hoje && (!a.data_fim||a.data_fim>=hoje);
+        const statusChip=ativo?'<span class="chip o">Em andamento</span>':'<span class="chip g">Concluído</span>';
+        html+=`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(42,42,50,.3);flex-wrap:wrap">
+          <div style="flex:1;min-width:200px">
+            <div style="font-size:13px;font-weight:700">${a.tipo}</div>
+            <div style="font-size:11px;color:var(--t2);margin-top:2px">${fmtD(a.data_inicio)} → ${fmtD(a.data_fim)}${a.observacao?' · '+a.observacao:''}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            ${statusChip}
+            ${a.documento_path?`<button class="btn-xs" onclick="verDocumentoAfastamento(${a.id})">Ver documento</button>`:''}
+            <button class="btn-xs" style="color:var(--r);border-color:rgba(248,113,113,.3)" onclick="delAfastamento(${a.id})">✕</button>
+          </div>
+        </div>`;
+      });
+      html+=`</div>`;
+    } else {
+      html+=`<div style="font-size:12px;color:var(--t3);margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--b1)">Nenhum afastamento registrado</div>`;
+    }
+
+    html+=`<div style="margin-top:.6rem">
+      <button class="btn-xs accent" style="color:var(--acc);border-color:rgba(240,192,64,.3)"
+        onclick="abrirAfastamento('${f.cpf}','${f.nome.replace(/'/g,"\'")}',${f.id})">+ Novo afastamento</button>
+    </div></div>`;
+  });
+
+  c.innerHTML=html||'<div class="empty">Nenhum funcionário</div>';
+}
+
+function abrirAfastamento(cpf,nome,funcId){
+  afastCtx={cpf,nome,funcId};
+  document.getElementById('m-afast-title').textContent='Afastamento — '+nome.split(' ')[0];
+  document.getElementById('m-afast-sub').textContent='O período fica excluído do banco de horas automaticamente';
+  document.getElementById('afast-tipo').value='Atestado médico';
+  document.getElementById('afast-inicio').value=new Date().toISOString().split('T')[0];
+  document.getElementById('afast-fim').value='';
+  document.getElementById('afast-arquivo').value='';
+  document.getElementById('afast-obs').value='';
+  document.getElementById('m-afast').classList.add('open');
+}
+
+async function salvarAfastamento(){
+  if(!afastCtx)return;
+  const tipo=document.getElementById('afast-tipo').value;
+  const inicio=document.getElementById('afast-inicio').value;
+  const fim=document.getElementById('afast-fim').value;
+  const obs=document.getElementById('afast-obs').value;
+  const arquivo=document.getElementById('afast-arquivo').files[0];
+
+  if(!inicio||!fim){toast('Preencha data início e previsão de retorno.','err');return;}
+  if(fim<inicio){toast('A data de retorno não pode ser antes do início.','err');return;}
+
+  const btn=document.getElementById('afast-save-btn');
+  if(btn){btn.disabled=true;btn.textContent='Salvando...';}
+
+  const id=Date.now();
+  let documento_path=null, documento_nome=null;
+
+  if(arquivo){
+    const ext=arquivo.name.split('.').pop();
+    const path=empresaAtual+'/'+id+'.'+ext;
+    const{error:upErr}=await sb.storage.from('atestados').upload(path,arquivo);
+    if(upErr){
+      toast('Erro ao enviar documento: '+upErr.message,'err');
+      if(btn){btn.disabled=false;btn.textContent='Salvar';}
+      return;
+    }
+    documento_path=path;
+    documento_nome=arquivo.name;
+  }
+
+  const{error:insErr}=await sb.from('iw_afastamentos').insert({
+    id, funcionario_id:afastCtx.funcId, funcionario_nome:afastCtx.nome, cpf:afastCtx.cpf,
+    tipo, data_inicio:inicio, data_fim:fim, documento_path, documento_nome, observacao:obs||null
+  });
+  if(insErr){
+    toast('Erro ao salvar: '+insErr.message,'err');
+    if(btn){btn.disabled=false;btn.textContent='Salvar';}
+    return;
+  }
+
+  const dias=[];
+  for(let d=new Date(inicio+'T12:00:00');d<=new Date(fim+'T12:00:00');d.setDate(d.getDate()+1)){
+    const ds=d.toISOString().split('T')[0];
+    const dw=d.getDay();
+    if(dw>=1&&dw<=5) dias.push({afastamento_id:id,funcionario_id:afastCtx.funcId,cpf:afastCtx.cpf,data:ds});
+  }
+  if(dias.length) await sb.from('iw_afastamentos_dias').insert(dias);
+
+  toast('Afastamento registrado!','ok');
+  if(btn){btn.disabled=false;btn.textContent='Salvar';}
+  closeModals();
+  await loadBase();
+  renderAfastamentos(document.getElementById('content'));
+}
+
+async function verDocumentoAfastamento(id){
+  const{data:a}=await sb.from('iw_afastamentos').select('documento_path').eq('id',id).single();
+  if(!a||!a.documento_path){toast('Documento não encontrado.','err');return;}
+  const{data,error}=await sb.storage.from('atestados').createSignedUrl(a.documento_path,300);
+  if(error||!data){toast('Erro ao abrir documento.','err');return;}
+  window.open(data.signedUrl,'_blank');
+}
+
+async function delAfastamento(id){
+  if(!confirm('Excluir este afastamento? Os dias voltam a contar normalmente no banco de horas.'))return;
+  const{data:a}=await sb.from('iw_afastamentos').select('documento_path').eq('id',id).single();
+  if(a&&a.documento_path) await sb.storage.from('atestados').remove([a.documento_path]);
+  await sb.from('iw_afastamentos_dias').delete().eq('afastamento_id',id);
+  await sb.from('iw_afastamentos').delete().eq('id',id);
+  toast('Afastamento excluído.','ok');
+  await loadBase();
+  renderAfastamentos(document.getElementById('content'));
+}
+
 async function renderEquipe(c){
   c.innerHTML=`
   <div class="tcard" style="margin-bottom:1rem">
