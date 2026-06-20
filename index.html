@@ -319,6 +319,7 @@ body.light .toast{background:rgba(255,255,255,.97);}
     <div class="tb-right">
       <div class="tb-sync"><span class="sdot" id="sdot"></span><span id="slbl">—</span></div>
       <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn" title="Alternar tema"></button>
+      <button class="btn-sm" id="btn-config" style="display:none" onclick="abrirConfigEmpresa()" title="Configurações">⚙️</button>
       <button class="btn-sm danger" onclick="doLogout()">Sair</button>
     </div>
   </div>
@@ -469,6 +470,29 @@ body.light .toast{background:rgba(255,255,255,.97);}
   </div>
 </div>
 
+<!-- MODAL CONFIGURAÇÕES DA EMPRESA -->
+<div class="moverlay" id="m-config">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div class="mtitle">⚙️ Configurações da empresa</div>
+    <div class="msub">Jornada padrão usada para cálculo de banco de horas e atrasos</div>
+    <div class="field"><label>Horário de entrada</label><input type="time" id="cfg-entrada"></div>
+    <div style="display:flex;gap:10px">
+      <div class="field" style="flex:1"><label>Início do almoço</label><input type="time" id="cfg-almoco-ini"></div>
+      <div class="field" style="flex:1"><label>Fim do almoço</label><input type="time" id="cfg-almoco-fim"></div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <div class="field" style="flex:1"><label>Saída (Seg–Qui)</label><input type="time" id="cfg-saida"></div>
+      <div class="field" style="flex:1"><label>Saída (Sexta)</label><input type="time" id="cfg-saida-sex"></div>
+    </div>
+    <div class="field"><label>Tolerância de atraso (minutos)</label><input type="number" id="cfg-tolerancia" min="0" max="60"></div>
+    <div class="mactions">
+      <button class="btn-sm" onclick="closeModals()">Cancelar</button>
+      <button class="btn" onclick="salvarConfigEmpresa()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL ADV -->
 <div class="moverlay" id="m-adv">
   <div class="modal">
@@ -516,8 +540,23 @@ const ADMIN_HASH='03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846
 const ENC_HASH='c33670090565d2f1e5404c12c3a6a1b0710338799fb6803f59401f15a455c6f6';
 const sb=supabase.createClient(SB_URL,SB_KEY);
 const COLORS=['#f0c040','#3dd68c','#60a5fa','#f87171','#fb923c','#c084fc','#34d399'];
-const JORNADA={1:540,2:540,3:540,4:540,5:480}; // Seg-Qui 9h, Sex 8h
-const ENTRADA_PAD='07:00', SAIDA_SEMANA='17:30', SAIDA_SEX='16:30', TOL=5;
+let JORNADA={1:540,2:540,3:540,4:540,5:480}; // Seg-Qui 9h, Sex 8h (será recalculado pela config da empresa)
+let ENTRADA_PAD='07:00', SAIDA_SEMANA='17:30', SAIDA_SEX='16:30', TOL=5;
+let ALMOCO_INI='12:00', ALMOCO_FIM='13:30';
+
+function aplicarConfigEmpresa(cfg){
+  if(!cfg) return;
+  ENTRADA_PAD=cfg.jornada_entrada||ENTRADA_PAD;
+  ALMOCO_INI=cfg.jornada_almoco_ini||ALMOCO_INI;
+  ALMOCO_FIM=cfg.jornada_almoco_fim||ALMOCO_FIM;
+  SAIDA_SEMANA=cfg.jornada_saida||SAIDA_SEMANA;
+  SAIDA_SEX=cfg.jornada_saida_sexta||SAIDA_SEX;
+  TOL=(cfg.tolerancia_min!=null)?cfg.tolerancia_min:TOL;
+  const almocoMin=toMin(ALMOCO_FIM)-toMin(ALMOCO_INI);
+  const minSemana=toMin(SAIDA_SEMANA)-toMin(ENTRADA_PAD)-almocoMin;
+  const minSexta=toMin(SAIDA_SEX)-toMin(ENTRADA_PAD)-almocoMin;
+  JORNADA={1:minSemana,2:minSemana,3:minSemana,4:minSemana,5:minSexta};
+}
 
 let funcionarios=[],advertencias=[],currentTab='dash',sbOk=false;
 let loginAttempts=0,loginBlocked=false,currentAdvFunc=null,sessionTimer=null;
@@ -538,6 +577,7 @@ function isDiaUtilFunc(ds,cpf){
 
 // ===== HELPERS =====
 function toMin(hhmm){if(!hhmm)return 0;const[h,m]=hhmm.split(':').map(Number);return h*60+m;}
+function fromMinHHMM(min){min=Math.max(0,Math.min(1439,min));const h=Math.floor(min/60),m=min%60;return(h<10?'0':'')+h+':'+(m<10?'0':'')+m;}
 function fromMin(min){
   const neg=min<0,abs=Math.abs(min);
   const h=Math.floor(abs/60),m=abs%60;
@@ -631,6 +671,32 @@ async function abrirTotem(){
   const url=window.location.origin+window.location.pathname.replace('index.html','')+'totem.html?t='+data.kiosk_token;
   window.open(url,'_blank');
 }
+function abrirConfigEmpresa(){
+  document.getElementById('cfg-entrada').value=ENTRADA_PAD;
+  document.getElementById('cfg-almoco-ini').value=ALMOCO_INI;
+  document.getElementById('cfg-almoco-fim').value=ALMOCO_FIM;
+  document.getElementById('cfg-saida').value=SAIDA_SEMANA;
+  document.getElementById('cfg-saida-sex').value=SAIDA_SEX;
+  document.getElementById('cfg-tolerancia').value=TOL;
+  document.getElementById('m-config').classList.add('open');
+}
+async function salvarConfigEmpresa(){
+  if(!empresaAtual){toast('Empresa não identificada.','err');return;}
+  const cfg={
+    jornada_entrada:document.getElementById('cfg-entrada').value||'07:00',
+    jornada_almoco_ini:document.getElementById('cfg-almoco-ini').value||'12:00',
+    jornada_almoco_fim:document.getElementById('cfg-almoco-fim').value||'13:30',
+    jornada_saida:document.getElementById('cfg-saida').value||'17:30',
+    jornada_saida_sexta:document.getElementById('cfg-saida-sex').value||'16:30',
+    tolerancia_min:parseInt(document.getElementById('cfg-tolerancia').value)||5
+  };
+  const{error}=await sb.from('empresas').update(cfg).eq('id',empresaAtual);
+  if(error){toast('Erro ao salvar: '+error.message,'err');return;}
+  aplicarConfigEmpresa(cfg);
+  toast('Configurações salvas!','ok');
+  closeModals();
+  goTab(currentTab);
+}
 function toggleAuthView(view){
   document.getElementById('view-login').style.display=view==='login'?'':'none';
   document.getElementById('view-signup').style.display=view==='signup'?'':'none';
@@ -687,6 +753,7 @@ async function doSignup(){
   document.getElementById('app').style.cssText='display:flex;flex-direction:column;';
   await initApp();
   document.getElementById('tabs-admin').style.display='flex';
+  document.getElementById('btn-config').style.display='';
   goTab('dash');
   resetSession();
   if(btn){btn.disabled=false;btn.textContent='Criar conta';}
@@ -737,6 +804,7 @@ async function doLogin(){
     document.getElementById('tabs-enc').style.display='flex';
   } else {
     document.getElementById('tabs-admin').style.display='flex';
+    document.getElementById('btn-config').style.display='';
   }
   goTab('dash');
   resetSession();
@@ -758,6 +826,7 @@ async function checkExistingSession(){
       document.getElementById('tabs-enc').style.display='flex';
     } else {
       document.getElementById('tabs-admin').style.display='flex';
+      document.getElementById('btn-config').style.display='';
     }
     goTab('dash');
     resetSession();
@@ -779,6 +848,7 @@ async function doLogout(){
   document.querySelectorAll('.tab').forEach(t=>{t.style.display='';t.classList.remove('on');});
   document.getElementById('tabs-admin').style.display='none';
   document.getElementById('tabs-enc').style.display='none';
+  document.getElementById('btn-config').style.display='none';
 }
 function resetSession(){clearTimeout(sessionTimer);sessionTimer=setTimeout(()=>{doLogout();},30*60*1000);}
 document.addEventListener('click',resetSession);
@@ -793,7 +863,13 @@ async function initApp(){
     sbOk=!error;
     document.getElementById('sdot').className='sdot'+(sbOk?' ok':' err');
     document.getElementById('slbl').textContent=sbOk?'Online':'Offline';
-    if(sbOk) await loadBase();
+    if(sbOk){
+      if(empresaAtual){
+        const{data:cfg}=await sb.from('empresas').select('jornada_entrada,jornada_almoco_ini,jornada_almoco_fim,jornada_saida,jornada_saida_sexta,tolerancia_min').eq('id',empresaAtual).single();
+        aplicarConfigEmpresa(cfg);
+      }
+      await loadBase();
+    }
   }catch(e){document.getElementById('sdot').className='sdot err';}
 }
 async function loadBase(){
@@ -1222,10 +1298,10 @@ function montarSlotsBatida(data,bats,cpf,nome){
   const agoraMin=new Date().getHours()*60+new Date().getMinutes();
   const saidaSug=dow===5?SAIDA_SEX:SAIDA_SEMANA;
   const janelas=[
-    {ini:'06:00',fim:'10:00',sugestao:ENTRADA_PAD},
-    {ini:'11:00',fim:'13:00',sugestao:'12:00'},
-    {ini:'13:01',fim:'14:30',sugestao:'13:30'},
-    {ini:'15:00',fim:'20:00',sugestao:saidaSug}
+    {ini:fromMinHHMM(toMin(ENTRADA_PAD)-60),fim:fromMinHHMM(toMin(ENTRADA_PAD)+180),sugestao:ENTRADA_PAD},
+    {ini:fromMinHHMM(toMin(ALMOCO_INI)-60),fim:fromMinHHMM(toMin(ALMOCO_INI)+60),sugestao:ALMOCO_INI},
+    {ini:fromMinHHMM(toMin(ALMOCO_FIM)),fim:fromMinHHMM(toMin(ALMOCO_FIM)+60),sugestao:ALMOCO_FIM},
+    {ini:fromMinHHMM(toMin(saidaSug)-150),fim:fromMinHHMM(toMin(saidaSug)+150),sugestao:saidaSug}
   ];
 
   const usados=new Set();
