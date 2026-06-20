@@ -1400,11 +1400,15 @@ function toggleSalario(el){
   vals.forEach(v=>v.style.filter=oculto?'none':'blur(5px)');
   el.textContent=oculto?'🙈':'👁';
 }
-async function editPin(id,nome){
-  const np=prompt(`PIN para ${nome.split(' ')[0]} (4 dígitos):`);
+async function editPin(id){
+  const f=funcionarios.find(x=>x.id===id);
+  if(!f){toast('Funcionário não encontrado.','err');return;}
+  const np=prompt('PIN de '+f.nome.split(' ')[0]+' (4 dígitos):', f.pin||'');
+  if(np===null) return;
   if(!np||np.length!==4||isNaN(parseInt(np))){toast('PIN inválido — use 4 dígitos.','err');return;}
-  if(funcionarios.find(f=>f.pin===np&&f.id!==id)){toast('Esse PIN já está em uso.','err');return;}
+  if(funcionarios.find(x=>x.pin===np&&x.id!==id)){toast('Esse PIN já está em uso.','err');return;}
   await sb.from('iw_funcionarios').update({pin:np}).eq('id',id);
+  toast('PIN atualizado!','ok');
   await loadBase();renderEquipe(document.getElementById('content'));
 }
 
