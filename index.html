@@ -50,6 +50,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);font-size:14px
 .login-title{font-size:20px;font-weight:800;margin-bottom:.25rem;}
 .login-sub{font-size:12px;color:var(--t2);margin-bottom:1.5rem;}
 .field{margin-bottom:1rem;}
+@media(max-width:380px){.frow-2col{flex-direction:column!important;gap:0!important;}}
 .field label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--t2);display:block;margin-bottom:.4rem;}
 .field input,.field select,.field textarea{width:100%;background:var(--s2);border:1px solid var(--b1);border-radius:var(--r8);padding:11px 12px;font-family:var(--font);font-size:14px;color:var(--t1);outline:none;}
 .field input:focus,.field select:focus{border-color:var(--acc);}
@@ -200,7 +201,16 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .advcard{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r12);padding:.85rem 1rem;margin-bottom:8px;}
 .moverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:100;align-items:center;justify-content:center;padding:1rem;}
 .moverlay.open{display:flex;}
-.modal{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r16);padding:1.5rem;width:100%;max-width:420px;}
+.modal{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r16);padding:1.5rem;width:100%;max-width:420px;max-height:88vh;overflow-y:auto;}
+@media(max-width:480px){
+  .modal{padding:1.5rem 1.25rem 1.75rem;border-radius:22px 22px 0 0;}
+  .field{margin-bottom:1.15rem;}
+  .field input,.field select{padding:12px 14px!important;font-size:15px!important;}
+  .field label{font-size:11px;margin-bottom:.5rem;}
+  .mtitle{font-size:18px;}
+  .mactions{gap:10px;margin-top:.5rem;}
+  .mactions .btn,.mactions .btn-sm{padding:13px 16px;font-size:14px;flex:1;}
+}
 .mhandle{display:none;}
 .mtitle{font-size:16px;font-weight:800;margin-bottom:3px;}
 .msub{font-size:12px;color:var(--t2);margin-bottom:1rem;}
@@ -264,6 +274,25 @@ tr:hover td{background:rgba(255,255,255,.02);}
 @keyframes toastIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 @keyframes toastOut{to{opacity:0;transform:translateY(8px)}}
 body.light .toast{background:rgba(255,255,255,.97);}
+
+#nav-fab{
+  display:none;position:fixed;bottom:18px;right:18px;z-index:500;
+  width:54px;height:54px;border-radius:50%;
+  background:var(--acc);color:#0a0a0c;border:none;
+  cursor:pointer;align-items:center;justify-content:center;
+  box-shadow:0 6px 22px rgba(0,0,0,.35);
+  -webkit-tap-highlight-color:transparent;
+}
+#nav-fab svg{width:22px;height:22px;}
+#nav-fab.show{display:flex;}
+@media(min-width:900px){#nav-fab{display:none!important;}}
+.navsheet-item{
+  padding:14px 4px;font-size:15px;font-weight:600;color:var(--t1);
+  border-bottom:1px solid var(--b1);cursor:pointer;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.navsheet-item:last-child{border-bottom:none;}
+.navsheet-item.on{color:var(--acc);font-weight:800;}
 </style>
 <div id="login">
   <div class="login-wrap">
@@ -332,6 +361,7 @@ body.light .toast{background:rgba(255,255,255,.97);}
     <div class="tab" onclick="goTab('atrasos')" id="t-atrasos">Atrasos</div>
     <div class="tab" onclick="goTab('equipe')" id="t-equipe">Equipe</div>
     <div class="tab" onclick="goTab('ferias')" id="t-ferias">Férias</div>
+    <div class="tab" onclick="goTab('afastamentos')" id="t-afastamentos">Atestados</div>
     <div class="tab" onclick="goTab('epis')" id="t-epis">EPIs</div>
     <div class="tab" onclick="goTab('adv')" id="t-adv">Advertências</div>
   </div>
@@ -448,6 +478,37 @@ body.light .toast{background:rgba(255,255,255,.97);}
   </div>
 </div>
 
+<!-- MODAL AFASTAMENTO -->
+<div class="moverlay" id="m-afast">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div class="mtitle" id="m-afast-title">Registrar afastamento</div>
+    <div class="msub" id="m-afast-sub"></div>
+    <div class="field"><label>Tipo</label>
+      <select id="afast-tipo">
+        <option value="Atestado médico">Atestado médico</option>
+        <option value="Licença maternidade">Licença maternidade</option>
+        <option value="Licença paternidade">Licença paternidade</option>
+        <option value="Acidente de trabalho">Acidente de trabalho</option>
+        <option value="Licença óbito">Licença óbito</option>
+        <option value="Outro">Outro</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:10px">
+      <div class="field" style="flex:1"><label>Data início</label><input type="date" id="afast-inicio"></div>
+      <div class="field" style="flex:1"><label>Previsão de retorno</label><input type="date" id="afast-fim"></div>
+    </div>
+    <div class="field"><label>Documento (PDF ou foto, opcional)</label>
+      <input type="file" id="afast-arquivo" accept="application/pdf,image/jpeg,image/png,image/webp">
+    </div>
+    <div class="field"><label>Observação</label><input type="text" id="afast-obs" placeholder="Opcional"></div>
+    <div class="mactions">
+      <button class="btn-sm" onclick="closeModals()">Cancelar</button>
+      <button class="btn" id="afast-save-btn" onclick="salvarAfastamento()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL FÉRIAS -->
 <div class="moverlay" id="m-ferias">
   <div class="modal">
@@ -477,11 +538,11 @@ body.light .toast{background:rgba(255,255,255,.97);}
     <div class="mtitle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;display:inline-block;vertical-align:-2px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Configurações da empresa</div>
     <div class="msub">Jornada padrão usada para cálculo de banco de horas e atrasos</div>
     <div class="field"><label>Horário de entrada</label><input type="time" id="cfg-entrada"></div>
-    <div style="display:flex;gap:10px">
+    <div class="frow-2col" style="display:flex;gap:10px">
       <div class="field" style="flex:1"><label>Início do almoço</label><input type="time" id="cfg-almoco-ini"></div>
       <div class="field" style="flex:1"><label>Fim do almoço</label><input type="time" id="cfg-almoco-fim"></div>
     </div>
-    <div style="display:flex;gap:10px">
+    <div class="frow-2col" style="display:flex;gap:10px">
       <div class="field" style="flex:1"><label>Saída (Seg–Qui)</label><input type="time" id="cfg-saida"></div>
       <div class="field" style="flex:1"><label>Saída (Sexta)</label><input type="time" id="cfg-saida-sex"></div>
     </div>
@@ -571,6 +632,7 @@ let loginAttempts=0,loginBlocked=false,currentAdvFunc=null,sessionTimer=null;
 let editCtx=null, addCtx=null;
 let feriados=new Set();
 let diasFeriasCpf=new Set();
+let diasAfastamentoCpf=new Set();
 let perfilUsuario='admin'; let empresaAtual=null; // 'admin' ou 'encarregado' // Set de strings "YYYY-MM-DD"
 
 function isFeriado(ds){return feriados.has(ds);}
@@ -579,8 +641,8 @@ function isDiaUtil(ds){
   return dw>=1&&dw<=5&&!isFeriado(ds);
 }
 function isDiaUtilFunc(ds,cpf){
-  // Exclui feriados E dias de férias do funcionário
-  return isDiaUtil(ds)&&!diasFeriasCpf.has(cpf+'_'+ds);
+  // Exclui feriados, dias de férias E dias de afastamento do funcionário
+  return isDiaUtil(ds)&&!diasFeriasCpf.has(cpf+'_'+ds)&&!diasAfastamentoCpf.has(cpf+'_'+ds);
 }
 
 // ===== HELPERS =====
@@ -679,6 +741,20 @@ async function abrirTotem(){
   const url=window.location.origin+window.location.pathname.replace('index.html','')+'totem.html?t='+data.kiosk_token;
   window.open(url,'_blank');
 }
+function abrirNavSheet(){
+  const containerId=perfilUsuario==='admin'?'tabs-admin':'tabs-enc';
+  const container=document.getElementById(containerId);
+  if(!container)return;
+  const tabs=[...container.querySelectorAll('.tab')];
+  const listEl=document.getElementById('nav-sheet-list');
+  listEl.innerHTML=tabs.map(t=>{
+    const id=t.id;
+    const tabName=id.replace('-e','').replace('t-','');
+    const isOn=t.classList.contains('on');
+    return `<div class="navsheet-item${isOn?' on':''}" onclick="goTab('${tabName}');closeModals()">${t.textContent}${isOn?'<span>•</span>':''}</div>`;
+  }).join('');
+  document.getElementById('nav-sheet').classList.add('open');
+}
 function abrirConfigEmpresa(){
   document.getElementById('cfg-entrada').value=ENTRADA_PAD;
   document.getElementById('cfg-almoco-ini').value=ALMOCO_INI;
@@ -764,6 +840,7 @@ async function doSignup(){
   await initApp();
   document.getElementById('tabs-admin').style.display='flex';
   document.getElementById('btn-config').style.display='';
+  document.getElementById('nav-fab').classList.add('show');
   goTab('dash');
   resetSession();
   if(btn){btn.disabled=false;btn.textContent='Criar conta';}
@@ -812,9 +889,11 @@ async function doLogin(){
   await initApp();
   if(perfilUsuario==='encarregado'){
     document.getElementById('tabs-enc').style.display='flex';
+    document.getElementById('nav-fab').classList.add('show');
   } else {
     document.getElementById('tabs-admin').style.display='flex';
     document.getElementById('btn-config').style.display='';
+    document.getElementById('nav-fab').classList.add('show');
   }
   goTab('dash');
   resetSession();
@@ -838,6 +917,7 @@ async function checkExistingSession(){
       document.getElementById('tabs-admin').style.display='flex';
       document.getElementById('btn-config').style.display='';
     }
+    document.getElementById('nav-fab').classList.add('show');
     goTab('dash');
     resetSession();
     return true;
@@ -859,6 +939,7 @@ async function doLogout(){
   document.getElementById('tabs-admin').style.display='none';
   document.getElementById('tabs-enc').style.display='none';
   document.getElementById('btn-config').style.display='none';
+  document.getElementById('nav-fab').classList.remove('show');
 }
 function resetSession(){clearTimeout(sessionTimer);sessionTimer=setTimeout(()=>{doLogout();},30*60*1000);}
 document.addEventListener('click',resetSession);
@@ -884,16 +965,18 @@ async function initApp(){
 }
 async function loadBase(){
   // Busca tudo em paralelo em vez de sequencial — bem mais rápido
-  const[{data:f},{data:a},{data:fer},{data:ferDias}]=await Promise.all([
+  const[{data:f},{data:a},{data:fer},{data:ferDias},{data:afastDias}]=await Promise.all([
     sb.from('iw_funcionarios').select('*').eq('ativo',true).order('nome'),
     sb.from('iw_advertencias').select('*').order('criado_em',{ascending:false}),
     sb.from('iw_feriados').select('data'),
-    sb.from('iw_ferias_dias').select('cpf,data').limit(2000)
+    sb.from('iw_ferias_dias').select('cpf,data').limit(2000),
+    sb.from('iw_afastamentos_dias').select('cpf,data').limit(2000)
   ]);
   funcionarios=(f||[]).map((x,i)=>({...x,color:COLORS[i%COLORS.length],admissao:x.admissao||'2026-02-01',salario:x.salario||0,aniversario:x.aniversario||null}));
   advertencias=a||[];
   feriados=new Set((fer||[]).map(x=>x.data));
   diasFeriasCpf=new Set((ferDias||[]).map(x=>x.cpf+'_'+x.data));
+  diasAfastamentoCpf=new Set((afastDias||[]).map(x=>x.cpf+'_'+x.data));
 }
 
 // ===== TABS =====
@@ -908,7 +991,7 @@ function goTab(tab){
   document.getElementById('t-'+tab+'-e')?.classList.add('on');
   const c=document.getElementById('content');
   c.innerHTML='<div class="loading">Carregando...</div>';c.scrollTop=0;
-  ({dash:renderDash,batidas:renderBatidas,banco:renderBanco,atrasos:renderAtrasos,equipe:renderEquipe,ferias:renderFerias,epis:renderEpis,adv:renderAdv}[tab]||((c)=>c.innerHTML=''))(c);
+  ({dash:renderDash,batidas:renderBatidas,banco:renderBanco,atrasos:renderAtrasos,equipe:renderEquipe,ferias:renderFerias,afastamentos:renderAfastamentos,epis:renderEpis,adv:renderAdv}[tab]||((c)=>c.innerHTML=''))(c);
 }
 
 // ===== DASHBOARD =====
@@ -2257,6 +2340,16 @@ async function reloadAtrasos(){
 </script>
 
 
+<button id="nav-fab" onclick="abrirNavSheet()" title="Navegação rápida">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+</button>
+<div class="moverlay" id="nav-sheet">
+  <div class="modal" style="max-width:340px">
+    <div class="mhandle"></div>
+    <div class="mtitle">Ir para</div>
+    <div id="nav-sheet-list"></div>
+  </div>
+</div>
 <div id="toast-wrap"></div>
 </body>
 </html>
