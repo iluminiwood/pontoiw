@@ -135,20 +135,23 @@ const MOTIV_GERAL=[
   '🔥 Foco no que importa, leveza no resto. Bom trabalho!',
   '💛 Cuide de você também. Um bom dia começa por dentro.'
 ];
-const MOTIV_ENTRADA=[
-  'Que seu dia seja produtivo e abençoado! 🙏',
-  'Bom trabalho! Foco, leveza e boas energias hoje. ✨',
-  'Vai ser um ótimo dia. Conte com a gente! 💪',
-  'Que tudo flua bem hoje. Sucesso no seu dia! ☀️',
-  'Comece o dia com gratidão. Você é importante aqui. 💛'
-];
-const MOTIV_SAIDA=[
-  'Descanse bem, você merece! 💛',
-  'Até amanhã! Obrigado pelo seu trabalho hoje. 🙏',
-  'Vai com Deus, tenha uma ótima noite! ✨',
-  'Trabalho concluído com sucesso. Bom descanso! 🌙',
-  'Que você aproveite seu tempo livre. Até logo! ☀️'
-];
+function saudacaoPorHora(){
+  const h=new Date().getHours();
+  if(h<12) return 'Bom dia';
+  if(h<18) return 'Boa tarde';
+  return 'Boa noite';
+}
+
+function montarMensagem(numero,tipo,nome){
+  const saud=saudacaoPorHora();
+  if(tipo==='ENTRADA'&&numero===1) return {titulo:saud+' e ótimo trabalho, '+nome+'!',sub:'Entrada registrada'};
+  if(tipo==='SAIDA'&&numero===2) return {titulo:'Bom almoço e ótimo descanso, '+nome+'!',sub:'Saída para almoço'};
+  if(tipo==='ENTRADA'&&numero===3) return {titulo:saud+' e ótimo trabalho, '+nome+'!',sub:'Volta do almoço'};
+  if(tipo==='SAIDA'&&numero===4) return {titulo:saud+' e ótimo descanso, '+nome+'!',sub:'Saída registrada'};
+  // Batidas extras (5ª em diante) — casos como saída externa
+  if(tipo==='ENTRADA') return {titulo:'Bem-vindo de volta, '+nome+'!',sub:'Entrada registrada'};
+  return {titulo:'Até breve, '+nome+'!',sub:'Saída registrada'};
+}
 
 function sorteia(arr){return arr[Math.floor(Math.random()*arr.length)];}
 function el(id){return document.getElementById(id);}
@@ -228,14 +231,16 @@ async function confirmarPin(){
 function mostrarConfirmacao(data){
   const overlay=el('confirmOverlay');
   if(!overlay)return;
-  const isEntrada=data.tipo==='ENTRADA';
+  const nome=data.nome.split(' ')[0];
+  const numero=data.numero||1;
+  const msg=montarMensagem(numero,data.tipo,nome);
   overlay.className='confirm-overlay open ok';
   const iconEl=el('confirmIcon'), titleEl=el('confirmTitle'), horaEl=el('confirmHora'), tipoEl=el('confirmTipo'), motivEl2=el('confirmMotiv');
-  if(iconEl) iconEl.textContent=isEntrada?'👋':'✓';
-  if(titleEl) titleEl.textContent=(isEntrada?'Bom dia, ':'Até logo, ')+data.nome.split(' ')[0]+'!';
+  if(iconEl) iconEl.textContent='✓';
+  if(titleEl) titleEl.textContent=msg.titulo;
   if(horaEl) horaEl.textContent=data.hora;
-  if(tipoEl) tipoEl.textContent=isEntrada?'Entrada registrada':'Saída registrada';
-  if(motivEl2) motivEl2.textContent=sorteia(isEntrada?MOTIV_ENTRADA:MOTIV_SAIDA);
+  if(tipoEl) tipoEl.textContent=msg.sub;
+  if(motivEl2) motivEl2.textContent='';
 
   setTimeout(function(){
     overlay.classList.remove('open');
