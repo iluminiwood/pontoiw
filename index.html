@@ -225,6 +225,43 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .tabs-pc::-webkit-scrollbar{display:none;}
 
 
+
+.news-grid{display:grid;grid-template-columns:1fr;gap:14px;}
+.news-link{text-decoration:none;display:block;}
+.news-card{
+  border:1px solid var(--b1);border-radius:var(--r16);
+  padding:1.25rem 1.4rem;cursor:pointer;height:100%;
+  transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease;
+}
+.news-link:hover .news-card{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.18);}
+.news-title{font-size:17px;font-weight:800;color:var(--t1);margin-bottom:.6rem;line-height:1.35;}
+.news-resumo{font-size:14px;color:var(--t2);line-height:1.65;margin-bottom:1rem;}
+.news-cta{font-size:13px;font-weight:800;display:flex;align-items:center;gap:5px;}
+@media(min-width:680px){
+  .news-grid{grid-template-columns:1fr 1fr;gap:16px;}
+  .news-title{font-size:18px;}
+  .news-resumo{font-size:14.5px;}
+}
+
+#toast-wrap{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;width:calc(100% - 32px);max-width:420px;}
+.toast{
+  display:flex;align-items:center;gap:10px;
+  background:rgba(17,17,20,.97);border:1px solid var(--b1);
+  border-radius:var(--r12);padding:.85rem 1.1rem;
+  box-shadow:0 8px 28px rgba(0,0,0,.35);
+  font-size:13.5px;font-weight:600;color:var(--t1);
+  pointer-events:auto;
+  animation:toastIn .25s ease;
+  width:100%;
+}
+.toast.out{animation:toastOut .2s ease forwards;}
+.toast .ticon{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:800;}
+.toast.ok .ticon{background:rgba(61,214,140,.18);color:var(--g);}
+.toast.err .ticon{background:rgba(248,113,113,.18);color:var(--r);}
+.toast.info .ticon{background:rgba(96,165,250,.18);color:var(--bl);}
+@keyframes toastIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes toastOut{to{opacity:0;transform:translateY(8px)}}
+body.light .toast{background:rgba(255,255,255,.97);}
 </style>
 <div id="login">
   <div class="login-wrap">
@@ -554,6 +591,20 @@ async function sha256(msg){
   const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(msg));
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
+function toast(msg,tipo){
+  tipo=tipo||'info';
+  var wrap=document.getElementById('toast-wrap');
+  if(!wrap)return;
+  var icons={ok:'✓',err:'✕',info:'i'};
+  var el=document.createElement('div');
+  el.className='toast '+tipo;
+  el.innerHTML='<span class="ticon">'+icons[tipo]+'</span><span>'+msg+'</span>';
+  wrap.appendChild(el);
+  setTimeout(function(){
+    el.classList.add('out');
+    setTimeout(function(){el.remove();},200);
+  },3500);
+}
 function toggleAuthView(view){
   document.getElementById('view-login').style.display=view==='login'?'':'none';
   document.getElementById('view-signup').style.display=view==='signup'?'':'none';
@@ -750,6 +801,40 @@ function goTab(tab){
 
 // ===== DASHBOARD =====
 async function renderDash(c){
+  // Empresa nova sem nenhum funcionário — mostra tela de boas-vindas em vez do dashboard vazio
+  if(perfilUsuario==='admin' && funcionarios.length===0){
+    c.innerHTML=`
+    <div style="max-width:560px;margin:2rem auto;text-align:center;padding:0 1rem">
+      <div style="font-size:42px;margin-bottom:.5rem">👋</div>
+      <div style="font-size:22px;font-weight:800;color:var(--t1);margin-bottom:.5rem">Bem-vindo ao IW Ponto!</div>
+      <div style="font-size:14px;color:var(--t2);line-height:1.6;margin-bottom:2rem">Sua empresa foi criada com sucesso. Vamos configurar tudo em poucos passos pra você começar a controlar o ponto da sua equipe.</div>
+    </div>
+    <div style="max-width:560px;margin:0 auto" class="flist">
+      <div class="fcard" style="display:flex;align-items:center;gap:14px">
+        <div style="width:38px;height:38px;border-radius:50%;background:rgba(240,192,64,.15);color:var(--acc);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex-shrink:0">1</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">Cadastre seus funcionários</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">Nome, CPF, cargo e PIN de acesso</div>
+        </div>
+        <button class="btn-sm accent" onclick="goTab('equipe')">Começar</button>
+      </div>
+      <div class="fcard" style="display:flex;align-items:center;gap:14px">
+        <div style="width:38px;height:38px;border-radius:50%;background:rgba(240,192,64,.15);color:var(--acc);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex-shrink:0">2</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">Configure o relógio de ponto</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">Integração com Control-ID ou registro manual</div>
+        </div>
+      </div>
+      <div class="fcard" style="display:flex;align-items:center;gap:14px">
+        <div style="width:38px;height:38px;border-radius:50%;background:rgba(240,192,64,.15);color:var(--acc);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex-shrink:0">3</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">Acompanhe tudo por aqui</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">Banco de horas, férias, atrasos e muito mais</div>
+        </div>
+      </div>
+    </div>`;
+    return;
+  }
   const hoje=new Date().toISOString().split('T')[0];
   const dow=new Date().getDay();
   const{data:rh}=await sb.from('iw_registros_ponto').select('*').eq('data_local',hoje).order('id').limit(500);
@@ -835,7 +920,7 @@ async function renderDash(c){
       <span class="thead-title">📰 Informações trabalhistas</span>
       <button class="btn-sm accent" onclick="carregarNoticias(true)">Atualizar</button>
     </div>
-    <div style="padding:.75rem 1rem" id="news-body"><span style="color:var(--t3);font-size:12px">Carregando...</span></div>
+    <div style="padding:1rem" id="news-body"><span style="color:var(--t3);font-size:12px">Carregando...</span></div>
   </div>`;
 
   // Ranking separado para não travar
@@ -847,12 +932,12 @@ async function renderDash(c){
 // ===== FEED DE NOTICIAS =====
 // Conteúdo curado e atualizado — clique para saber mais
 var NOTICIAS_FIXAS=[
-  {titulo:'NR-01 atualizada — Saúde Mental obrigatória',resumo:'Empresas devem incluir riscos psicossociais no GRO (Gerenciamento de Riscos Ocupacionais). Prevenção ao estresse, burnout e assédio moral são exigências vigentes. Prazo para adequação já em vigor.',fonte:'Saúde',url:'https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/ctpp-nrs/normas-regulamentadoras-nrs/nr-01',urgente:true},
-  {titulo:'Isenção de IR até R$ 5.000 — impacto na folha',resumo:'A partir de 2026 rendimentos mensais de até R$ 5.000 estão isentos do IRRF. Empresas precisam revisar cálculo da folha de pagamento e atualizar parametrizações do sistema para não reter indevidamente.',fonte:'Legislação',url:'https://www.gov.br/receitafederal',urgente:true},
-  {titulo:'eSocial — Eventos de SST obrigatórios para todos',resumo:'Todas as empresas devem enviar eventos de Saúde e Segurança no Trabalho pelo eSocial: ASO (Atestado de Saúde Ocupacional), CAT (Comunicação de Acidente de Trabalho) e monitoramento de saúde dos trabalhadores.',fonte:'eSocial',url:'https://www.gov.br/esocial',urgente:false},
-  {titulo:'Redução da jornada — 40h semanais em debate',resumo:'Proposta de redução da jornada de 44h para 40h semanais e fim da escala 6x1 tramita no Senado como prioridade legislativa. Empresas devem acompanhar os avanços para se preparar com antecedência.',fonte:'Legislação',url:'https://www12.senado.leg.br/noticias/tags/Direitos%20Trabalhistas',urgente:false},
-  {titulo:'FGTS Digital — recolhimento até o dia 20',resumo:'O FGTS Digital substituiu a GFIP. O prazo de recolhimento mensal é até o dia 20 do mês seguinte. Empresas devem manter o cadastro atualizado e realizar os depósitos para evitar multas e encargos.',fonte:'eSocial',url:'https://www.gov.br/trabalho-e-emprego/pt-br/servicos/empregador/fgts',urgente:false},
-  {titulo:'13º Salário — parcelas e prazos em 2026',resumo:'Primeira parcela do 13º deve ser paga entre fevereiro e novembro. Segunda parcela até 20 de dezembro. Empresas podem optar por antecipar nas férias. Atenção ao cálculo correto com base no salário integral.',fonte:'RH',url:'https://www.gov.br/trabalho-e-emprego',urgente:false}
+  {titulo:'NR-01 — Riscos psicossociais ficam obrigatórios em maio',resumo:'A partir de 26/05/2026 (Portaria MTE nº 765/2025), empresas de todos os portes devem identificar e gerenciar riscos psicossociais (estresse, assédio, sobrecarga) dentro do PGR. Fiscalização com multas começa nessa data.',fonte:'Saúde',url:'https://www.google.com/search?q=NR-01+riscos+psicossociais+2026+PGR',urgente:true},
+  {titulo:'Isenção de IR até R$ 5.000 já vale na folha',resumo:'A Lei nº 15.270/2025 isenta totalmente do IRRF quem ganha até R$ 5.000/mês, com desconto parcial até R$ 7.350, em vigor desde janeiro de 2026. Cerca de 16 milhões de trabalhadores são beneficiados — revise o cálculo da folha.',fonte:'Legislação',url:'https://www.gov.br/fazenda/pt-br/assuntos/noticias/2026/janeiro/receita-divulga-nova-tabela-do-irpf-com-as-mudancas-apos-isencao-para-quem-ganha-ate-r-5-mil',urgente:true},
+  {titulo:'eSocial — Eventos de SST obrigatórios para todos',resumo:'Empresas de todos os portes devem enviar eventos de Saúde e Segurança do Trabalho pelo eSocial: ASO (Atestado de Saúde Ocupacional), CAT (Comunicação de Acidente de Trabalho) e monitoramento de saúde dos colaboradores.',fonte:'eSocial',url:'https://www.google.com/search?q=eSocial+eventos+SST+obrigatorios+empresas',urgente:false},
+  {titulo:'Fim da escala 6x1 segue em discussão no Congresso',resumo:'A PEC que propõe reduzir a jornada semanal e acabar com a escala 6x1 continua tramitando. Vale acompanhar os próximos passos, já que pode mudar o planejamento de turnos das empresas nos próximos anos.',fonte:'Legislação',url:'https://www.google.com/search?q=PEC+fim+escala+6x1+jornada+trabalho+2026',urgente:false},
+  {titulo:'FGTS Digital — recolhimento até o dia 20',resumo:'O FGTS Digital substituiu a antiga GFIP. O prazo de recolhimento mensal segue até o dia 20 do mês seguinte. Mantenha o cadastro atualizado para evitar multas e encargos por atraso.',fonte:'eSocial',url:'https://www.google.com/search?q=FGTS+Digital+prazo+recolhimento+empresas',urgente:false},
+  {titulo:'13º salário — parcelas e prazos',resumo:'A primeira parcela do 13º pode ser paga entre fevereiro e novembro; a segunda, até 20 de dezembro. É possível antecipar o pagamento nas férias do colaborador. O cálculo deve considerar o salário integral do mês.',fonte:'RH',url:'https://www.google.com/search?q=decimo+terceiro+salario+parcelas+prazos+2026',urgente:false}
 ];
 let newsCache=null, newsCacheTime=0;
 async function carregarNoticias(forcar){
@@ -860,18 +945,20 @@ async function carregarNoticias(forcar){
   if(!el) return;
   if(!forcar && newsCache){el.innerHTML=newsCache;return;}
   var catColors2={'Legislação':'var(--bl)','Saúde':'var(--g)','eSocial':'var(--o)','RH':'var(--pu)'};
-  newsCache=NOTICIAS_FIXAS.map(function(item){
+  var cards=NOTICIAS_FIXAS.map(function(item){
     var cor=catColors2[item.fonte]||'var(--bl)';
-    return '<a href="'+item.url+'" target="_blank" style="text-decoration:none;display:block">'
-      +'<div style="border:1px solid '+cor+'33;border-left:3px solid '+cor+';border-radius:var(--r8);padding:.75rem 1rem;margin-bottom:8px;background:'+cor+'08;cursor:pointer">'
-      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.35rem">'
-      +'<span style="font-size:10px;font-weight:700;color:'+cor+';text-transform:uppercase;letter-spacing:.05em">'+item.fonte+'</span>'
-      +(item.urgente?'<span class="chip r" style="font-size:9px">Importante</span>':'')
+    return '<a href="'+item.url+'" target="_blank" rel="noopener" class="news-link">'
+      +'<div class="news-card" style="border-color:'+cor+'40;background:'+cor+'0a">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.65rem">'
+      +'<span style="font-size:11px;font-weight:800;color:'+cor+';text-transform:uppercase;letter-spacing:.06em">'+item.fonte+'</span>'
+      +(item.urgente?'<span class="chip r" style="font-size:10px">Importante</span>':'')
       +'</div>'
-      +'<div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:.35rem;line-height:1.3">'+item.titulo+' <span style="color:'+cor+'">↗</span></div>'
-      +'<div style="font-size:12px;color:var(--t2);line-height:1.5">'+item.resumo+'</div>'
+      +'<div class="news-title">'+item.titulo+'</div>'
+      +'<div class="news-resumo">'+item.resumo+'</div>'
+      +'<div class="news-cta" style="color:'+cor+'">Saiba mais <span>↗</span></div>'
       +'</div></a>';
   }).join('');
+  newsCache='<div class="news-grid">'+cards+'</div>';
   el.innerHTML=newsCache;
 }
 
@@ -964,6 +1051,12 @@ async function renderBatidas(c){
 
 async function reloadBatidas(){
   const el=document.getElementById('bat-body');if(!el)return;
+  if(funcionarios.length===0){el.innerHTML=`<div style="text-align:center;padding:3rem 1.5rem">
+      <div style="font-size:32px;margin-bottom:.75rem">👥</div>
+      <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:.4rem">Nenhum funcionário cadastrado</div>
+      <div style="font-size:13px;color:var(--t2);margin-bottom:1.25rem">Cadastre sua equipe pra começar a ver os dados aqui.</div>
+      <button class="btn-sm accent" onclick="goTab('equipe')">Ir para Equipe</button>
+    </div>`;return;}
   el.innerHTML='<div class="loading">Carregando...</div>';
   const per=document.getElementById('b-periodo')?.value||'mes';
   const cpfF=document.getElementById('b-func')?.value||'';
@@ -1069,14 +1162,14 @@ async function salvarEdicao(){
   if(!editCtx)return;
   const hora=document.getElementById('edit-hora').value;
   const tipo=document.getElementById('edit-tipo').value;
-  if(!hora){alert('Informe a hora.');return;}
+  if(!hora){toast('Informe a hora.','err');return;}
   const {data:updData, error:errUpd}=await sb.from('iw_registros_ponto').update({
     data_hora_local:editCtx.data+'T'+hora,
     tipo,
     origem:'EDITADO_MANUAL',
     sincronizado_em:new Date().toISOString()
   }).eq('id',editCtx.id).select();
-  if(errUpd){alert('Erro ao salvar: '+errUpd.message);return;}
+  if(errUpd){toast('Erro ao salvar: '+errUpd.message,'err');return;}
   if(!updData||updData.length===0){
     // Tenta buscar pelo nsr como fallback
     if(editCtx.nsr){
@@ -1086,13 +1179,15 @@ async function salvarEdicao(){
       }).eq('nsr',editCtx.nsr).select();
     }
   }
+  toast('Batida atualizada!','ok');
   closeModals();
   await reloadBatidas();
 }
 async function deletarBatida(){
   if(!editCtx||!confirm('Excluir esta batida?'))return;
   const {error:errDel}=await sb.from('iw_registros_ponto').delete().eq('id',editCtx.id).select();
-  if(errDel){alert('Erro ao excluir: '+errDel.message);return;}
+  if(errDel){toast('Erro ao excluir: '+errDel.message,'err');return;}
+  toast('Batida excluída.','ok');
   closeModals();await reloadBatidas();
 }
 
@@ -1116,7 +1211,8 @@ async function confirmarAdd(){
     data_local:addCtx.data,tipo,origem:'MANUAL',
     sincronizado_em:new Date().toISOString()
   }).select();
-  if(errIns){alert('Erro ao adicionar: '+errIns.message);return;}
+  if(errIns){toast('Erro ao adicionar: '+errIns.message,'err');return;}
+  toast('Batida adicionada!','ok');
   closeModals();await reloadBatidas();
 }
 
@@ -1137,6 +1233,12 @@ async function renderBanco(c){
 
 async function reloadBanco(){
   const el=document.getElementById('banco-body');if(!el)return;
+  if(funcionarios.length===0){el.innerHTML=`<div style="text-align:center;padding:3rem 1.5rem">
+      <div style="font-size:32px;margin-bottom:.75rem">👥</div>
+      <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:.4rem">Nenhum funcionário cadastrado</div>
+      <div style="font-size:13px;color:var(--t2);margin-bottom:1.25rem">Cadastre sua equipe pra começar a ver os dados aqui.</div>
+      <button class="btn-sm accent" onclick="goTab('equipe')">Ir para Equipe</button>
+    </div>`;return;}
   el.innerHTML='<div class="loading">Calculando...</div>';
   const per=document.getElementById('banco-per')?.value||'mes';
   const{ini,fim}=getPeriodo(per);
@@ -1270,6 +1372,7 @@ async function saveFuncEdit(){
   const adm=document.getElementById('fe-admissao').value||null;
   const aniv=document.getElementById('fe-aniversario').value||null;
   await sb.from('iw_funcionarios').update({salario:sal,admissao:adm,aniversario:aniv}).eq('id',id).select();
+  toast('Dados atualizados!','ok');
   closeModals();
   await loadBase();
   renderEquipe(document.getElementById('content'));
@@ -1283,8 +1386,8 @@ function toggleSalario(el){
 }
 async function editPin(id,nome){
   const np=prompt(`PIN para ${nome.split(' ')[0]} (4 dígitos):`);
-  if(!np||np.length!==4||isNaN(parseInt(np))){alert('PIN inválido.');return;}
-  if(funcionarios.find(f=>f.pin===np&&f.id!==id)){alert('PIN já em uso.');return;}
+  if(!np||np.length!==4||isNaN(parseInt(np))){toast('PIN inválido — use 4 dígitos.','err');return;}
+  if(funcionarios.find(f=>f.pin===np&&f.id!==id)){toast('Esse PIN já está em uso.','err');return;}
   await sb.from('iw_funcionarios').update({pin:np}).eq('id',id);
   await loadBase();renderEquipe(document.getElementById('content'));
 }
@@ -1505,7 +1608,7 @@ async function saveFerias(){
   const fim=document.getElementById('fer-fim').value;
   const obs=document.getElementById('fer-obs').value;
   const direito=parseInt(document.getElementById('fer-direito').value)||30;
-  if(!admissao||!perIni||!perFim){alert('Preencha admissão e período aquisitivo.');return;}
+  if(!admissao||!perIni||!perFim){toast('Preencha admissão e período aquisitivo.','err');return;}
   
   // Calcula dias gozados
   let gozados=0;
@@ -1550,6 +1653,7 @@ async function saveFerias(){
     if(dias.length) await sb.from('iw_ferias_dias').insert(dias);
   }
 
+  toast('Férias registradas!','ok');
   closeModals();
   renderFerias(document.getElementById('content'));
 }
@@ -1699,7 +1803,7 @@ async function salvarEntrega(){
       itens.push({id:ep.id,nome:ep.nome,ca:ep.ca,qtd,validade:val});
     }
   });
-  if(!itens.length){alert('Selecione pelo menos um EPI.');return;}
+  if(!itens.length){toast('Selecione pelo menos um EPI.','err');return;}
 
   // Captura assinatura
   const canvas=document.getElementById('epi-canvas');
@@ -1718,6 +1822,7 @@ async function salvarEntrega(){
     criado_em:new Date().toISOString()
   });
 
+  toast('Entrega de EPI registrada!','ok');
   closeModals();
   renderEpis(document.getElementById('content'));
 }
@@ -1725,8 +1830,9 @@ async function salvarEntrega(){
 async function salvarEpiCad(){
   const nome=document.getElementById('epi-nome').value.trim();
   const ca=document.getElementById('epi-ca').value.trim();
-  if(!nome){alert('Informe o nome do EPI.');return;}
+  if(!nome){toast('Informe o nome do EPI.','err');return;}
   await sb.from('iw_epis').insert({nome,ca:ca||null});
+  toast('EPI cadastrado!','ok');
   closeModals();
   renderEpis(document.getElementById('content'));
 }
@@ -1772,7 +1878,7 @@ async function saveAdv(){
   if(!currentAdvFunc)return;
   const adv={id:Date.now(),funcionario_id:currentAdvFunc.id,funcionario_nome:currentAdvFunc.nome,tipo:document.getElementById('adv-tipo').value,descricao:document.getElementById('adv-desc').value,data_registro:new Date().toLocaleDateString('pt-BR'),criado_em:new Date().toISOString()};
   await sb.from('iw_advertencias').upsert(adv);
-  advertencias.unshift(adv);document.getElementById('adv-desc').value='';closeModals();
+  advertencias.unshift(adv);document.getElementById('adv-desc').value='';toast('Advertência registrada.','ok');closeModals();
   if(currentTab==='adv')renderAdv(document.getElementById('content'));
 }
 async function saveFunc(){
@@ -1780,13 +1886,14 @@ async function saveFunc(){
   const cargo=document.getElementById('f-cargo').value.trim();
   const pv=document.getElementById('f-pin').value.trim();
   const cpf=document.getElementById('f-cpf').value.trim();
-  if(!nome||!cargo||pv.length!==4||isNaN(parseInt(pv))){alert('Preencha nome, cargo e PIN.');return;}
-  if(funcionarios.find(f=>f.pin===pv)){alert('PIN já em uso.');return;}
+  if(!nome||!cargo||pv.length!==4||isNaN(parseInt(pv))){toast('Preencha nome, cargo e PIN.','err');return;}
+  if(funcionarios.find(f=>f.pin===pv)){toast('Esse PIN já está em uso.','err');return;}
   const sal=parseFloat(document.getElementById('f-salario').value)||0;
   const adm=document.getElementById('f-admissao').value||new Date().toISOString().split('T')[0];
   const aniv=document.getElementById('f-aniversario').value||null;
   await sb.from('iw_funcionarios').insert({id:Date.now(),nome,cargo,pin:pv,cpf,carga:9,ativo:true,salario:sal,admissao:adm,aniversario:aniv,atualizado_em:new Date().toISOString()});
   ['f-nome','f-cargo','f-pin','f-cpf','f-salario','f-admissao','f-aniversario'].forEach(id=>document.getElementById(id).value='');
+  toast('Funcionário cadastrado!','ok');
   closeModals();await loadBase();renderEquipe(document.getElementById('content'));
 }
 
@@ -1799,6 +1906,12 @@ async function renderAtrasos(c){
 }
 async function reloadAtrasos(){
   const el=document.getElementById('atr-body');if(!el)return;
+  if(funcionarios.length===0){el.innerHTML=`<div style="text-align:center;padding:3rem 1.5rem">
+      <div style="font-size:32px;margin-bottom:.75rem">👥</div>
+      <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:.4rem">Nenhum funcionário cadastrado</div>
+      <div style="font-size:13px;color:var(--t2);margin-bottom:1.25rem">Cadastre sua equipe pra começar a ver os dados aqui.</div>
+      <button class="btn-sm accent" onclick="goTab('equipe')">Ir para Equipe</button>
+    </div>`;return;}
   el.innerHTML='<div class="loading">Calculando...</div>';
   const per=document.getElementById('atr-per')?.value||'mes';
   const{ini,fim}=getPeriodo(per);
@@ -1850,5 +1963,6 @@ async function reloadAtrasos(){
 </script>
 
 
+<div id="toast-wrap"></div>
 </body>
 </html>
