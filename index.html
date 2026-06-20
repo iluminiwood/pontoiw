@@ -274,25 +274,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
 @keyframes toastIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 @keyframes toastOut{to{opacity:0;transform:translateY(8px)}}
 body.light .toast{background:rgba(255,255,255,.97);}
-
-#nav-fab{
-  display:none;position:fixed;bottom:18px;right:18px;z-index:500;
-  width:54px;height:54px;border-radius:50%;
-  background:var(--acc);color:#0a0a0c;border:none;
-  cursor:pointer;align-items:center;justify-content:center;
-  box-shadow:0 6px 22px rgba(0,0,0,.35);
-  -webkit-tap-highlight-color:transparent;
-}
-#nav-fab svg{width:22px;height:22px;}
-#nav-fab.show{display:flex;}
-@media(min-width:900px){#nav-fab{display:none!important;}}
-.navsheet-item{
-  padding:14px 4px;font-size:15px;font-weight:600;color:var(--t1);
-  border-bottom:1px solid var(--b1);cursor:pointer;
-  display:flex;align-items:center;justify-content:space-between;
-}
-.navsheet-item:last-child{border-bottom:none;}
-.navsheet-item.on{color:var(--acc);font-weight:800;}
 </style>
 <div id="login">
   <div class="login-wrap">
@@ -741,20 +722,6 @@ async function abrirTotem(){
   const url=window.location.origin+window.location.pathname.replace('index.html','')+'totem.html?t='+data.kiosk_token;
   window.open(url,'_blank');
 }
-function abrirNavSheet(){
-  const containerId=perfilUsuario==='admin'?'tabs-admin':'tabs-enc';
-  const container=document.getElementById(containerId);
-  if(!container)return;
-  const tabs=[...container.querySelectorAll('.tab')];
-  const listEl=document.getElementById('nav-sheet-list');
-  listEl.innerHTML=tabs.map(t=>{
-    const id=t.id;
-    const tabName=id.replace('-e','').replace('t-','');
-    const isOn=t.classList.contains('on');
-    return `<div class="navsheet-item${isOn?' on':''}" onclick="goTab('${tabName}');closeModals()">${t.textContent}${isOn?'<span>•</span>':''}</div>`;
-  }).join('');
-  document.getElementById('nav-sheet').classList.add('open');
-}
 function abrirConfigEmpresa(){
   document.getElementById('cfg-entrada').value=ENTRADA_PAD;
   document.getElementById('cfg-almoco-ini').value=ALMOCO_INI;
@@ -840,7 +807,6 @@ async function doSignup(){
   await initApp();
   document.getElementById('tabs-admin').style.display='flex';
   document.getElementById('btn-config').style.display='';
-  document.getElementById('nav-fab').classList.add('show');
   goTab('dash');
   resetSession();
   if(btn){btn.disabled=false;btn.textContent='Criar conta';}
@@ -889,11 +855,9 @@ async function doLogin(){
   await initApp();
   if(perfilUsuario==='encarregado'){
     document.getElementById('tabs-enc').style.display='flex';
-    document.getElementById('nav-fab').classList.add('show');
   } else {
     document.getElementById('tabs-admin').style.display='flex';
     document.getElementById('btn-config').style.display='';
-    document.getElementById('nav-fab').classList.add('show');
   }
   goTab('dash');
   resetSession();
@@ -917,7 +881,6 @@ async function checkExistingSession(){
       document.getElementById('tabs-admin').style.display='flex';
       document.getElementById('btn-config').style.display='';
     }
-    document.getElementById('nav-fab').classList.add('show');
     goTab('dash');
     resetSession();
     return true;
@@ -939,7 +902,6 @@ async function doLogout(){
   document.getElementById('tabs-admin').style.display='none';
   document.getElementById('tabs-enc').style.display='none';
   document.getElementById('btn-config').style.display='none';
-  document.getElementById('nav-fab').classList.remove('show');
 }
 function resetSession(){clearTimeout(sessionTimer);sessionTimer=setTimeout(()=>{doLogout();},30*60*1000);}
 document.addEventListener('click',resetSession);
@@ -2340,16 +2302,6 @@ async function reloadAtrasos(){
 </script>
 
 
-<button id="nav-fab" onclick="abrirNavSheet()" title="Navegação rápida">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
-</button>
-<div class="moverlay" id="nav-sheet">
-  <div class="modal" style="max-width:340px">
-    <div class="mhandle"></div>
-    <div class="mtitle">Ir para</div>
-    <div id="nav-sheet-list"></div>
-  </div>
-</div>
 <div id="toast-wrap"></div>
 </body>
 </html>
