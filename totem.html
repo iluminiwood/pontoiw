@@ -20,34 +20,36 @@ body{
   background:radial-gradient(ellipse at top,#15151c 0%,#0a0a0c 60%);
   color:#e4e4e8;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  height:100dvh;padding:1.5rem;text-align:center;
+  height:100dvh;padding:1.25rem 1.5rem;text-align:center;
+  overflow-y:auto;
 }
-.brand{font-size:12px;font-weight:800;letter-spacing:.12em;color:#555;text-transform:uppercase;position:absolute;top:1.5rem;left:50%;transform:translateX(-50%);}
+#main{display:flex;flex-direction:column;align-items:center;width:100%;max-width:480px;}
+.brand{font-size:11px;font-weight:800;letter-spacing:.12em;color:#555;text-transform:uppercase;margin-bottom:clamp(.5rem,3vh,1.5rem);flex-shrink:0;}
 
 /* ===== RELÓGIO ===== */
-.clock-wrap{margin-bottom:.5rem;}
+.clock-wrap{margin-bottom:.25rem;flex-shrink:0;}
 .clock{font-family:'SF Mono',Menlo,monospace;font-weight:800;color:#fff;letter-spacing:-2px;line-height:1;
-  font-size:min(20vw,140px);}
-.date{font-size:clamp(14px,2.2vw,18px);color:#8888a0;margin-top:.5rem;text-transform:capitalize;}
+  font-size:min(18vw,20vh,128px);}
+.date{font-size:clamp(13px,2vh,17px);color:#8888a0;margin-top:.5rem;text-transform:capitalize;}
 
 /* ===== MENSAGEM MOTIVACIONAL ===== */
 .motiv{
-  font-size:clamp(13px,1.8vw,16px);color:#f0c040;font-weight:600;
-  margin-top:1.5rem;margin-bottom:2.5rem;max-width:480px;line-height:1.5;
+  font-size:clamp(12px,1.8vh,15px);color:#f0c040;font-weight:600;
+  margin-top:clamp(.75rem,2.5vh,1.5rem);margin-bottom:clamp(1.25rem,3vh,2.25rem);max-width:480px;line-height:1.5;
   opacity:.92;
 }
 
 /* ===== PIN ===== */
-.pin-label{font-size:14px;color:#8888a0;margin-bottom:1.25rem;}
-.pin-dots{display:flex;justify-content:center;gap:18px;margin-bottom:2rem;}
-.pin-dot{width:18px;height:18px;border-radius:50%;border:2px solid #333;transition:all .15s;}
+.pin-label{font-size:clamp(12px,1.8vh,14px);color:#8888a0;margin-bottom:clamp(.75rem,2vh,1.25rem);flex-shrink:0;}
+.pin-dots{display:flex;justify-content:center;gap:16px;margin-bottom:clamp(1rem,2.5vh,2rem);flex-shrink:0;}
+.pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid #333;transition:all .15s;}
 .pin-dot.filled{background:#f0c040;border-color:#f0c040;transform:scale(1.1);}
 .pin-dots.shake{animation:shake .4s;}
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-12px)}40%{transform:translateX(12px)}60%{transform:translateX(-9px)}80%{transform:translateX(9px)}}
-.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:300px;width:100%;}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(8px,1.8vh,14px);width:min(300px,70vw,60vh);flex-shrink:0;}
 .pin-key{
   aspect-ratio:1;border-radius:50%;background:#16161a;border:1px solid #24242a;
-  font-size:26px;font-weight:700;color:#fff;cursor:pointer;
+  font-size:clamp(18px,3vh,26px);font-weight:700;color:#fff;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
 }
 .pin-key:active{background:#222228;transform:scale(.92);}

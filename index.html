@@ -1420,11 +1420,24 @@ async function carregarLinkTotem(){
     }
     const link=window.location.origin+window.location.pathname.replace('index.html','')+'totem.html?t='+emp.kiosk_token;
     box.innerHTML=`
-      <div style="font-size:12px;color:var(--t2);margin-bottom:.6rem;line-height:1.5">Abra este link num tablet ou celular fixo na empresa. Os funcionários batem o ponto escolhendo o nome e digitando o PIN — sem precisar de login.</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <input readonly value="${link}" id="totem-link-input" style="flex:1;min-width:200px;padding:8px 10px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;color:var(--t2);font-size:12px;font-family:var(--mono)">
-        <button class="btn-sm accent" onclick="copiarLinkTotem('${link}')">Copiar link</button>
-        <a href="${link}" target="_blank" class="btn-sm">Abrir</a>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:1rem;line-height:1.5">Abra esse acesso num tablet ou celular fixo na empresa. Os funcionários batem o ponto digitando o PIN — sem precisar de login.</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a href="${link}" target="_blank" style="text-decoration:none;flex:1;min-width:180px">
+          <div style="display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,rgba(240,192,64,.14),rgba(240,192,64,.06));border:1px solid rgba(240,192,64,.3);border-radius:var(--r12);padding:.85rem 1.1rem;cursor:pointer;transition:background .15s">
+            <span style="width:34px;height:34px;border-radius:50%;background:rgba(240,192,64,.18);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">📲</span>
+            <div>
+              <div style="font-size:13px;font-weight:800;color:var(--acc)">Abrir Batidas Digital</div>
+              <div style="font-size:11px;color:var(--t3);margin-top:1px">Abre em nova aba ↗</div>
+            </div>
+          </div>
+        </a>
+        <button onclick="copiarLinkTotem('${link}')" style="flex:1;min-width:180px;text-align:left;background:var(--s2);border:1px solid var(--b1);border-radius:var(--r12);padding:.85rem 1.1rem;cursor:pointer;display:flex;align-items:center;gap:10px;font-family:var(--font)">
+          <span style="width:34px;height:34px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🔗</span>
+          <div>
+            <div style="font-size:13px;font-weight:800;color:var(--t1)">Copiar link</div>
+            <div style="font-size:11px;color:var(--t3);margin-top:1px">Pra enviar ou salvar</div>
+          </div>
+        </button>
       </div>`;
   }catch(e){
     box.innerHTML='<span style="font-size:12px;color:var(--t3)">Erro ao carregar link.</span>';
