@@ -348,9 +348,17 @@ body.light .toast{background:rgba(255,255,255,.97);}
     <div class="mtitle">Editar batida</div>
     <div class="msub" id="m-edit-sub"></div>
     <div class="field"><label>Hora (HH:MM)</label><input type="time" id="edit-hora"></div>
-    <div class="field"><label>Tipo</label>
-      <select id="edit-tipo"><option value="ENTRADA">ENTRADA</option><option value="SAIDA">SAÍDA</option></select>
+    <div class="field"><label>Motivo da alteração</label>
+      <select id="edit-motivo" onchange="document.getElementById('edit-motivo-outro').style.display=this.value==='Outro'?'':'none'">
+        <option value="">Selecione...</option>
+        <option value="Esqueceu de bater">Esqueceu de bater</option>
+        <option value="Problema no relógio/totem">Problema no relógio/totem</option>
+        <option value="Erro de sistema">Erro de sistema</option>
+        <option value="Saída externa/visita">Saída externa/visita</option>
+        <option value="Outro">Outro</option>
+      </select>
     </div>
+    <div class="field" id="edit-motivo-outro" style="display:none"><label>Detalhe</label><input type="text" id="edit-motivo-texto" placeholder="Descreva o motivo"></div>
     <div class="mactions">
       <button class="btn-sm danger" onclick="deletarBatida()">Excluir</button>
       <button class="btn-sm" onclick="closeModals()">Cancelar</button>
@@ -363,12 +371,21 @@ body.light .toast{background:rgba(255,255,255,.97);}
 <div class="moverlay" id="m-add">
   <div class="modal">
     <div class="mhandle"></div>
-    <div class="mtitle">Adicionar batida</div>
+    <div class="mtitle">Adicionar batida faltante</div>
     <div class="msub" id="m-add-sub"></div>
     <div class="field"><label>Hora (HH:MM)</label><input type="time" id="add-hora"></div>
-    <div class="field"><label>Tipo</label>
-      <select id="add-tipo"><option value="ENTRADA">ENTRADA</option><option value="SAIDA">SAÍDA</option></select>
+    <div style="font-size:11px;color:var(--t3);margin:-.5rem 0 .9rem">O tipo (entrada/saída) é calculado automaticamente pela ordem dos horários do dia.</div>
+    <div class="field"><label>Motivo</label>
+      <select id="add-motivo" onchange="document.getElementById('add-motivo-outro').style.display=this.value==='Outro'?'':'none'">
+        <option value="">Selecione...</option>
+        <option value="Esqueceu de bater">Esqueceu de bater</option>
+        <option value="Problema no relógio/totem">Problema no relógio/totem</option>
+        <option value="Erro de sistema">Erro de sistema</option>
+        <option value="Saída externa/visita">Saída externa/visita</option>
+        <option value="Outro">Outro</option>
+      </select>
     </div>
+    <div class="field" id="add-motivo-outro" style="display:none"><label>Detalhe</label><input type="text" id="add-motivo-texto" placeholder="Descreva o motivo"></div>
     <div class="mactions">
       <button class="btn-sm" onclick="closeModals()">Cancelar</button>
       <button class="btn" onclick="confirmarAdd()">Adicionar</button>
@@ -1167,68 +1184,108 @@ async function reloadBatidas(){
 }
 
 // Editar batida
+// Recalcula ENTRADA/SAÍDA de todas as batidas do dia, em ordem cronológica.
+// Resolve definitivamente o problema de ter que apagar/recriar batidas pra corrigir a ordem.
+async function recalcularTiposDia(cpf,data){
+  const{data:bats,error}=await sb.from('iw_registros_ponto')
+    .select('id,data_hora_local,tipo')
+    .eq('cpf',cpf).eq('data_local',data)
+    .order('data_hora_local',{ascending:true});
+  if(error||!bats||!bats.length)return;
+  const updates=[];
+  bats.forEach((b,i)=>{
+    const tipoCorreto=i%2===0?'ENTRADA':'SAIDA';
+    if(b.tipo!==tipoCorreto){
+      updates.push(sb.from('iw_registros_ponto').update({tipo:tipoCorreto}).eq('id',b.id));
+    }
+  });
+  if(updates.length) await Promise.all(updates);
+}
+
+function pegarMotivo(prefixo){
+  const sel=document.getElementById(prefixo+'-motivo').value;
+  if(!sel)return null;
+  if(sel==='Outro'){
+    const txt=document.getElementById(prefixo+'-motivo-texto').value.trim();
+    return txt?('Outro: '+txt):'Outro';
+  }
+  return sel;
+}
+
 function abrirEdit(b){
   editCtx=b;
   document.getElementById('m-edit-sub').textContent=`${b.nome?.split(' ')[0]} · ${fmtData(b.data)}`;
   document.getElementById('edit-hora').value=b.hora;
-  document.getElementById('edit-tipo').value=b.tipo;
+  document.getElementById('edit-motivo').value='';
+  document.getElementById('edit-motivo-texto').value='';
+  document.getElementById('edit-motivo-outro').style.display='none';
   document.getElementById('m-edit').classList.add('open');
 }
 async function salvarEdicao(){
   if(!editCtx)return;
   const hora=document.getElementById('edit-hora').value;
-  const tipo=document.getElementById('edit-tipo').value;
   if(!hora){toast('Informe a hora.','err');return;}
+  const motivo=pegarMotivo('edit');
+  if(!motivo){toast('Selecione o motivo da alteração.','err');return;}
+
   const {data:updData, error:errUpd}=await sb.from('iw_registros_ponto').update({
     data_hora_local:editCtx.data+'T'+hora,
-    tipo,
     origem:'EDITADO_MANUAL',
+    motivo,
     sincronizado_em:new Date().toISOString()
   }).eq('id',editCtx.id).select();
   if(errUpd){toast('Erro ao salvar: '+errUpd.message,'err');return;}
   if(!updData||updData.length===0){
-    // Tenta buscar pelo nsr como fallback
     if(editCtx.nsr){
       await sb.from('iw_registros_ponto').update({
-        data_hora_local:editCtx.data+'T'+hora,tipo,origem:'EDITADO_MANUAL',
+        data_hora_local:editCtx.data+'T'+hora,origem:'EDITADO_MANUAL',motivo,
         sincronizado_em:new Date().toISOString()
       }).eq('nsr',editCtx.nsr).select();
     }
   }
+  await recalcularTiposDia(editCtx.cpf,editCtx.data);
   toast('Batida atualizada!','ok');
   closeModals();
   await reloadBatidas();
 }
 async function deletarBatida(){
   if(!editCtx||!confirm('Excluir esta batida?'))return;
+  const cpf=editCtx.cpf, data=editCtx.data;
   const {error:errDel}=await sb.from('iw_registros_ponto').delete().eq('id',editCtx.id).select();
   if(errDel){toast('Erro ao excluir: '+errDel.message,'err');return;}
+  await recalcularTiposDia(cpf,data);
   toast('Batida excluída.','ok');
   closeModals();await reloadBatidas();
 }
 
-// Adicionar batida
+// Adicionar batida faltante
 function abrirAdd(data,cpf,nome){
   addCtx={data,cpf,nome};
   document.getElementById('m-add-sub').textContent=`${nome.split(' ')[0]} · ${fmtData(data)}`;
   document.getElementById('add-hora').value='';
+  document.getElementById('add-motivo').value='';
+  document.getElementById('add-motivo-texto').value='';
+  document.getElementById('add-motivo-outro').style.display='none';
   document.getElementById('m-add').classList.add('open');
 }
 async function confirmarAdd(){
   if(!addCtx)return;
   const hora=document.getElementById('add-hora').value;
-  const tipo=document.getElementById('add-tipo').value;
-  if(!hora)return;
+  if(!hora){toast('Informe a hora.','err');return;}
+  const motivo=pegarMotivo('add');
+  if(!motivo){toast('Selecione o motivo.','err');return;}
+
   const {error:errIns}=await sb.from('iw_registros_ponto').insert({
     id:Date.now(),nsr:null,funcionario_id:null,
     funcionario_nome:addCtx.nome,cpf:addCtx.cpf,
     data_hora:new Date().toISOString(),
     data_hora_local:addCtx.data+'T'+hora,
-    data_local:addCtx.data,tipo,origem:'MANUAL',
+    data_local:addCtx.data,tipo:'ENTRADA',origem:'MANUAL',motivo,
     sincronizado_em:new Date().toISOString()
   }).select();
   if(errIns){toast('Erro ao adicionar: '+errIns.message,'err');return;}
-  toast('Batida adicionada!','ok');
+  await recalcularTiposDia(addCtx.cpf,addCtx.data);
+  toast('Batida adicionada e horários recalculados!','ok');
   closeModals();await reloadBatidas();
 }
 
