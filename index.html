@@ -1189,7 +1189,7 @@ async function reloadBatidas(){
   todos.forEach(r=>{
     if(!porCpf[r.cpf]) porCpf[r.cpf]={nome:r.funcionario_nome,dias:{}};
     if(!porCpf[r.cpf].dias[r.data_local]) porCpf[r.cpf].dias[r.data_local]=[];
-    porCpf[r.cpf].dias[r.data_local].push({id:r.id,nsr:r.nsr,hora:r.data_hora_local?.slice(11,16)||'00:00',tipo:r.tipo,origem:r.origem,cpf:r.cpf,nome:r.funcionario_nome,data:r.data_local});
+    porCpf[r.cpf].dias[r.data_local].push({id:r.id,nsr:r.nsr,hora:r.data_hora_local?.slice(11,16)||'00:00',tipo:r.tipo,origem:r.origem,cpf:r.cpf,nome:r.funcionario_nome,data:r.data_local,motivo:r.motivo});
   });
 
   const fmap={};funcionarios.forEach(f=>{fmap[f.cpf]=f;});
@@ -1340,7 +1340,8 @@ function renderBbatReal(b){
   const isEdit=b.origem==='MANUAL'||b.origem==='EDITADO_MANUAL';
   const cls=isEdit?'edit':b.tipo==='ENTRADA'?'ent':'sai';
   const seta=b.tipo==='ENTRADA'?'↑':'↓';
-  return `<span class="bbat ${cls}" onclick="abrirEdit(${JSON.stringify(b).replace(/"/g,'&quot;')})" title="${isEdit?'Editado manualmente·':''} Clique para editar">${b.hora}${seta}</span>`;
+  const tituloMotivo=isEdit?('Editado manualmente'+(b.motivo?' · Motivo: '+b.motivo:' · sem motivo registrado')+' · '):'';
+  return `<span class="bbat ${cls}" onclick="abrirEdit(${JSON.stringify(b).replace(/"/g,'&quot;')})" title="${tituloMotivo}Clique para editar">${b.hora}${seta}${isEdit&&b.motivo?'<sup style="font-size:8px">ⓘ</sup>':''}</span>`;
 }
 
 function abrirAddSugerido(data,cpf,nome,horaSugerida){
@@ -1355,9 +1356,21 @@ function abrirEdit(b){
   editCtx=b;
   document.getElementById('m-edit-sub').textContent=`${b.nome?.split(' ')[0]} · ${fmtData(b.data)}`;
   document.getElementById('edit-hora').value=b.hora;
-  document.getElementById('edit-motivo').value='';
-  document.getElementById('edit-motivo-texto').value='';
-  document.getElementById('edit-motivo-outro').style.display='none';
+  const motivoSel=document.getElementById('edit-motivo');
+  const motivoTxt=document.getElementById('edit-motivo-texto');
+  const motivoOutro=document.getElementById('edit-motivo-outro');
+  if(b.motivo&&b.motivo.startsWith('Outro:')){
+    motivoSel.value='Outro';
+    motivoTxt.value=b.motivo.replace('Outro: ','');
+    motivoOutro.style.display='';
+  } else if(b.motivo){
+    const opcoes=[...motivoSel.options].map(o=>o.value);
+    motivoSel.value=opcoes.includes(b.motivo)?b.motivo:'Outro';
+    motivoTxt.value=opcoes.includes(b.motivo)?'':b.motivo;
+    motivoOutro.style.display=opcoes.includes(b.motivo)?'none':'';
+  } else {
+    motivoSel.value='';motivoTxt.value='';motivoOutro.style.display='none';
+  }
   document.getElementById('m-edit').classList.add('open');
 }
 async function salvarEdicao(){
