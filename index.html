@@ -605,6 +605,13 @@ function toast(msg,tipo){
     setTimeout(function(){el.remove();},200);
   },3500);
 }
+async function abrirTotem(){
+  if(!empresaAtual){toast('Empresa não identificada.','err');return;}
+  const{data,error}=await sb.from('empresas').select('kiosk_token').eq('id',empresaAtual).single();
+  if(error||!data){toast('Erro ao gerar link do totem.','err');return;}
+  const url=window.location.origin+window.location.pathname.replace('index.html','')+'totem.html?t='+data.kiosk_token;
+  window.open(url,'_blank');
+}
 function toggleAuthView(view){
   document.getElementById('view-login').style.display=view==='login'?'':'none';
   document.getElementById('view-signup').style.display=view==='signup'?'':'none';
@@ -821,12 +828,21 @@ async function renderDash(c){
       <div class="fcard" style="display:flex;align-items:center;gap:14px">
         <div style="width:38px;height:38px;border-radius:50%;background:rgba(240,192,64,.15);color:var(--acc);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex-shrink:0">2</div>
         <div style="flex:1">
-          <div style="font-size:14px;font-weight:700;color:var(--t1)">Configure o relógio de ponto</div>
-          <div style="font-size:12px;color:var(--t2);margin-top:2px">Integração com Control-ID ou registro manual</div>
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">📲 Batidas Digital</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">Ponto pelo celular ou tablet, sem hardware</div>
         </div>
+        <button class="btn-sm accent" onclick="abrirTotem()">Abrir</button>
       </div>
       <div class="fcard" style="display:flex;align-items:center;gap:14px">
         <div style="width:38px;height:38px;border-radius:50%;background:rgba(240,192,64,.15);color:var(--acc);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex-shrink:0">3</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">👆 Relógio biométrico (opcional)</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">Integração com Control-ID — requer instalação</div>
+        </div>
+        <button class="btn-sm" onclick="toast('Em breve — por enquanto, fale com a gente pelo botão Sair → Suporte.','info')">Falar com suporte</button>
+      </div>
+      <div class="fcard" style="display:flex;align-items:center;gap:14px">
+        <div style="width:38px;height:38px;border-radius:50%;background:rgba(240,192,64,.15);color:var(--acc);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex-shrink:0">4</div>
         <div style="flex:1">
           <div style="font-size:14px;font-weight:700;color:var(--t1)">Acompanhe tudo por aqui</div>
           <div style="font-size:12px;color:var(--t2);margin-top:2px">Banco de horas, férias, atrasos e muito mais</div>
@@ -1393,8 +1409,39 @@ async function editPin(id,nome){
 }
 
 // ===== ADVERTÊNCIAS =====
+async function carregarLinkTotem(){
+  const box=document.getElementById('totem-link-box');
+  if(!box||!empresaAtual)return;
+  try{
+    const{data:emp}=await sb.from('empresas').select('kiosk_token').eq('id',empresaAtual).single();
+    if(!emp||!emp.kiosk_token){
+      box.innerHTML='<span style="font-size:12px;color:var(--t3)">Não foi possível gerar o link.</span>';
+      return;
+    }
+    const link=window.location.origin+window.location.pathname.replace('index.html','')+'totem.html?t='+emp.kiosk_token;
+    box.innerHTML=`
+      <div style="font-size:12px;color:var(--t2);margin-bottom:.6rem;line-height:1.5">Abra este link num tablet ou celular fixo na empresa. Os funcionários batem o ponto escolhendo o nome e digitando o PIN — sem precisar de login.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input readonly value="${link}" id="totem-link-input" style="flex:1;min-width:200px;padding:8px 10px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;color:var(--t2);font-size:12px;font-family:var(--mono)">
+        <button class="btn-sm accent" onclick="copiarLinkTotem('${link}')">Copiar link</button>
+        <a href="${link}" target="_blank" class="btn-sm">Abrir</a>
+      </div>`;
+  }catch(e){
+    box.innerHTML='<span style="font-size:12px;color:var(--t3)">Erro ao carregar link.</span>';
+  }
+}
+function copiarLinkTotem(link){
+  navigator.clipboard.writeText(link).then(()=>toast('Link copiado!','ok')).catch(()=>toast('Não foi possível copiar.','err'));
+}
+
 async function renderEquipe(c){
-  c.innerHTML=`<div class="srow"><h3>Funcionários (${funcionarios.length})</h3><button class="btn-sm accent" onclick="document.getElementById('m-func').classList.add('open')">+ Novo</button></div><div class="flist" id="flist"></div>`;
+  c.innerHTML=`
+  <div class="tcard" style="margin-bottom:1rem">
+    <div class="thead-row"><span class="thead-title">📲 Batidas Digital — link do totem</span></div>
+    <div style="padding:.9rem 1rem" id="totem-link-box"><span style="color:var(--t3);font-size:12px">Carregando...</span></div>
+  </div>
+  <div class="srow"><h3>Funcionários (${funcionarios.length})</h3><button class="btn-sm accent" onclick="document.getElementById('m-func').classList.add('open')">+ Novo</button></div><div class="flist" id="flist"></div>`;
+  carregarLinkTotem();
   const g=document.getElementById('flist');
   if(!funcionarios.length){g.innerHTML='<div class="empty">Nenhum funcionário.</div>';return;}
   funcionarios.forEach(f=>{
