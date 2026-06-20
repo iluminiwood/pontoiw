@@ -126,6 +126,8 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .bbat.ent{color:var(--g);}
 .bbat.sai{color:var(--r);}
 .bbat.edit{color:var(--pu);text-decoration:underline dotted;}
+.bbat.vazio{color:var(--t3);border:1px dashed var(--b2);padding:0 5px;border-radius:5px;}
+.bbat.vazio:hover{color:var(--acc);border-color:var(--acc);}
 .bbat:hover{opacity:.75;}
 .bdia-hrs{font-family:var(--mono);font-size:10px;color:var(--t2);width:38px;text-align:right;flex-shrink:0;}
 .bdia-saldo{font-family:var(--mono);font-size:10px;width:48px;text-align:right;flex-shrink:0;}
@@ -1138,12 +1140,7 @@ async function reloadBatidas(){
         const completo=isDiaCompleto(data,bats);
         const saldo=jMin&&completo?trab-jMin:jMin&&!completo&&trab>0?trab-jMin:0;
         saldoSem+=saldo;saldoTotal+=saldo;
-        const batsHtml=bats.map(b=>{
-          const isEdit=b.origem==='MANUAL'||b.origem==='EDITADO_MANUAL';
-          const cls=isEdit?'edit':b.tipo==='ENTRADA'?'ent':'sai';
-          const seta=b.tipo==='ENTRADA'?'↑':'↓';
-          return`<span class="bbat ${cls}" onclick="abrirEdit(${JSON.stringify(b).replace(/"/g,'&quot;')})" title="${isEdit?'Editado manualmente·':''} Clique para editar">${b.hora}${seta}</span>`;
-        }).join('<span style="color:var(--b2);font-size:9px">·</span>');
+        const batsHtml=montarSlotsBatida(data,bats,cpf,f.nome);
         const sc=saldo>=0?'var(--g)':saldo<-30?'var(--r)':'var(--o)';
         diasHtml+=`<div class="bdia">
           <span class="bdia-data">${fmtData(data)}</span>
@@ -1210,6 +1207,72 @@ function pegarMotivo(prefixo){
     return txt?('Outro: '+txt):'Outro';
   }
   return sel;
+}
+
+function montarSlotsBatida(data,bats,cpf,nome){
+  const dow=new Date(data+'T12:00:00').getDay();
+  const jMin=jornadaMin(data);
+  if(!jMin){
+    // Dia sem jornada esperada (feriado/fim de semana) — mostra só o que foi batido
+    if(!bats.length) return '<span style="font-size:11px;color:var(--t3)">—</span>';
+    return bats.map(b=>renderBbatReal(b)).join('<span style="color:var(--b2);font-size:9px">·</span>');
+  }
+
+  const hoje=new Date().toISOString().split('T')[0];
+  const agoraMin=new Date().getHours()*60+new Date().getMinutes();
+  const saidaSug=dow===5?SAIDA_SEX:SAIDA_SEMANA;
+  const janelas=[
+    {ini:'06:00',fim:'10:00',sugestao:ENTRADA_PAD},
+    {ini:'11:00',fim:'13:00',sugestao:'12:00'},
+    {ini:'13:01',fim:'14:30',sugestao:'13:30'},
+    {ini:'15:00',fim:'20:00',sugestao:saidaSug}
+  ];
+
+  const usados=new Set();
+  const itens=[];
+
+  janelas.forEach(j=>{
+    let achouIdx=-1;
+    bats.forEach((b,i)=>{
+      if(achouIdx===-1 && !usados.has(i) && toMin(b.hora)>=toMin(j.ini) && toMin(b.hora)<=toMin(j.fim)) achouIdx=i;
+    });
+    if(achouIdx>=0){
+      usados.add(achouIdx);
+      itens.push({real:true,bat:bats[achouIdx],ordem:toMin(bats[achouIdx].hora)});
+    } else {
+      const jaPassou = data<hoje || (data===hoje && agoraMin>toMin(j.fim));
+      if(jaPassou) itens.push({real:false,janela:j,ordem:toMin(j.sugestao)});
+    }
+  });
+
+  bats.forEach((b,i)=>{
+    if(!usados.has(i)) itens.push({real:true,bat:b,ordem:toMin(b.hora)});
+  });
+
+  itens.sort((a,b)=>a.ordem-b.ordem);
+
+  if(!itens.length) return '<span style="font-size:11px;color:var(--t3)">—</span>';
+
+  return itens.map(item=>{
+    if(item.real) return renderBbatReal(item.bat);
+    const nomeEsc=nome.replace(/'/g,"\\'");
+    return `<span class="bbat vazio" onclick="abrirAddSugerido('${data}','${cpf}','${nomeEsc}','${item.janela.sugestao}')" title="Horário não registrado — clique para adicionar">--:--</span>`;
+  }).join('<span style="color:var(--b2);font-size:9px">·</span>');
+}
+
+function renderBbatReal(b){
+  const isEdit=b.origem==='MANUAL'||b.origem==='EDITADO_MANUAL';
+  const cls=isEdit?'edit':b.tipo==='ENTRADA'?'ent':'sai';
+  const seta=b.tipo==='ENTRADA'?'↑':'↓';
+  return `<span class="bbat ${cls}" onclick="abrirEdit(${JSON.stringify(b).replace(/"/g,'&quot;')})" title="${isEdit?'Editado manualmente·':''} Clique para editar">${b.hora}${seta}</span>`;
+}
+
+function abrirAddSugerido(data,cpf,nome,horaSugerida){
+  abrirAdd(data,cpf,nome);
+  setTimeout(()=>{
+    const inp=document.getElementById('add-hora');
+    if(inp) inp.value=horaSugerida;
+  },10);
 }
 
 function abrirEdit(b){
