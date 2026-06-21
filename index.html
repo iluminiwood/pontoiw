@@ -201,15 +201,15 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .advcard{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r12);padding:.85rem 1rem;margin-bottom:8px;}
 .moverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:100;align-items:center;justify-content:center;padding:1rem;}
 .moverlay.open{display:flex;}
-.modal{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r16);padding:1.5rem;width:100%;max-width:420px;max-height:88vh;overflow-y:auto;}
-@media(max-width:480px){
-  .modal{padding:1.5rem 1.25rem 1.75rem;border-radius:22px 22px 0 0;}
-  .field{margin-bottom:1.15rem;}
-  .field input,.field select{padding:12px 14px!important;font-size:15px!important;}
-  .field label{font-size:11px;margin-bottom:.5rem;}
-  .mtitle{font-size:18px;}
-  .mactions{gap:10px;margin-top:.5rem;}
-  .mactions .btn,.mactions .btn-sm{padding:13px 16px;font-size:14px;flex:1;}
+.modal{background:var(--s1);border:1px solid var(--b1);border-radius:22px 22px 0 0;padding:1.75rem 1.4rem 2rem;width:100%;max-width:420px;max-height:88vh;overflow-y:auto;}
+.field{margin-bottom:1.25rem;}
+.field input,.field select{padding:13px 14px;font-size:15px;}
+.field label{font-size:11px;margin-bottom:.5rem;}
+.mtitle{font-size:18px;}
+.mactions{gap:10px;margin-top:.75rem;}
+.mactions .btn,.mactions .btn-sm{padding:14px 16px;font-size:14.5px;flex:1;}
+@media(min-width:680px){
+  .modal{border-radius:var(--r16);padding:1.5rem;}
 }
 .mhandle{display:none;}
 .mtitle{font-size:16px;font-weight:800;margin-bottom:3px;}
