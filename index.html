@@ -329,7 +329,8 @@ body.light .toast{background:rgba(255,255,255,.97);}
     <div class="tb-right">
       <div class="tb-sync"><span class="sdot" id="sdot"></span><span id="slbl">—</span></div>
       <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn" title="Alternar tema"></button>
-      <button class="btn-sm" id="btn-config" style="display:none" onclick="abrirConfigEmpresa()" title="Configurações"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;display:inline-block;vertical-align:-2px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+      <span id="badge-plano" style="display:none;font-size:10px;font-weight:800;padding:3px 9px;border-radius:20px;letter-spacing:.05em;cursor:default"></span>
+      <button class="btn-sm" id="btn-config" style="display:none" onclick="temAcesso('configuracoes')?abrirConfigEmpresa():toast('Disponível no plano Essencial.','info')" title="Configurações"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;display:inline-block;vertical-align:-2px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
       <button class="btn-sm danger" onclick="doLogout()">Sair</button>
     </div>
   </div>
@@ -623,6 +624,56 @@ let JORNADA={1:540,2:540,3:540,4:540,5:480}; // Seg-Qui 9h, Sex 8h (será recalc
 let ENTRADA_PAD='07:00', SAIDA_SEMANA='17:30', SAIDA_SEX='16:30', TOL=5;
 let ALMOCO_INI='12:00', ALMOCO_FIM='13:30';
 let MODALIDADE_HORAS='banco'; // 'banco' ou 'mensal'
+let PLANO='free'; // 'free', 'essencial', 'pro'
+
+// Limites e permissões por plano
+const PLANOS={
+  free:     {label:'Free',     limite:3,  cor:'#a8a8b8'},
+  essencial:{label:'Essencial',limite:10, cor:'#60a5fa'},
+  pro:      {label:'Pro',      limite:999,cor:'#f0c040'}
+};
+const FEATURES={
+  // false = bloqueado no free, true = liberado
+  edicao_manual:   {free:false, essencial:true,  pro:true},
+  atrasos:         {free:false, essencial:true,  pro:true},
+  acertos:         {free:false, essencial:true,  pro:true},
+  ferias:          {free:false, essencial:true,  pro:true},
+  atestados:       {free:false, essencial:true,  pro:true},
+  epis:            {free:false, essencial:true,  pro:true},
+  adv:             {free:false, essencial:true,  pro:true},
+  configuracoes:   {free:false, essencial:true,  pro:true},
+  relatorios:      {free:false, essencial:true,  pro:true},
+  encarregado:     {free:false, essencial:false, pro:true},
+  excel:           {free:false, essencial:false, pro:true},
+};
+function temAcesso(feature){
+  const f=FEATURES[feature];
+  if(!f)return true;
+  return f[PLANO]===true;
+}
+function cardUpgrade(feature,planoMin){
+  const p=PLANOS[planoMin||'essencial'];
+  return `<div style="
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:3rem 2rem;text-align:center;gap:1rem;
+    background:linear-gradient(135deg,rgba(96,165,250,.05),rgba(240,192,64,.03));
+    border:1px dashed rgba(96,165,250,.25);border-radius:var(--r16);margin:1rem 0;
+  ">
+    <div style="width:44px;height:44px;border-radius:50%;background:rgba(96,165,250,.1);display:flex;align-items:center;justify-content:center">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" style="width:20px;height:20px"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    </div>
+    <div style="font-size:16px;font-weight:800;color:var(--t1)">Disponível no plano ${p.label}</div>
+    <div style="font-size:13px;color:var(--t2);max-width:320px;line-height:1.6">
+      Faça upgrade para desbloquear esta funcionalidade e muito mais.
+    </div>
+    <a href="../landing.html#pricing" target="_blank" style="
+      background:var(--bl);color:#fff;padding:10px 24px;border-radius:30px;
+      font-size:13px;font-weight:800;text-decoration:none;
+      box-shadow:0 4px 14px rgba(96,165,250,.25);
+    ">Ver planos →</a>
+    <div style="font-size:11px;color:var(--t3)">Plano atual: <b style="color:${PLANOS[PLANO].cor}">${PLANOS[PLANO].label}</b></div>
+  </div>`;
+}
 let METODO_PONTO='ambos'; // 'biometrico', 'digital' ou 'ambos'
 
 function aplicarConfigEmpresa(cfg){
@@ -635,6 +686,11 @@ function aplicarConfigEmpresa(cfg){
   TOL=(cfg.tolerancia_min!=null)?cfg.tolerancia_min:TOL;
   MODALIDADE_HORAS=cfg.modalidade_horas||MODALIDADE_HORAS;
   METODO_PONTO=cfg.metodo_ponto||METODO_PONTO;
+  // Plano — verifica se expirou
+  if(cfg.plano){
+    const expirou=cfg.plano_expira_em && new Date(cfg.plano_expira_em)<new Date();
+    PLANO=expirou?'free':cfg.plano;
+  }
   const almocoMin=toMin(ALMOCO_FIM)-toMin(ALMOCO_INI);
   const minSemana=toMin(SAIDA_SEMANA)-toMin(ENTRADA_PAD)-almocoMin;
   const minSexta=toMin(SAIDA_SEX)-toMin(ENTRADA_PAD)-almocoMin;
@@ -889,6 +945,7 @@ async function doLogin(){
   document.getElementById('app').style.cssText='display:flex;flex-direction:column;';
   await initApp();
   if(perfilUsuario==='encarregado'){
+    if(!temAcesso('encarregado')){toast('Login de encarregado disponível no plano Pro.','info');await doLogout();return;}
     document.getElementById('tabs-enc').style.display='flex';
   } else {
     document.getElementById('tabs-admin').style.display='flex';
@@ -937,6 +994,8 @@ async function doLogout(){
   document.getElementById('tabs-admin').style.display='none';
   document.getElementById('tabs-enc').style.display='none';
   document.getElementById('btn-config').style.display='none';
+  const bpOut=document.getElementById('badge-plano');
+  if(bpOut)bpOut.style.display='none';
 }
 function resetSession(){clearTimeout(sessionTimer);sessionTimer=setTimeout(()=>{doLogout();},30*60*1000);}
 document.addEventListener('click',resetSession);
@@ -953,7 +1012,7 @@ async function initApp(){
     document.getElementById('slbl').textContent=sbOk?'Online':'Offline';
     if(sbOk){
       if(empresaAtual){
-        const{data:cfg}=await sb.from('empresas').select('jornada_entrada,jornada_almoco_ini,jornada_almoco_fim,jornada_saida,jornada_saida_sexta,tolerancia_min,modalidade_horas,metodo_ponto').eq('id',empresaAtual).single();
+        const{data:cfg}=await sb.from('empresas').select('jornada_entrada,jornada_almoco_ini,jornada_almoco_fim,jornada_saida,jornada_saida_sexta,tolerancia_min,modalidade_horas,metodo_ponto,plano,plano_expira_em').eq('id',empresaAtual).single();
         aplicarConfigEmpresa(cfg);
       }
       await loadBase();
@@ -1478,6 +1537,7 @@ function abrirAcerto(cpf,nome,funcId,saldoMin,vlrHora){
 
 async function salvarAcerto(){
   if(!acertoCtx)return;
+  if(!temAcesso('acertos')){toast('Acertos disponíveis no plano Essencial.','info');closeModals();return;}
   const periodo_label=document.getElementById('acerto-periodo').value.trim();
   const periodo_inicio=document.getElementById('acerto-inicio').value;
   const periodo_fim=document.getElementById('acerto-fim').value;
@@ -1528,6 +1588,7 @@ function abrirEdit(b){
 }
 async function salvarEdicao(){
   if(!editCtx)return;
+  if(!temAcesso('edicao_manual')){toast('Edição manual disponível no plano Essencial.','info');closeModals();return;}
   const hora=document.getElementById('edit-hora').value;
   if(!hora){toast('Informe a hora.','err');return;}
   const motivo=pegarMotivo('edit');
@@ -1575,6 +1636,7 @@ function abrirAdd(data,cpf,nome){
 }
 async function confirmarAdd(){
   if(!addCtx)return;
+  if(!temAcesso('edicao_manual')){toast('Inserção manual disponível no plano Essencial.','info');closeModals();return;}
   const hora=document.getElementById('add-hora').value;
   if(!hora){toast('Informe a hora.','err');return;}
   const motivo=pegarMotivo('add');
@@ -1837,6 +1899,7 @@ function copiarLinkTotem(link){
 let afastCtx=null;
 
 async function renderAfastamentos(c){
+  if(!temAcesso('atestados')){c.innerHTML=cardUpgrade('atestados','essencial');return;}
   c.innerHTML='<div class="loading">Carregando...</div>';
   const{data:lista}=await sb.from('iw_afastamentos').select('*').order('data_inicio',{ascending:false}).limit(300);
   const afastamentos=lista||[];
@@ -2048,6 +2111,7 @@ async function renderEquipe(c){
 
 // ===== FÉRIAS =====
 async function renderFerias(c){
+  if(!temAcesso('ferias')){c.innerHTML=cardUpgrade('ferias','essencial');return;}
   c.innerHTML='<div class="loading">Carregando férias...</div>';
   
   // Busca todos os períodos de férias
@@ -2280,6 +2344,7 @@ async function delFerias(id){
 let episList=[], epiCtxFunc=null, epiDrawing=false, epiLastX=0, epiLastY=0;
 
 async function renderEpis(c){
+  if(!temAcesso('epis')){c.innerHTML=cardUpgrade('epis','essencial');return;}
   c.innerHTML='<div class="loading">Carregando EPIs...</div>';
   const{data:epis}=await sb.from('iw_epis').select('*').eq('ativo',true).order('nome');
   episList=epis||[];
@@ -2462,6 +2527,7 @@ async function delEntrega(id){
 }
 
 function renderAdv(c){
+  if(!temAcesso('adv')){c.innerHTML=cardUpgrade('adv','essencial');return;}
   c.innerHTML=`<div class="srow"><h3>Advertências</h3><span style="font-size:11px;color:var(--t2)">${advertencias.length} total</span></div><div id="al"></div>`;
   const al=document.getElementById('al');
   if(!advertencias.length){al.innerHTML='<div class="empty">Nenhuma advertência.</div>';return;}
@@ -2494,6 +2560,12 @@ async function saveAdv(){
   if(currentTab==='adv')renderAdv(document.getElementById('content'));
 }
 async function saveFunc(){
+  const limite=PLANOS[PLANO]?.limite||3;
+  const ativos=funcionarios.filter(f=>f.ativo!==false).length;
+  if(ativos>=limite){
+    toast('Limite de '+limite+' colaboradores do plano '+PLANOS[PLANO].label+' atingido. Faça upgrade!','err');
+    return;
+  }
   const nome=document.getElementById('f-nome').value.trim();
   const cargo=document.getElementById('f-cargo').value.trim();
   const pv=document.getElementById('f-pin').value.trim();
@@ -2510,6 +2582,7 @@ async function saveFunc(){
 }
 
 async function renderAtrasos(c){
+  if(!temAcesso('atrasos')){c.innerHTML=cardUpgrade('atrasos','essencial');return;}
   c.innerHTML=`<div class="filter-bar"><select id="atr-per" onchange="reloadAtrasos()">
     <option value="mes">Mês atual</option><option value="semana">Esta semana</option>
     <option value="mes-ant">Mês anterior</option><option value="tudo">Total geral</option>
