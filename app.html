@@ -274,6 +274,15 @@ tr:hover td{background:rgba(255,255,255,.02);}
 @keyframes toastIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 @keyframes toastOut{to{opacity:0;transform:translateY(8px)}}
 body.light .toast{background:rgba(255,255,255,.97);}
+
+/* Grid 2 colunas responsivo — abas gerais */
+.fgrid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,520px),1fr));gap:1rem;}
+/* Grid dashboard Status + Ranking (3:2) */
+.dash-grid2{display:grid;grid-template-columns:3fr 2fr;gap:1rem;margin-bottom:1rem;}
+@media(max-width:740px){
+  .dash-grid2{grid-template-columns:1fr;}
+  .fgrid2{grid-template-columns:1fr;}
+}
 </style>
 <div id="login">
   <div class="login-wrap">
@@ -1174,7 +1183,7 @@ async function renderDash(c){
     <div class="kcard"><div class="klbl">Banco mês</div><div class="kval" style="font-size:16px;color:${saldoCor}">${saldoMes>=0?'+':''}${fromMin(saldoMes)}</div><div class="ksub">equipe toda</div></div>
     <div class="kcard"><div class="klbl">Faltas semana</div><div class="kval" style="color:${faltas>0?'var(--r)':'var(--g)'}">${faltas}</div><div class="ksub">dias sem registro</div></div>
   </div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(480px,1fr));gap:1rem;margin-bottom:1rem">
+  <div class="dash-grid2">
   <div class="tcard" style="margin-bottom:0">
     <div class="thead-row"><span class="thead-title">Status de hoje</span><span style="font-size:11px;color:var(--t2)">${hoje}</span></div>
     <table><thead><tr><th>Funcionário</th><th>Entrada</th><th>Status</th><th>Situação</th></tr></thead>
@@ -1363,7 +1372,7 @@ async function reloadBatidas(){
 
   const fmap={};funcionarios.forEach(f=>{fmap[f.cpf]=f;});
   const cpfsExib=cpfF?[cpfF]:funcionarios.map(f=>f.cpf);
-  let html='';
+  let html='<div class="fgrid2">';
 
   cpfsExib.forEach(cpf=>{
     const f=fmap[cpf];if(!f)return;
@@ -1422,6 +1431,7 @@ async function reloadBatidas(){
     </div>`;
   });
 
+  html+='</div>';
   el.innerHTML=html||'<div class="empty">Nenhum registro no período</div>';
 }
 
@@ -1889,7 +1899,7 @@ async function reloadBanco(){
   });
 
   let saldoGeral=0;
-  let html='<div class="flist" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(560px,1fr));gap:1rem">';
+  let html='<div class="flist fgrid2">';
 
   funcionarios.forEach((f,fi)=>{
     const pf=porCpf[f.cpf]||{dias:{}};
@@ -2107,7 +2117,7 @@ async function renderAfastamentos(c){
 
   let html=bannerHtml;
 
-  let htmlWrap='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(520px,1fr));gap:1rem">';
+  let htmlWrap='<div class="fgrid2">';
   funcionarios.forEach(f=>{
     const pf=porFunc[f.cpf]||{lista:[]};
     const lista=pf.lista;
@@ -2241,7 +2251,7 @@ async function renderEquipe(c){
   </div>`:'';
   c.innerHTML=`
   ${totemBoxHtml}
-  <div class="srow"><h3>Funcionários (${funcionarios.length})</h3><button class="btn-sm accent" onclick="document.getElementById('m-func').classList.add('open')">+ Novo</button></div><div class="flist" id="flist" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(520px,1fr));gap:1rem"></div>`;
+  <div class="srow"><h3>Funcionários (${funcionarios.length})</h3><button class="btn-sm accent" onclick="document.getElementById('m-func').classList.add('open')">+ Novo</button></div><div class="flist" id="flist" class="fgrid2"></div>`;
   if(METODO_PONTO!=='biometrico') carregarLinkTotem();
   const g=document.getElementById('flist');
   if(!funcionarios.length){g.innerHTML='<div class="empty">Nenhum funcionário.</div>';return;}
@@ -2357,7 +2367,7 @@ async function renderFerias(c){
   </div>`;
 
   // Cards por funcionário
-  html+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(520px,1fr));gap:1rem">`;
+  html+=`<div class="fgrid2">`;
   funcionarios.forEach(f=>{
     const pf=porFunc[f.cpf]||{periodos:[]};
     const periodos=pf.periodos;
@@ -2541,7 +2551,6 @@ async function renderEpis(c){
   html+=`<div style="margin-bottom:1.25rem">
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:.6rem">Registrar nova entrega</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px">`;
-  html+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(520px,1fr));gap:1rem">`;
   funcionarios.forEach(f=>{
     html+=`<button onclick="abrirEntrega('${f.cpf}','${f.nome.replace(/'/g,"\'")}',${f.id})"
       style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--r12);padding:.75rem;text-align:left;cursor:pointer;transition:border-color .15s"
@@ -2707,7 +2716,7 @@ function renderAdv(c){
   c.innerHTML=`<div class="srow"><h3>Advertências</h3><span style="font-size:11px;color:var(--t2)">${advertencias.length} total</span></div><div id="al"></div>`;
   const al=document.getElementById('al');
   if(!advertencias.length){al.innerHTML='<div class="empty">Nenhuma advertência.</div>';return;}
-  let advHtml='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(520px,1fr));gap:1rem">';
+  let advHtml='<div class="fgrid2">';
   advertencias.forEach(a=>{
     advHtml+=`<div class="advcard">
       <div style="font-size:13px;font-weight:700;margin-bottom:3px">${(a.funcionario_nome||'').split(' ')[0]} <span class="chip o">${a.tipo||''}</span></div>
@@ -2787,7 +2796,7 @@ async function reloadAtrasos(){
     if(!porCpf[r.cpf].dias[r.data_local])porCpf[r.cpf].dias[r.data_local]=[];
     porCpf[r.cpf].dias[r.data_local].push({hora:r.data_hora_local?.slice(11,16)||'00:00',tipo:r.tipo});
   });
-  let html='<div class="flist" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(560px,1fr));gap:1rem">';
+  let html='<div class="flist fgrid2">';
   funcionarios.forEach((f)=>{
     const pf=porCpf[f.cpf]||{dias:{}};
     const ocorrencias=[];
