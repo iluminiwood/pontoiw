@@ -1174,7 +1174,8 @@ async function renderDash(c){
     <div class="kcard"><div class="klbl">Banco mês</div><div class="kval" style="font-size:16px;color:${saldoCor}">${saldoMes>=0?'+':''}${fromMin(saldoMes)}</div><div class="ksub">equipe toda</div></div>
     <div class="kcard"><div class="klbl">Faltas semana</div><div class="kval" style="color:${faltas>0?'var(--r)':'var(--g)'}">${faltas}</div><div class="ksub">dias sem registro</div></div>
   </div>
-  <div class="tcard">
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(480px,1fr));gap:1rem;margin-bottom:1rem">
+  <div class="tcard" style="margin-bottom:0">
     <div class="thead-row"><span class="thead-title">Status de hoje</span><span style="font-size:11px;color:var(--t2)">${hoje}</span></div>
     <table><thead><tr><th>Funcionário</th><th>Entrada</th><th>Status</th><th>Situação</th></tr></thead>
     <tbody>${funcionarios.map(f=>{
@@ -1189,10 +1190,11 @@ async function renderDash(c){
       return`<tr><td style="font-weight:700">${f.nome.split(' ')[0]}</td><td style="font-family:var(--mono)">${hora}</td><td>${stChip}</td><td>${sitChip}</td></tr>`;
     }).join('')}</tbody></table>
   </div>
-  <div class="tcard">
+  <div class="tcard" style="margin-bottom:0">
     <div class="thead-row"><span class="thead-title">Ranking pontualidade — mês atual</span></div>
     <div id="ranking" style="padding:.5rem .75rem"><span style="color:var(--t3);font-size:12px">Calculando...</span></div>
   </div>
+  </div><!-- /grid status+ranking -->
   <div class="tcard" id="news-card">
     <div class="thead-row">
       <span class="thead-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;display:inline-block;vertical-align:-2px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Informações trabalhistas</span>
@@ -2105,6 +2107,7 @@ async function renderAfastamentos(c){
 
   let html=bannerHtml;
 
+  let htmlWrap='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(520px,1fr));gap:1rem">';
   funcionarios.forEach(f=>{
     const pf=porFunc[f.cpf]||{lista:[]};
     const lista=pf.lista;
@@ -2142,7 +2145,7 @@ async function renderAfastamentos(c){
     </div></div>`;
   });
 
-  c.innerHTML=html||'<div class="empty">Nenhum funcionário</div>';
+  c.innerHTML=(htmlWrap+html+'</div>')||'<div class="empty">Nenhum funcionário</div>';
 }
 
 function abrirAfastamento(cpf,nome,funcId){
@@ -2238,7 +2241,7 @@ async function renderEquipe(c){
   </div>`:'';
   c.innerHTML=`
   ${totemBoxHtml}
-  <div class="srow"><h3>Funcionários (${funcionarios.length})</h3><button class="btn-sm accent" onclick="document.getElementById('m-func').classList.add('open')">+ Novo</button></div><div class="flist" id="flist"></div>`;
+  <div class="srow"><h3>Funcionários (${funcionarios.length})</h3><button class="btn-sm accent" onclick="document.getElementById('m-func').classList.add('open')">+ Novo</button></div><div class="flist" id="flist" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(520px,1fr));gap:1rem"></div>`;
   if(METODO_PONTO!=='biometrico') carregarLinkTotem();
   const g=document.getElementById('flist');
   if(!funcionarios.length){g.innerHTML='<div class="empty">Nenhum funcionário.</div>';return;}
@@ -2354,6 +2357,7 @@ async function renderFerias(c){
   </div>`;
 
   // Cards por funcionário
+  html+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(520px,1fr));gap:1rem">`;
   funcionarios.forEach(f=>{
     const pf=porFunc[f.cpf]||{periodos:[]};
     const periodos=pf.periodos;
@@ -2411,6 +2415,7 @@ async function renderFerias(c){
     </div></div>`;
   });
 
+  html+='</div>';
   c.innerHTML=html||'<div class="empty">Nenhum funcionário</div>';
 }
 
@@ -2536,6 +2541,7 @@ async function renderEpis(c){
   html+=`<div style="margin-bottom:1.25rem">
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:.6rem">Registrar nova entrega</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px">`;
+  html+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(520px,1fr));gap:1rem">`;
   funcionarios.forEach(f=>{
     html+=`<button onclick="abrirEntrega('${f.cpf}','${f.nome.replace(/'/g,"\'")}',${f.id})"
       style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--r12);padding:.75rem;text-align:left;cursor:pointer;transition:border-color .15s"
@@ -2701,8 +2707,9 @@ function renderAdv(c){
   c.innerHTML=`<div class="srow"><h3>Advertências</h3><span style="font-size:11px;color:var(--t2)">${advertencias.length} total</span></div><div id="al"></div>`;
   const al=document.getElementById('al');
   if(!advertencias.length){al.innerHTML='<div class="empty">Nenhuma advertência.</div>';return;}
+  let advHtml='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(520px,1fr));gap:1rem">';
   advertencias.forEach(a=>{
-    al.innerHTML+=`<div class="advcard">
+    advHtml+=`<div class="advcard">
       <div style="font-size:13px;font-weight:700;margin-bottom:3px">${(a.funcionario_nome||'').split(' ')[0]} <span class="chip o">${a.tipo||''}</span></div>
       <div style="font-size:12px;color:var(--t2);line-height:1.5">${a.descricao||'Sem descrição'}</div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
@@ -2710,6 +2717,8 @@ function renderAdv(c){
         <button class="btn-xs" style="color:var(--r);border-color:rgba(248,113,113,.3)" onclick="delAdv(${a.id})">Remover</button>
       </div></div>`;
   });
+  advHtml+='</div>';
+  al.innerHTML=advHtml;
 }
 async function delAdv(id){
   await sb.from('iw_advertencias').delete().eq('id',id);
