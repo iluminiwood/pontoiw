@@ -24,10 +24,10 @@
 [data-theme="light"]{
   --bg:#f4f4f6;--s1:#ffffff;--s2:#f0f0f3;--s3:#e8e8ec;
   --b1:#dcdce8;--b2:#c8c8d8;
-  --acc:#c89a00;--acc2:#d4a800;
+  --acc:#10b981;--acc2:#059669;
   --g:#16a34a;--r:#dc2626;--o:#ea580c;--bl:#2563eb;--pu:#9333ea;
   --gd:rgba(22,163,74,.1);--rd:rgba(220,38,38,.1);--od:rgba(234,88,12,.1);
-  --bld:rgba(37,99,235,.1);--ad:rgba(200,154,0,.1);--pud:rgba(147,51,234,.1);
+  --bld:rgba(37,99,235,.1);--ad:rgba(16,185,129,.1);--pud:rgba(147,51,234,.1);
   --t1:#111118;--t2:#55556a;--t3:#aaaabc;
 }
 .theme-toggle{
@@ -1125,7 +1125,7 @@ async function renderDash(c){
     if(isDiaUtil(ds)&&!diasComReg.has(ds)) faltas++;
   }
 
-  const saldoCor=saldoMes>=0?'var(--g)':saldoMes<-120?'var(--r)':'var(--o)';
+  const saldoCor=saldoMes>=0?'var(--g)':'var(--r)';
   // Aniversariantes do mês
   const mesAtualNum=new Date().getMonth()+1;
   const diaAtual=new Date().getDate();
@@ -1366,7 +1366,7 @@ async function reloadBatidas(){
         const saldo=jMin&&completo?trab-jMin:jMin&&!completo&&trab>0?trab-jMin:0;
         saldoSem+=saldo;saldoTotal+=saldo;
         const batsHtml=montarSlotsBatida(data,bats,cpf,f.nome);
-        const sc=saldo>=0?'var(--g)':saldo<-30?'var(--r)':'var(--o)';
+        const sc=saldo>=0?'var(--g)':'var(--r)';
         diasHtml+=`<div class="bdia">
           <span class="bdia-data">${fmtData(data)}</span>
           <div class="bdia-batidas">${batsHtml}
@@ -1377,7 +1377,7 @@ async function reloadBatidas(){
         </div>`;
       });
       const sf=new Date(semIni+'T12:00:00');sf.setDate(sf.getDate()+4);
-      const sc=saldoSem>=0?'var(--g)':saldoSem<-30?'var(--r)':'var(--o)';
+      const sc=saldoSem>=0?'var(--g)':'var(--r)';
       semHtml+=`<div class="bsemana">
         <div class="bsemana-head">
           <span class="bsemana-lbl">Semana ${new Date(semIni+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}–${sf.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span>
@@ -1392,7 +1392,7 @@ async function reloadBatidas(){
         ${diasHtml}</div>`;
     });
 
-    const sc=saldoTotal>=0?'var(--g)':saldoTotal<-60?'var(--r)':'var(--o)';
+    const sc=saldoTotal>=0?'var(--g)':'var(--r)';
     html+=`<div class="bfunc">
       <div class="bfunc-head">
         <div class="fav" style="background:${f.color}22;color:${f.color}">${f.nome[0]}</div>
@@ -1746,7 +1746,7 @@ async function reloadBanco(){
     }
     saldoGeral+=saldo;
 
-    const sc=saldo>=0?'var(--g)':saldo<-60?'var(--r)':'var(--o)';
+    const sc=saldo>=0?'var(--g)':'var(--r)';
     const vlrHora=f.salario?f.salario/220:0;
     const custoExtras=vlrHora?extras/60*vlrHora:0;
     const custoDevendo=vlrHora?devendo/60*vlrHora:0;
@@ -1800,7 +1800,7 @@ async function reloadBanco(){
     </div>`;
   });
 
-  const gc=saldoGeral>=0?'var(--g)':saldoGeral<-120?'var(--r)':'var(--o)';
+  const gc=saldoGeral>=0?'var(--g)':'var(--r)';
   const perLabels={mes:'mês atual',semana:'semana','mes-ant':'mês anterior',tudo:'total geral'};
   const perLabel=perLabels[per]||per;
   html+=`</div>
