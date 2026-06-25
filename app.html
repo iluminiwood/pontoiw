@@ -670,7 +670,7 @@ let ENTRADA_PAD='07:00', SAIDA_SEMANA='17:30', SAIDA_SEX='16:30', TOL=5;
 let ALMOCO_INI='12:00', ALMOCO_FIM='13:30';
 let MODALIDADE_HORAS='banco';
 let empresaNome=''; // 'banco' ou 'mensal'
-let PLANO='free'; // 'free', 'essencial', 'pro'
+let PLANO='free'; // sempre 'free', 'essencial' ou 'pro' — nunca null/undefined
 
 // Limites e permissões por plano
 const PLANOS={
@@ -693,12 +693,17 @@ const FEATURES={
   excel:           {free:false, essencial:false, pro:true},
 };
 function temAcesso(feature){
-  const f=FEATURES[feature];
+  const f=typeof FEATURES!=='undefined'?FEATURES[feature]:null;
   if(!f)return true;
-  return f[PLANO]===true;
+  const _p=typeof PLANO!=='undefined'?PLANO:'free';
+  return f[_p]===true;
 }
 function cardUpgrade(feature,planoMin){
-  const p=PLANOS[planoMin||'essencial']||PLANOS.essencial;
+  // Fallbacks defensivos — nunca quebra mesmo se PLANOS/PLANO indefinido
+  const _planos=typeof PLANOS!=='undefined'?PLANOS:{free:{label:'Free',cor:'#a8a8b8'},essencial:{label:'Essencial',cor:'#60a5fa'},pro:{label:'Pro',cor:'#10b981'}};
+  const _plano=typeof PLANO!=='undefined'?PLANO:'free';
+  const p=_planos[planoMin||'essencial']||_planos.essencial||{label:'Essencial'};
+  const cp=_planos[_plano]||_planos.free||{label:'Free',cor:'#a8a8b8'};
   return `<div style="
     display:flex;flex-direction:column;align-items:center;justify-content:center;
     padding:3rem 2rem;text-align:center;gap:1rem;
@@ -712,12 +717,12 @@ function cardUpgrade(feature,planoMin){
     <div style="font-size:13px;color:var(--t2);max-width:320px;line-height:1.6">
       Faça upgrade para desbloquear esta funcionalidade e muito mais.
     </div>
-    <a href="../landing.html#pricing" target="_blank" style="
-      background:var(--bl);color:#fff;padding:10px 24px;border-radius:30px;
-      font-size:13px;font-weight:800;text-decoration:none;
-      box-shadow:0 4px 14px rgba(96,165,250,.25);
-    ">Ver planos →</a>
-    <div style="font-size:11px;color:var(--t3)">Plano atual: <b style="color:${(PLANOS[PLANO]||PLANOS.free).cor}">${(PLANOS[PLANO]||PLANOS.free).label}</b></div>
+    <button onclick="document.getElementById('m-cupom').classList.add('open')" style="
+      background:var(--em);color:#fff;padding:10px 24px;border-radius:30px;
+      font-size:13px;font-weight:800;cursor:pointer;border:none;
+      box-shadow:0 4px 14px rgba(16,185,129,.25);
+    ">Resgatar cupom →</button>
+    <div style="font-size:11px;color:var(--t3)">Plano atual: <b style="color:${cp.cor}">${cp.label}</b></div>
   </div>`;
 }
 let METODO_PONTO='ambos'; // 'biometrico', 'digital' ou 'ambos'
@@ -735,10 +740,10 @@ function aplicarConfigEmpresa(cfg){
   empresaNome=cfg.nome||'';
   // Plano — verifica se expirou
   if(cfg.plano){
-    const planosValidos=['free','essencial','pro'];
-    const expirou=cfg.plano_expira_em && new Date(cfg.plano_expira_em)<new Date();
-    const planoRaw=expirou?'free':cfg.plano;
-    PLANO=planosValidos.includes(planoRaw)?planoRaw:'free';
+    const _pValidos=['free','essencial','pro'];
+    const _expirou=cfg.plano_expira_em && new Date(cfg.plano_expira_em)<new Date();
+    const _pRaw=_expirou?'free':(cfg.plano||'free');
+    PLANO=_pValidos.includes(_pRaw)?_pRaw:'free';
   }
   const almocoMin=toMin(ALMOCO_FIM)-toMin(ALMOCO_INI);
   const minSemana=toMin(SAIDA_SEMANA)-toMin(ENTRADA_PAD)-almocoMin;
