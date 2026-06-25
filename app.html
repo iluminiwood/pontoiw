@@ -303,6 +303,50 @@ body.light .toast{background:rgba(255,255,255,.97);}
   box-shadow:0 2px 8px rgba(0,0,0,.2);
 }
 .cfg-locked input,.cfg-locked select{pointer-events:none;}
+
+/* ===== TOUR ===== */
+#tour-overlay{
+  position:fixed;inset:0;z-index:900;pointer-events:none;
+  background:rgba(0,0,0,0);transition:background .3s;
+}
+#tour-overlay.active{pointer-events:all;background:rgba(0,0,0,.65);}
+.tour-highlight{
+  position:fixed;z-index:901;border-radius:12px;
+  box-shadow:0 0 0 4000px rgba(0,0,0,.65);
+  pointer-events:none;transition:all .35s cubic-bezier(.4,0,.2,1);
+}
+.tour-tooltip{
+  position:fixed;z-index:902;
+  background:var(--s1);border:1px solid var(--b1);
+  border-radius:var(--r16);padding:1.25rem 1.4rem;
+  width:300px;box-shadow:0 8px 32px rgba(0,0,0,.4);
+  transition:all .35s cubic-bezier(.4,0,.2,1);
+}
+.tour-step-label{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--em);margin-bottom:.4rem;}
+.tour-title{font-size:16px;font-weight:800;color:var(--t1);margin-bottom:.4rem;}
+.tour-desc{font-size:13px;color:var(--t2);line-height:1.6;margin-bottom:1rem;}
+.tour-actions{display:flex;align-items:center;justify-content:space-between;gap:.5rem;}
+.tour-skip{font-size:12px;color:var(--t3);cursor:pointer;background:none;border:none;padding:0;}
+.tour-skip:hover{color:var(--t2);}
+.tour-next{background:var(--em);color:#fff;border:none;border-radius:30px;padding:8px 20px;font-size:13px;font-weight:800;cursor:pointer;transition:opacity .15s;}
+.tour-next:hover{opacity:.88;}
+.tour-dots{display:flex;gap:5px;align-items:center;}
+.tour-dot{width:6px;height:6px;border-radius:50%;background:var(--b2);transition:background .2s;}
+.tour-dot.on{background:var(--em);}
+
+/* ===== CHECKLIST ONBOARDING ===== */
+.onboard-card{
+  background:linear-gradient(135deg,rgba(16,185,129,.05),rgba(16,185,129,.02));
+  border:1px solid rgba(16,185,129,.15);
+  border-radius:var(--r16);padding:1.1rem 1.25rem;margin-bottom:1rem;
+}
+.onboard-title{font-size:13px;font-weight:800;color:var(--em);margin-bottom:.75rem;display:flex;align-items:center;justify-content:space-between;}
+.onboard-item{display:flex;align-items:center;gap:.65rem;padding:.4rem 0;font-size:13px;color:var(--t2);transition:color .2s;}
+.onboard-item.done{color:var(--t3);text-decoration:line-through;}
+.onboard-check{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--b2);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;}
+.onboard-item.done .onboard-check{background:var(--em);border-color:var(--em);}
+.onboard-item.done .onboard-check svg{display:block;}
+.onboard-check svg{display:none;width:10px;height:10px;stroke:#fff;}
 </style>
 <div id="login">
   <div class="login-wrap">
@@ -1001,6 +1045,7 @@ async function abrirTotemDireto(){
   const base=window.location.href.substring(0,window.location.href.lastIndexOf('/')+1);
   const url=base+'totem.html?t='+data.kiosk_token;
   window.open(url,'_blank');
+  marcarChecklistItem('totem');
 }
 function abrirConfigEmpresa(){
   document.getElementById('cfg-entrada').value=ENTRADA_PAD;
@@ -1014,7 +1059,8 @@ function abrirConfigEmpresa(){
 
   // Blur nos campos avançados para plano Free
   const isFree=!temAcesso('configuracoes');
-  const camposAvancados=['cfg-almoco-ini','cfg-almoco-fim','cfg-saida','cfg-saida-sex','cfg-tolerancia','cfg-modalidade','cfg-metodo-ponto'];
+  // Jornada básica liberada em todos os planos — só modalidade e método bloqueados no Free
+  const camposAvancados=['cfg-modalidade','cfg-metodo-ponto'];
   camposAvancados.forEach(id=>{
     const wrapper=document.getElementById(id)?.closest('.field');
     if(!wrapper)return;
@@ -1059,6 +1105,7 @@ async function salvarConfigEmpresa(){
   if(error){toast('Erro ao salvar: '+error.message,'err');return;}
   aplicarConfigEmpresa(cfg);
   toast('Configurações salvas!','ok');
+  marcarChecklistItem('jornada');
   closeModals();
   goTab(currentTab);
 }
@@ -1122,6 +1169,7 @@ async function doSignup(){
   goTab('dash');
   resetSession();
   if(btn){btn.disabled=false;btn.textContent='Criar conta';}
+  setTimeout(iniciarTour,600);
 }
 
 async function doLogin(){
@@ -1175,6 +1223,7 @@ async function doLogin(){
   goTab('dash');
   resetSession();
   if(btn){btn.disabled=false;btn.textContent='Entrar';}
+  setTimeout(iniciarTour,600);
 }
 
 async function checkExistingSession(){
@@ -1280,6 +1329,10 @@ function goTab(tab){
 
 // ===== DASHBOARD =====
 async function renderDash(c){
+  // Checklist de onboarding (só admin, só quando incompleto)
+  if(perfilUsuario==='admin' && !checklistCompleto()){
+    setTimeout(()=>renderChecklist(),400);
+  }
   // Empresa nova sem nenhum funcionário — mostra tela de boas-vindas em vez do dashboard vazio
   if(perfilUsuario==='admin' && funcionarios.length===0){
     c.innerHTML=`
@@ -2127,6 +2180,7 @@ async function confirmarAdd(){
   if(errIns){toast('Erro ao adicionar: '+errIns.message,'err');return;}
   await recalcularTiposDia(addCtx.cpf,addCtx.data);
   toast('Batida adicionada e horários recalculados!','ok');
+  marcarChecklistItem('batida');
   closeModals();await reloadBatidas();
 }
 
@@ -3125,9 +3179,218 @@ async function reloadAtrasos(){
   el.innerHTML=html;
 }
 
+// ===== TOUR =====
+const TOUR_KEY='iw_ponto_tour_v1';
+let tourStep=0;
+
+const TOUR_STEPS=[
+  {
+    label:'Passo 1 de 5',
+    title:'Bem-vindo ao IW Ponto!',
+    desc:'Vamos fazer um tour rápido para você começar a usar o sistema. Leva menos de 1 minuto.',
+    target:null, // tela cheia (sem highlight)
+    pos:'center'
+  },
+  {
+    label:'Passo 2 de 5',
+    title:'Cadastre sua equipe',
+    desc:'Comece aqui. Adicione cada colaborador com nome, cargo e um PIN de 4 dígitos único.',
+    target:'t-equipe',
+    pos:'bottom'
+  },
+  {
+    label:'Passo 3 de 5',
+    title:'Configure a jornada',
+    desc:'Defina o horário de entrada, almoço e saída. O banco de horas e os atrasos são calculados com base nisso.',
+    target:'btn-config',
+    pos:'bottom'
+  },
+  {
+    label:'Passo 4 de 5',
+    title:'Abra o ponto digital',
+    desc:'O totem é onde sua equipe bate o ponto. Abra numa aba e deixe num tablet ou celular fixo.',
+    target:'t-equipe',
+    pos:'bottom'
+  },
+  {
+    label:'Passo 5 de 5',
+    title:'Acompanhe em tempo real',
+    desc:'O Dashboard mostra quem entrou, atrasos e banco de horas atualizado automaticamente.',
+    target:'t-dash',
+    pos:'bottom'
+  },
+];
+
+function iniciarTour(){
+  if(localStorage.getItem(TOUR_KEY)) return;
+  if(perfilUsuario!=='admin') return;
+  tourStep=0;
+  document.getElementById('tour-overlay').classList.add('active');
+  mostrarPassoTour();
+}
+
+function mostrarPassoTour(){
+  const step=TOUR_STEPS[tourStep];
+  if(!step){fecharTour();return;}
+
+  // Dots
+  const dotsEl=document.getElementById('tour-dots');
+  dotsEl.innerHTML=TOUR_STEPS.map((_,i)=>
+    `<div class="tour-dot${i===tourStep?' on':''}"></div>`).join('');
+
+  // Textos
+  document.getElementById('tour-label').textContent=step.label;
+  document.getElementById('tour-title').textContent=step.title;
+  document.getElementById('tour-desc').textContent=step.desc;
+
+  // Botão último passo
+  const nextBtn=document.getElementById('tour-next-btn');
+  nextBtn.textContent=tourStep===TOUR_STEPS.length-1?'Começar!':'Próximo';
+
+  // Highlight + posição do tooltip
+  const hl=document.getElementById('tour-hl');
+  const tip=document.getElementById('tour-tip');
+  hl.style.display='none';
+  tip.style.display='block';
+
+  if(step.pos==='center'||!step.target){
+    // Centralizado — sem highlight
+    tip.style.top='50%';
+    tip.style.left='50%';
+    tip.style.transform='translate(-50%,-50%)';
+  } else {
+    const el=document.getElementById(step.target);
+    if(el){
+      const r=el.getBoundingClientRect();
+      const pad=8;
+      hl.style.display='block';
+      hl.style.top=(r.top-pad)+'px';
+      hl.style.left=(r.left-pad)+'px';
+      hl.style.width=(r.width+pad*2)+'px';
+      hl.style.height=(r.height+pad*2)+'px';
+
+      // Tooltip abaixo do elemento
+      let tipTop=r.bottom+pad+12;
+      let tipLeft=r.left;
+      // Garante que não sai da tela
+      if(tipLeft+300>window.innerWidth) tipLeft=window.innerWidth-316;
+      if(tipLeft<8) tipLeft=8;
+      if(tipTop+220>window.innerHeight) tipTop=r.top-220-pad;
+      tip.style.top=tipTop+'px';
+      tip.style.left=tipLeft+'px';
+      tip.style.transform='none';
+    }
+  }
+}
+
+function tourProximo(){
+  tourStep++;
+  if(tourStep>=TOUR_STEPS.length){fecharTour();return;}
+  mostrarPassoTour();
+}
+
+function fecharTour(){
+  localStorage.setItem(TOUR_KEY,'1');
+  document.getElementById('tour-overlay').classList.remove('active');
+  document.getElementById('tour-hl').style.display='none';
+  document.getElementById('tour-tip').style.display='none';
+  renderChecklist();
+}
+
+// ===== CHECKLIST ONBOARDING =====
+const CK_KEY='iw_ponto_checklist_v1';
+
+function getChecklistState(){
+  try{return JSON.parse(localStorage.getItem(CK_KEY)||'{}');}
+  catch{return {};}
+}
+function saveChecklistItem(key){
+  const st=getChecklistState();
+  st[key]=true;
+  localStorage.setItem(CK_KEY,JSON.stringify(st));
+}
+function checklistCompleto(){
+  const st=getChecklistState();
+  return ['funcionarios','pin','jornada','totem','batida'].every(k=>st[k]);
+}
+
+function renderChecklist(){
+  const c=document.getElementById('content');
+  if(!c||perfilUsuario!=='admin') return;
+  // Só mostra no dashboard
+  const tabAtiva=document.querySelector('.tab.on')?.id;
+  if(tabAtiva!=='t-dash') return;
+  if(checklistCompleto()) return;
+
+  const st=getChecklistState();
+  // Auto-detecta o que já foi feito
+  if(funcionarios.length>0) saveChecklistItem('funcionarios');
+  if(funcionarios.some(f=>f.pin)) saveChecklistItem('pin');
+
+  const items=[
+    {key:'funcionarios',label:'Cadastrar pelo menos 1 funcionário'},
+    {key:'pin',label:'Definir PIN de cada funcionário'},
+    {key:'jornada',label:'Configurar a jornada de trabalho'},
+    {key:'totem',label:'Abrir o totem pela primeira vez'},
+    {key:'batida',label:'Registrar a primeira batida'},
+  ];
+
+  const st2=getChecklistState();
+  const total=items.length;
+  const feitos=items.filter(i=>st2[i.key]).length;
+  if(feitos===total){localStorage.setItem(CK_KEY,JSON.stringify(Object.fromEntries(items.map(i=>[i.key,true]))));return;}
+
+  const ckHtml=`<div class="onboard-card" id="onboard-card">
+    <div class="onboard-title">
+      <span>Primeiros passos (${feitos}/${total})</span>
+      <span style="font-size:11px;color:var(--t3);cursor:pointer;font-weight:600" onclick="dispensarChecklist()">Dispensar</span>
+    </div>
+    ${items.map(it=>`
+      <div class="onboard-item${st2[it.key]?' done':''}">
+        <div class="onboard-check">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <span>${it.label}</span>
+      </div>`).join('')}
+  </div>`;
+
+  // Insere no topo do conteúdo do dashboard
+  const existing=document.getElementById('onboard-card');
+  if(existing) existing.parentElement.innerHTML=ckHtml+existing.parentElement.innerHTML.replace(existing.outerHTML,'');
+  else c.insertAdjacentHTML('afterbegin',ckHtml);
+}
+
+function dispensarChecklist(){
+  const items=['funcionarios','pin','jornada','totem','batida'];
+  const st=getChecklistState();
+  items.forEach(k=>st[k]=true);
+  localStorage.setItem(CK_KEY,JSON.stringify(st));
+  document.getElementById('onboard-card')?.remove();
+}
+
+function marcarChecklistItem(key){
+  saveChecklistItem(key);
+}
+
+
+
 </script>
 
 
+<div id="tour-overlay"></div>
+<div class="tour-highlight" id="tour-hl" style="display:none"></div>
+<div class="tour-tooltip" id="tour-tip" style="display:none">
+  <div class="tour-step-label" id="tour-label"></div>
+  <div class="tour-title" id="tour-title"></div>
+  <div class="tour-desc" id="tour-desc"></div>
+  <div class="tour-actions">
+    <button class="tour-skip" onclick="fecharTour()">Pular tour</button>
+    <div class="tour-dots" id="tour-dots"></div>
+    <button class="tour-next" id="tour-next-btn" onclick="tourProximo()">Próximo</button>
+  </div>
+</div>
 <div id="toast-wrap"></div>
 </body>
 </html>
