@@ -835,7 +835,7 @@ async function abrirTotem(){
   if(!empresaAtual){toast('Empresa não identificada.','err');return;}
   const{data,error}=await sb.from('empresas').select('kiosk_token').eq('id',empresaAtual).single();
   if(error||!data){toast('Erro ao gerar link do totem.','err');return;}
-  const url=window.location.origin+window.location.pathname.replace('index.html','')+'totem.html?t='+data.kiosk_token;
+  const url=window.location.origin+window.location.pathname.replace('index.html','').replace('app.html','')+'totem.html?t='+data.kiosk_token;
   window.open(url,'_blank');
 }
 function abrirConfigEmpresa(){
@@ -1031,6 +1031,13 @@ document.addEventListener('click',resetSession);
 checkExistingSession();
 
 // ===== INIT =====
+// Query segura com timeout de 12s
+async function safeQuery(queryFn){
+  const timeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),12000));
+  try{return await Promise.race([queryFn(),timeout]);}
+  catch(e){console.warn('safeQuery falhou:',e);return{data:null,error:e};}
+}
+
 async function initApp(){
   try{
     const{error}=await sb.from('iw_funcionarios').select('id').limit(1);
@@ -1879,7 +1886,7 @@ async function reloadBanco(){
   // Busca em lotes
   let todosR=[];let from2=0;
   while(true){
-    const{data:lote}=await sb.from('iw_registros_ponto').select('*').gte('data_local',ini).lte('data_local',fim).order('id').range(from2,from2+999);
+    const{data:lote}=await safeQuery(()=>sb.from('iw_registros_ponto').select('*').gte('data_local',ini).lte('data_local',fim).order('id').range(from2,from2+999));
     if(!lote||!lote.length)break;
     todosR=todosR.concat(lote);
     if(lote.length<1000)break;
@@ -2083,8 +2090,8 @@ let afastCtx=null;
 async function renderAfastamentos(c){
   if(!temAcesso('atestados')){c.innerHTML=cardUpgrade('atestados','essencial');return;}
   c.innerHTML='<div class="loading">Carregando...</div>';
-  const{data:lista}=await sb.from('iw_afastamentos').select('*').order('data_inicio',{ascending:false}).limit(300);
-  const afastamentos=lista||[];
+  const{data:lista}=await safeQuery(()=>sb.from('iw_afastamentos').select('*').order('data_inicio',{ascending:false}).limit(300));
+  const afastamentos=(lista||[]);
   const hoje=new Date().toISOString().split('T')[0];
 
   const porFunc={};
@@ -2296,13 +2303,12 @@ async function renderEquipe(c){
 async function renderFerias(c){
   if(!temAcesso('ferias')){c.innerHTML=cardUpgrade('ferias','essencial');return;}
   c.innerHTML='<div class="loading">Carregando férias...</div>';
-  
   // Busca todos os períodos de férias
-  const{data:ferData}=await sb.from('iw_ferias').select('*').order('admissao_real').limit(200);
+  const{data:ferData}=await safeQuery(()=>sb.from('iw_ferias').select('*').order('admissao_real').limit(200));
   const ferias=ferData||[];
   
   // Busca dias de férias individuais para exclusão do banco
-  const{data:diasFer}=await sb.from('iw_ferias_dias').select('*').limit(2000);
+  const{data:diasFer}=await safeQuery(()=>sb.from('iw_ferias_dias').select('*').limit(2000));
   const diasFerias=new Set((diasFer||[]).map(d=>d.cpf+'_'+d.data));
 
   // Agrupa por funcionário
@@ -2531,9 +2537,9 @@ let episList=[], epiCtxFunc=null, epiDrawing=false, epiLastX=0, epiLastY=0;
 async function renderEpis(c){
   if(!temAcesso('epis')){c.innerHTML=cardUpgrade('epis','essencial');return;}
   c.innerHTML='<div class="loading">Carregando EPIs...</div>';
-  const{data:epis}=await sb.from('iw_epis').select('*').eq('ativo',true).order('nome');
+  const{data:epis}=await safeQuery(()=>sb.from('iw_epis').select('*').eq('ativo',true).order('nome'));
   episList=epis||[];
-  const{data:entregas}=await sb.from('iw_epi_entregas').select('*').order('criado_em',{ascending:false}).limit(100);
+  const{data:entregas}=await safeQuery(()=>sb.from('iw_epi_entregas').select('*').order('criado_em',{ascending:false}).limit(100));
   const listaEntregas=entregas||[];
   const isAdmin=perfilUsuario==='admin';
 
@@ -2788,7 +2794,7 @@ async function reloadAtrasos(){
   el.innerHTML='<div class="loading">Calculando...</div>';
   const per=document.getElementById('atr-per')?.value||'mes';
   const{ini,fim}=getPeriodo(per);
-  const{data:regs}=await sb.from('iw_registros_ponto').select('*').gte('data_local',ini).lte('data_local',fim).order('id').limit(5000);
+  const{data:regs}=await safeQuery(()=>sb.from('iw_registros_ponto').select('*').gte('data_local',ini).lte('data_local',fim).order('id').limit(5000));
   const todos=regs||[];
   const porCpf={};
   todos.forEach(r=>{
