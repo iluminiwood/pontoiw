@@ -489,6 +489,52 @@ body.light .toast{background:rgba(255,255,255,.97);}
   </div>
 </div>
 
+<!-- MODAL TUTORIAL TOTEM -->
+<div class="moverlay" id="m-tutorial-totem">
+  <div class="modal" style="max-width:500px">
+    <div class="mhandle"></div>
+    <div class="mtitle">Como configurar o ponto digital</div>
+    <div class="msub">Siga os passos para deixar o totem pronto para sua equipe</div>
+    <div style="display:flex;flex-direction:column;gap:.85rem;margin-top:1.25rem">
+      <div style="display:flex;gap:.85rem;align-items:flex-start">
+        <div style="width:28px;height:28px;border-radius:50%;background:rgba(16,185,129,.1);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--em);flex-shrink:0">1</div>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">Escolha um tablet ou celular fixo</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">Qualquer aparelho com navegador serve. Tablet em modo paisagem fica melhor.</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:.85rem;align-items:flex-start">
+        <div style="width:28px;height:28px;border-radius:50%;background:rgba(16,185,129,.1);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--em);flex-shrink:0">2</div>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">Abra o link do totem nesse aparelho</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">Copie o link abaixo e envie por WhatsApp ou e-mail para o aparelho fixo.</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:.85rem;align-items:flex-start">
+        <div style="width:28px;height:28px;border-radius:50%;background:rgba(16,185,129,.1);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--em);flex-shrink:0">3</div>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">Cadastre os PINs da equipe</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">Em Equipe → cada funcionário → editar PIN. Cada um deve ter um PIN único de 4 dígitos.</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:.85rem;align-items:flex-start">
+        <div style="width:28px;height:28px;border-radius:50%;background:rgba(16,185,129,.1);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--em);flex-shrink:0">4</div>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">Pronto!</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">O colaborador digita o PIN e o registro é salvo automaticamente. Você acompanha em tempo real no dashboard.</div>
+        </div>
+      </div>
+    </div>
+    <div class="mactions" style="margin-top:1.25rem">
+      <button class="btn-sm" onclick="closeModals()">Fechar</button>
+      <button class="btn" onclick="abrirTotemDepoisTutorial()">Abrir totem agora</button>
+    </div>
+    <label style="display:flex;align-items:center;gap:.5rem;margin-top:.75rem;font-size:12px;color:var(--t2);cursor:pointer;justify-content:center">
+      <input type="checkbox" id="tut-nao-mostrar"> Não mostrar novamente
+    </label>
+  </div>
+</div>
+
 <!-- MODAL ASSINAR PLANO -->
 <div class="moverlay" id="m-assinar">
   <div class="modal" style="max-width:440px">
@@ -792,12 +838,12 @@ function cardUpgrade(feature,planoMin){
         background:#10b981;color:#fff!important;padding:10px 22px;border-radius:30px;
         font-size:13px;font-weight:800;cursor:pointer;border:none;
         box-shadow:0 4px 14px rgba(16,185,129,.3);
-      ">🎟 Cupom</button>
+      "><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z"/></svg> Cupom</button>
       <button onclick="abrirAssinarPlano()" style="
         background:var(--s2);color:var(--t1);padding:10px 22px;border-radius:30px;
         font-size:13px;font-weight:800;cursor:pointer;
         border:1px solid rgba(16,185,129,.3);
-      ">⚡ Assinar plano</button>
+      "><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Assinar plano</button>
     </div>
     <div style="font-size:11px;color:var(--t3)">Plano atual: <b style="color:${cp.cor}">${cp.label}</b></div>
   </div>`;
@@ -935,7 +981,20 @@ function toast(msg,tipo){
     setTimeout(function(){el.remove();},200);
   },3500);
 }
+async function abrirTotemDepoisTutorial(){
+  const naoMostrar=document.getElementById('tut-nao-mostrar')?.checked;
+  if(naoMostrar) localStorage.setItem('iw_tutorial_totem_visto','1');
+  closeModals();
+  await abrirTotemDireto();
+}
 async function abrirTotem(){
+  if(!localStorage.getItem('iw_tutorial_totem_visto')){
+    document.getElementById('m-tutorial-totem').classList.add('open');
+    return;
+  }
+  await abrirTotemDireto();
+}
+async function abrirTotemDireto(){
   if(!empresaAtual){toast('Empresa não identificada.','err');return;}
   const{data,error}=await sb.from('empresas').select('kiosk_token').eq('id',empresaAtual).single();
   if(error||!data){toast('Erro ao gerar link do totem.','err');return;}
@@ -966,7 +1025,7 @@ function abrirConfigEmpresa(){
       if(!badge){
         const b=document.createElement('div');
         b.className='cfg-lock-badge';
-        b.textContent='🔒 Plano Essencial';
+        b.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Plano Essencial';
         b.onclick=()=>{closeModals();setTimeout(()=>abrirAssinarPlano(),200);};
         wrapper.appendChild(b);
       }
@@ -1556,7 +1615,7 @@ async function reloadBatidas(){
         </div>
         <div style="display:flex;align-items:center;gap:4px;padding:3px 0;border-bottom:1px solid var(--b2);margin-bottom:2px">
           <span style="font-size:9px;color:var(--t3);width:58px;flex-shrink:0">DIA</span>
-          <span style="flex:1;font-size:9px;color:var(--t3)">BATIDAS &nbsp;<span style="color:var(--g)">↑ent</span> <span style="color:var(--r)">↓saí</span> <span style="color:var(--pu)">✎edit</span></span>
+          <span style="flex:1;font-size:9px;color:var(--t3)">BATIDAS &nbsp;<span style="color:var(--g)">↑ent</span> <span style="color:var(--r)">↓saí</span> <span style="color:var(--pu)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>edit</span></span>
           <span style="font-size:9px;color:var(--t3);width:38px;text-align:right;flex-shrink:0">TOTAL</span>
           <span style="font-size:9px;color:var(--t3);width:48px;text-align:right;flex-shrink:0">SALDO</span>
         </div>
@@ -2160,7 +2219,7 @@ async function reloadBanco(){
           <div style="font-size:10px;color:var(--t2);margin-top:.2rem">R$ ${vlrHora.toFixed(2)}/hora</div>
         </div>
         <div style="background:var(--rd);border:1px solid rgba(248,113,113,.2);border-radius:var(--r8);padding:.6rem .85rem">
-          <div style="font-size:10px;color:var(--r);font-weight:700;text-transform:uppercase;margin-bottom:.25rem">⏱ Horas em débito</div>
+          <div style="font-size:10px;color:var(--r);font-weight:700;text-transform:uppercase;margin-bottom:.25rem"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><polyline points="12 9 12 13 14.5 14.5"/><path d="M16.5 2.5l1.5 2"/><path d="M7.5 2.5L6 4.5"/></svg> Horas em débito</div>
           <div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--r)">${fmtBRL(custoDevendo)}</div>
           <div style="font-size:10px;color:var(--t2);margin-top:.2rem">${fromMin(devendo)} não trabalhadas</div>
         </div>

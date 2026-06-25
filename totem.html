@@ -17,235 +17,581 @@
 html,body{height:100%;overflow:hidden;}
 body{
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-  background:radial-gradient(ellipse at top,#15151c 0%,#0a0a0c 60%);
+  background:#0a0a0c;
   color:#e4e4e8;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  height:100dvh;padding:1.25rem 1.5rem;text-align:center;
-  overflow-y:auto;
-}
-#main{display:flex;flex-direction:column;align-items:center;width:100%;max-width:480px;}
-.brand{font-size:11px;font-weight:800;letter-spacing:.12em;color:#555;text-transform:uppercase;margin-bottom:clamp(.5rem,3vh,1.5rem);flex-shrink:0;}
-
-/* ===== RELÓGIO ===== */
-.clock-wrap{margin-bottom:.25rem;flex-shrink:0;}
-.clock{font-family:'SF Mono',Menlo,monospace;font-weight:800;color:#fff;letter-spacing:-2px;line-height:1;
-  font-size:min(18vw,20vh,128px);}
-.date{font-size:clamp(13px,2vh,17px);color:#8888a0;margin-top:.5rem;text-transform:capitalize;}
-
-/* ===== MENSAGEM MOTIVACIONAL ===== */
-.motiv{
-  font-size:clamp(12px,1.8vh,15px);color:#10b981;font-weight:600;
-  margin-top:clamp(.75rem,2.5vh,1.5rem);margin-bottom:clamp(1.25rem,3vh,2.25rem);max-width:480px;line-height:1.5;
-  opacity:.92;
+  height:100dvh;
+  overflow:hidden;
 }
 
-/* ===== PIN ===== */
-.pin-label{font-size:clamp(12px,1.8vh,14px);color:#8888a0;margin-bottom:clamp(.75rem,2vh,1.25rem);flex-shrink:0;}
-.pin-dots{display:flex;justify-content:center;gap:16px;margin-bottom:clamp(1rem,2.5vh,2rem);flex-shrink:0;}
-.pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid #333;transition:all .15s;}
-.pin-dot.filled{background:#10b981;border-color:#10b981;transform:scale(1.1);}
-.pin-dots.shake{animation:shake .4s;}
-.pin-dots.erro{animation:shake .45s;}
-.totem-wrap.erro-flash{animation:erroFlash .5s;}
-@keyframes erroFlash{
-  0%,100%{background:#0a0a0c;}
-  20%,60%{background:rgba(248,113,113,.18);}
-  40%,80%{background:rgba(248,113,113,.08);}
+/* ============================
+   LAYOUT PRINCIPAL
+   ============================ */
+#totem-root{
+  display:flex;
+  width:100%;height:100%;
+  align-items:center;
+  justify-content:center;
 }
+
+/* Landscape: relógio à esquerda, PIN à direita */
+.totem-layout{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  width:100%;height:100%;
+  max-width:1200px;
+}
+
+/* Portrait: empilha */
+@media(orientation:portrait){
+  .totem-layout{
+    grid-template-columns:1fr;
+    grid-template-rows:auto 1fr;
+  }
+  .totem-left{
+    padding:clamp(.75rem,4vw,2rem) clamp(1rem,6vw,3rem) 0 !important;
+    justify-content:flex-end !important;
+    align-items:center !important;
+    text-align:center !important;
+  }
+  .totem-right{
+    border-left:none !important;
+    border-top:1px solid #1a1a22;
+    align-items:center !important;
+  }
+  .clock-wrap{margin-bottom:0 !important;}
+}
+
+/* ============================
+   PAINEL ESQUERDO — relógio
+   ============================ */
+.totem-left{
+  display:flex;flex-direction:column;
+  justify-content:center;align-items:flex-end;
+  padding:clamp(2rem,5vh,4rem) clamp(2rem,4vw,5rem);
+  border-right:1px solid #1a1a22;
+  background:radial-gradient(ellipse at 30% 50%,rgba(16,185,129,.04) 0%,transparent 65%);
+}
+.brand{
+  font-size:clamp(9px,1.2vw,12px);font-weight:800;
+  letter-spacing:.14em;color:#333;
+  text-transform:uppercase;margin-bottom:clamp(.5rem,2vh,1.25rem);
+}
+.clock-wrap{margin-bottom:clamp(.5rem,2vh,1.5rem);}
+.clock{
+  font-family:'SF Mono',ui-monospace,Menlo,monospace;
+  font-weight:800;color:#fff;
+  letter-spacing:-2px;line-height:1;
+  font-size:clamp(48px,9vw,120px);
+}
+.date{
+  font-size:clamp(12px,1.5vw,16px);
+  color:#55556a;margin-top:.5rem;
+  text-transform:capitalize;
+}
+
+/* ============================
+   PAINEL DIREITO — PIN
+   ============================ */
+.totem-right{
+  display:flex;flex-direction:column;
+  justify-content:center;align-items:center;
+  padding:clamp(2rem,5vh,4rem) clamp(2rem,4vw,5rem);
+  background:radial-gradient(ellipse at 70% 50%,rgba(255,255,255,.015) 0%,transparent 65%);
+}
+.pin-label{
+  font-size:clamp(12px,1.4vw,15px);
+  color:#55556a;margin-bottom:clamp(.75rem,2vh,1.5rem);
+  font-weight:500;
+}
+.pin-dots{
+  display:flex;justify-content:center;
+  gap:clamp(10px,2vw,18px);
+  margin-bottom:clamp(1.25rem,3vh,2.5rem);
+}
+.pin-dot{
+  width:clamp(12px,1.8vw,18px);
+  height:clamp(12px,1.8vw,18px);
+  border-radius:50%;border:2px solid #2a2a32;
+  transition:all .15s;
+}
+.pin-dot.filled{background:#10b981;border-color:#10b981;transform:scale(1.15);}
 .pin-dot.erro{border-color:#f87171!important;background:rgba(248,113,113,.3)!important;}
-@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-12px)}40%{transform:translateX(12px)}60%{transform:translateX(-9px)}80%{transform:translateX(9px)}}
-.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(8px,1.8vh,14px);width:min(300px,70vw,60vh);flex-shrink:0;}
-.pin-key{
-  aspect-ratio:1;border-radius:50%;background:#16161a;border:1px solid #24242a;
-  font-size:clamp(18px,3vh,26px);font-weight:700;color:#fff;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;
-}
-.pin-key:active{background:#222228;transform:scale(.92);}
-.pin-key.ghost{background:transparent;border:none;}
 
-/* ===== CONFIRMAÇÃO ===== */
-.confirm-overlay{
-  position:fixed;inset:0;z-index:200;display:none;
-  align-items:center;justify-content:center;flex-direction:column;gap:.75rem;
+/* Animações de erro */
+.pin-dots.shake{animation:shake .45s;}
+@keyframes shake{
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-10px)}40%{transform:translateX(10px)}
+  60%{transform:translateX(-7px)}80%{transform:translateX(7px)}
+}
+@keyframes erroBg{
+  0%,100%{background:#0a0a0c;}
+  30%,70%{background:rgba(248,113,113,.12);}
+}
+.erro-flash{animation:erroBg .5s;}
+
+/* Teclado PIN */
+.pin-pad{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:clamp(8px,1.5vw,16px);
+  width:min(280px,60vw,45vh);
+}
+.pin-key{
+  aspect-ratio:1;border-radius:50%;
+  background:#111116;border:1px solid #1e1e28;
+  font-size:clamp(18px,2.5vw,28px);font-weight:700;color:#fff;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .1s,transform .1s;
+}
+.pin-key:active{background:#1e1e28;transform:scale(.91);}
+.pin-key.ghost{background:transparent;border:none;cursor:default;}
+.pin-key.del-key{font-size:clamp(14px,2vw,20px);color:#55556a;}
+
+/* ============================
+   OVERLAY DE CONFIRMAÇÃO
+   ============================ */
+.overlay{
+  position:fixed;inset:0;z-index:100;
+  display:none;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:clamp(.5rem,2vh,1rem);
   text-align:center;padding:2rem;
 }
-.confirm-overlay.open{display:flex;}
-.confirm-overlay.ok{background:radial-gradient(ellipse at center,#0d2a1e 0%,#0a0a0c 70%);}
-.confirm-overlay.err{background:radial-gradient(ellipse at center,#2a0d0d 0%,#0a0a0c 70%);}
-.confirm-icon{width:110px;height:110px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:54px;animation:popIn .4s cubic-bezier(.34,1.56,.64,1);margin-bottom:.5rem;}
-.confirm-overlay.ok .confirm-icon{background:rgba(61,214,140,.16);color:#3dd68c;}
-.confirm-overlay.err .confirm-icon{background:rgba(248,113,113,.16);color:#f87171;}
-@keyframes popIn{0%{transform:scale(0)}60%{transform:scale(1.18)}100%{transform:scale(1)}}
-.confirm-title{font-size:clamp(24px,4vw,34px);font-weight:800;color:#fff;}
-.confirm-hora{font-family:'SF Mono',Menlo,monospace;font-size:clamp(36px,7vw,56px);font-weight:800;color:#fff;margin-top:.25rem;}
-.confirm-tipo{font-size:14px;color:#8888a0;text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-top:.25rem;}
-.confirm-motiv{font-size:clamp(14px,2.2vw,18px);color:#10b981;font-weight:600;max-width:480px;margin-top:1rem;line-height:1.5;}
+.overlay.open{display:flex;}
+.overlay.ok{background:radial-gradient(ellipse at center,#0d2a1e 0%,#080808 70%);}
+.overlay.err-overlay{background:radial-gradient(ellipse at center,#2a0d0d 0%,#080808 70%);}
 
-.error-state{display:flex;flex-direction:column;align-items:center;gap:.75rem;}
-.error-state .ic{font-size:48px;}
-.error-state .msg{font-size:15px;color:#8888a0;max-width:300px;}
+.conf-icon{
+  width:clamp(72px,12vw,120px);height:clamp(72px,12vw,120px);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  animation:popIn .4s cubic-bezier(.34,1.56,.64,1);
+  margin-bottom:clamp(.25rem,1.5vh,.75rem);
+}
+.overlay.ok .conf-icon{background:rgba(61,214,140,.14);}
+.overlay.err-overlay .conf-icon{background:rgba(248,113,113,.14);}
+.conf-icon svg{width:45%;height:45%;}
+.overlay.ok .conf-icon svg{stroke:#3dd68c;}
+.overlay.err-overlay .conf-icon svg{stroke:#f87171;}
+@keyframes popIn{0%{transform:scale(0)}60%{transform:scale(1.18)}100%{transform:scale(1)}}
+
+.conf-title{font-size:clamp(20px,3.5vw,38px);font-weight:800;color:#fff;}
+.conf-hora{
+  font-family:'SF Mono',ui-monospace,monospace;
+  font-size:clamp(34px,7vw,64px);font-weight:800;color:#fff;line-height:1;
+}
+.conf-tipo{
+  font-size:clamp(11px,1.4vw,14px);color:#55556a;
+  text-transform:uppercase;letter-spacing:.09em;font-weight:700;
+}
+.conf-motiv{
+  font-size:clamp(13px,1.8vw,18px);color:#10b981;
+  font-weight:600;max-width:520px;line-height:1.55;
+  margin-top:clamp(.5rem,2vh,1rem);
+}
+
+/* ============================
+   OVERLAY FULLSCREEN / INÍCIO
+   ============================ */
+#fs-overlay{
+  position:fixed;inset:0;z-index:300;
+  background:#0a0a0c;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:2rem;text-align:center;padding:2rem;
+  cursor:pointer;
+  transition:opacity .4s;
+}
+#fs-overlay.hidden{opacity:0;pointer-events:none;}
+.fs-brand{
+  font-size:clamp(10px,1.5vw,13px);font-weight:800;
+  letter-spacing:.14em;color:#333;text-transform:uppercase;
+}
+.fs-title{
+  font-size:clamp(22px,4vw,40px);font-weight:900;
+  color:#fff;line-height:1.2;max-width:600px;
+}
+.fs-sub{font-size:clamp(13px,1.6vw,16px);color:#55556a;max-width:480px;line-height:1.6;}
+.fs-tap{
+  display:flex;align-items:center;gap:.6rem;
+  background:#10b981;color:#fff;
+  padding:clamp(.75rem,2vh,1rem) clamp(1.5rem,4vw,2.5rem);
+  border-radius:50px;
+  font-size:clamp(13px,1.6vw,16px);font-weight:800;
+  margin-top:.5rem;
+  animation:pulse 2s infinite;
+}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,.4)}50%{box-shadow:0 0 0 12px rgba(16,185,129,0)}}
+
+/* ============================
+   OVERLAY TUTORIAL (ONBOARDING)
+   ============================ */
+#tutorial-overlay{
+  position:fixed;inset:0;z-index:200;
+  background:rgba(0,0,0,.92);
+  display:none;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:clamp(1.5rem,5vw,4rem);
+  gap:clamp(1rem,3vh,2rem);
+}
+#tutorial-overlay.open{display:flex;}
+.tut-header{text-align:center;}
+.tut-title{
+  font-size:clamp(18px,3vw,28px);font-weight:900;color:#fff;margin-bottom:.4rem;
+}
+.tut-sub{font-size:clamp(12px,1.5vw,15px);color:#55556a;}
+.tut-steps{
+  display:flex;gap:clamp(.75rem,2vw,2rem);
+  flex-wrap:wrap;justify-content:center;
+  width:100%;max-width:760px;
+}
+.tut-step{
+  flex:1;min-width:180px;max-width:220px;
+  background:#111116;border:1px solid #1e1e28;
+  border-radius:16px;padding:clamp(1rem,3vw,1.5rem);
+  text-align:center;display:flex;flex-direction:column;
+  align-items:center;gap:.75rem;
+}
+.tut-step-num{
+  width:28px;height:28px;border-radius:50%;
+  background:rgba(16,185,129,.12);
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:800;color:#10b981;
+}
+.tut-step-icon{
+  width:44px;height:44px;border-radius:12px;
+  background:rgba(16,185,129,.08);
+  display:flex;align-items:center;justify-content:center;
+}
+.tut-step-icon svg{width:22px;height:22px;stroke:#10b981;}
+.tut-step-title{font-size:clamp(13px,1.5vw,15px);font-weight:800;color:#fff;}
+.tut-step-desc{font-size:clamp(11px,1.2vw,13px);color:#55556a;line-height:1.55;}
+.tut-btn{
+  background:#10b981;color:#fff;
+  border:none;cursor:pointer;
+  padding:clamp(.75rem,2vh,1rem) clamp(2rem,5vw,3rem);
+  border-radius:50px;font-size:clamp(13px,1.5vw,15px);
+  font-weight:800;transition:opacity .15s;
+}
+.tut-btn:hover{opacity:.88;}
+
+/* ============================
+   ESTADO DE ERRO (sem token)
+   ============================ */
+.error-wrap{
+  display:flex;flex-direction:column;
+  align-items:center;gap:1rem;
+  text-align:center;padding:2rem;
+}
+.error-icon{
+  width:64px;height:64px;border-radius:50%;
+  background:rgba(248,113,113,.1);
+  display:flex;align-items:center;justify-content:center;
+}
+.error-icon svg{width:28px;height:28px;stroke:#f87171;}
+.error-msg{font-size:15px;color:#55556a;max-width:300px;line-height:1.6;}
+
+/* Botão retorno fullscreen (aparece se sair) */
+#fs-return{
+  position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);
+  z-index:50;display:none;
+  background:rgba(16,185,129,.12);
+  border:1px solid rgba(16,185,129,.25);
+  color:#10b981;font-size:12px;font-weight:700;
+  padding:.5rem 1.25rem;border-radius:20px;cursor:pointer;
+  gap:.4rem;align-items:center;
+}
+#fs-return.show{display:flex;}
+#fs-return svg{width:14px;height:14px;stroke:currentColor;}
 </style>
 </head>
 <body>
 
-<div class="brand">IW · Batidas Digital</div>
+<!-- OVERLAY INICIAL (toque para começar + fullscreen) -->
+<div id="fs-overlay">
+  <div class="fs-brand">IW · Batidas Digital</div>
+  <div class="fs-title">Sistema de ponto da sua equipe</div>
+  <div class="fs-sub">Toque para ativar a tela cheia e iniciar o registro de ponto</div>
+  <div class="fs-tap">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+    Toque para começar
+  </div>
+</div>
 
-<div id="main">
-  <div class="clock-wrap">
-    <div class="clock" id="clock">--:--</div>
-    <div class="date" id="dateLbl">—</div>
+<!-- OVERLAY TUTORIAL (primeira vez) -->
+<div id="tutorial-overlay">
+  <div class="tut-header">
+    <div class="tut-title">Como usar o ponto digital</div>
+    <div class="tut-sub">Leva menos de 10 segundos por registro</div>
   </div>
-  <div class="pin-label">Digite seu PIN pra bater o ponto</div>
-  <div class="pin-dots" id="pinDots">
-    <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+  <div class="tut-steps">
+    <div class="tut-step">
+      <div class="tut-step-num">1</div>
+      <div class="tut-step-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+          <rect x="5" y="2" width="14" height="20" rx="2"/>
+          <line x1="12" y1="18" x2="12.01" y2="18"/>
+        </svg>
+      </div>
+      <div class="tut-step-title">Este é o ponto digital</div>
+      <div class="tut-step-desc">Deixe este tablet ou celular fixo num local acessível para toda a equipe</div>
+    </div>
+    <div class="tut-step">
+      <div class="tut-step-num">2</div>
+      <div class="tut-step-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+          <rect x="3" y="11" width="18" height="11" rx="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+      <div class="tut-step-title">PIN de 4 dígitos</div>
+      <div class="tut-step-desc">Cada colaborador tem um PIN único. Digite os 4 números para registrar a entrada ou saída</div>
+    </div>
+    <div class="tut-step">
+      <div class="tut-step-num">3</div>
+      <div class="tut-step-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+      <div class="tut-step-title">Confirmação instantânea</div>
+      <div class="tut-step-desc">A tela mostra o nome e o horário registrado. Registro salvo automaticamente</div>
+    </div>
   </div>
-  <div class="pin-pad" id="pinPad">
-    <button class="pin-key" data-k="1">1</button>
-    <button class="pin-key" data-k="2">2</button>
-    <button class="pin-key" data-k="3">3</button>
-    <button class="pin-key" data-k="4">4</button>
-    <button class="pin-key" data-k="5">5</button>
-    <button class="pin-key" data-k="6">6</button>
-    <button class="pin-key" data-k="7">7</button>
-    <button class="pin-key" data-k="8">8</button>
-    <button class="pin-key" data-k="9">9</button>
-    <div class="pin-key ghost"></div>
-    <button class="pin-key" data-k="0">0</button>
-    <button class="pin-key" data-k="del">⌫</button>
+  <button class="tut-btn" onclick="fecharTutorial()">Entendido, vamos começar</button>
+</div>
+
+<!-- BOTÃO RETORNO FULLSCREEN -->
+<div id="fs-return" onclick="ativarFullscreen()">
+  <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+  </svg>
+  Tela cheia
+</div>
+
+<!-- TELA PRINCIPAL -->
+<div id="totem-root">
+  <div class="totem-layout" id="totem-main">
+    <!-- Painel esquerdo: relógio -->
+    <div class="totem-left">
+      <div class="brand">IW · Batidas Digital</div>
+      <div class="clock-wrap">
+        <div class="clock" id="clock">--:--</div>
+        <div class="date" id="dateLbl">—</div>
+      </div>
+    </div>
+    <!-- Painel direito: PIN -->
+    <div class="totem-right">
+      <div class="pin-label">Digite seu PIN para registrar</div>
+      <div class="pin-dots" id="pinDots">
+        <div class="pin-dot"></div>
+        <div class="pin-dot"></div>
+        <div class="pin-dot"></div>
+        <div class="pin-dot"></div>
+      </div>
+      <div class="pin-pad" id="pinPad">
+        <button class="pin-key" data-k="1">1</button>
+        <button class="pin-key" data-k="2">2</button>
+        <button class="pin-key" data-k="3">3</button>
+        <button class="pin-key" data-k="4">4</button>
+        <button class="pin-key" data-k="5">5</button>
+        <button class="pin-key" data-k="6">6</button>
+        <button class="pin-key" data-k="7">7</button>
+        <button class="pin-key" data-k="8">8</button>
+        <button class="pin-key" data-k="9">9</button>
+        <div class="pin-key ghost"></div>
+        <button class="pin-key" data-k="0">0</button>
+        <button class="pin-key del-key" data-k="del">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/>
+            <line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/>
+          </svg>
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 
 <!-- CONFIRMAÇÃO -->
-<div class="confirm-overlay" id="confirmOverlay">
-  <div class="confirm-icon" id="confirmIcon">✓</div>
-  <div class="confirm-title" id="confirmTitle"></div>
-  <div class="confirm-hora" id="confirmHora"></div>
-  <div class="confirm-tipo" id="confirmTipo"></div>
-  <div class="confirm-motiv" id="confirmMotiv"></div>
+<div class="overlay" id="confirmOverlay">
+  <div class="conf-icon" id="confIcon">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+  </div>
+  <div class="conf-title" id="confTitle"></div>
+  <div class="conf-hora" id="confHora"></div>
+  <div class="conf-tipo" id="confTipo"></div>
+  <div class="conf-motiv" id="confMotiv"></div>
 </div>
 
 <script>
 const SB_URL='https://mcoemytfdrfrtbfbpvqr.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jb2VteXRmZHJmcnRiZmJwdnFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3OTgyODcsImV4cCI6MjA5NTM3NDI4N30.uJZKW5oUlexLo_XENDCohlchGKlG54Pwt0gvqpuy-i8';
 const sb=window.supabase.createClient(SB_URL,SB_KEY);
-
 const params=new URLSearchParams(window.location.search);
 const TOKEN=params.get('t');
 
-;
-function saudacaoPorHora(){
+// ── Relógio ──────────────────────────────────────────
+function tick(){
+  const n=new Date();
+  const c=document.getElementById('clock');
+  const d=document.getElementById('dateLbl');
+  if(c) c.textContent=n.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  if(d) d.textContent=n.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
+}
+tick(); setInterval(tick,1000);
+
+// ── Mensagens por batida ──────────────────────────────
+function saudacao(){
   const h=new Date().getHours();
-  if(h<12) return 'Bom dia';
-  if(h<18) return 'Boa tarde';
-  return 'Boa noite';
+  return h<12?'Bom dia':h<18?'Boa tarde':'Boa noite';
+}
+function montarMsg(numero,tipo,nome){
+  const s=saudacao();
+  if(tipo==='ENTRADA'&&numero===1) return{titulo:s+', '+nome+'!',sub:'Entrada registrada',motiv:'Ótimo começo de dia. Bom trabalho!'};
+  if(tipo==='SAIDA'&&numero===2)   return{titulo:'Bom almoço, '+nome+'!',sub:'Saída para almoço',motiv:'Descanse bem. Você merece.'};
+  if(tipo==='ENTRADA'&&numero===3) return{titulo:'Bem-vindo de volta, '+nome+'!',sub:'Retorno do almoço',motiv:'Boa tarde de trabalho!'};
+  if(tipo==='SAIDA'&&numero===4)   return{titulo:'Até amanhã, '+nome+'!',sub:'Saída registrada',motiv:'Descanse bem e até logo.'};
+  if(tipo==='ENTRADA')             return{titulo:'Bem-vindo, '+nome+'!',sub:'Entrada registrada',motiv:''};
+  return{titulo:'Até logo, '+nome+'!',sub:'Saída registrada',motiv:''};
 }
 
-function montarMensagem(numero,tipo,nome){
-  const saud=saudacaoPorHora();
-  if(tipo==='ENTRADA'&&numero===1) return {titulo:saud+' e ótimo trabalho, '+nome+'!',sub:'Entrada registrada'};
-  if(tipo==='SAIDA'&&numero===2) return {titulo:'Bom almoço e ótimo descanso, '+nome+'!',sub:'Saída para almoço'};
-  if(tipo==='ENTRADA'&&numero===3) return {titulo:saud+' e ótimo trabalho, '+nome+'!',sub:'Volta do almoço'};
-  if(tipo==='SAIDA'&&numero===4) return {titulo:saud+' e ótimo descanso, '+nome+'!',sub:'Saída registrada'};
-  // Batidas extras (5ª em diante) — casos como saída externa
-  if(tipo==='ENTRADA') return {titulo:'Bem-vindo de volta, '+nome+'!',sub:'Entrada registrada'};
-  return {titulo:'Até breve, '+nome+'!',sub:'Saída registrada'};
-}
-
-function sorteia(arr){return arr[Math.floor(Math.random()*arr.length)];}
-function el(id){return document.getElementById(id);}
-
-let pinAtual='';
-
-function atualizarRelogio(){
-  const now=new Date();
-  const clockEl=el('clock'), dateEl=el('dateLbl');
-  if(clockEl) clockEl.textContent=now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  if(dateEl) dateEl.textContent=now.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
-}
-atualizarRelogio();
-setInterval(atualizarRelogio,1000);
-
-
-
+// ── PIN ──────────────────────────────────────────────
+let pin='';
 function renderDots(){
-  const dots=document.querySelectorAll('.pin-dot');
-  dots.forEach(function(d,i){d.classList.toggle('filled',i<pinAtual.length);});
+  document.querySelectorAll('.pin-dot').forEach((d,i)=>{
+    d.classList.toggle('filled',i<pin.length);
+  });
 }
 
 if(!TOKEN){
-  const padEl=el('pinPad');
-  const labelEl=el('main');
-  if(labelEl) labelEl.innerHTML='<div class="clock-wrap"><div class="clock" id="clock">--:--</div><div class="date" id="dateLbl">—</div></div><div class="error-state" style="margin-top:2rem"><div class="ic">🔒</div><div class="msg">Link inválido. Peça o link correto ao administrador do sistema.</div></div>';
+  // Sem token — mostra erro
+  const root=document.getElementById('totem-root');
+  if(root) root.innerHTML=`
+    <div class="error-wrap">
+      <div class="error-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+          <rect x="3" y="11" width="18" height="11" rx="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+      <div style="font-size:clamp(16px,2.5vw,22px);font-weight:800;color:#fff">Link inválido</div>
+      <div class="error-msg">Solicite o link correto ao administrador do sistema.</div>
+    </div>`;
+  document.getElementById('fs-overlay').innerHTML=`
+    <div class="error-wrap">
+      <div class="error-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+          <rect x="3" y="11" width="18" height="11" rx="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+      <div style="font-size:clamp(16px,2.5vw,22px);font-weight:800;color:#fff">Link inválido</div>
+      <div class="error-msg">Solicite o link correto ao administrador.</div>
+    </div>`;
 } else {
-  const pinPad=el('pinPad');
-  if(pinPad){
-    pinPad.addEventListener('click',function(e){
-      const btn=e.target.closest('.pin-key');
-      if(!btn||btn.classList.contains('ghost'))return;
-      const k=btn.dataset.k;
-      if(k==='del'){
-        pinAtual=pinAtual.slice(0,-1);
-        renderDots();
-        return;
-      }
-      if(pinAtual.length>=4)return;
-      pinAtual+=k;
-      renderDots();
-      if(pinAtual.length===4){
-        setTimeout(confirmarPin,150);
-      }
-    });
-  }
+  // PIN pad input
+  document.getElementById('pinPad').addEventListener('click',e=>{
+    const btn=e.target.closest('.pin-key');
+    if(!btn||btn.classList.contains('ghost')) return;
+    const k=btn.dataset.k;
+    if(k==='del'){ pin=pin.slice(0,-1); renderDots(); return; }
+    if(pin.length>=4) return;
+    pin+=k; renderDots();
+    if(pin.length===4) setTimeout(confirmarPin,160);
+  });
 }
 
-
 async function confirmarPin(){
-  const{data,error}=await sb.rpc('bater_ponto_kiosk',{p_token:TOKEN,p_pin:pinAtual});
-
+  const{data,error}=await sb.rpc('bater_ponto_kiosk',{p_token:TOKEN,p_pin:pin});
   if(error||!data||data.erro){
-    const dotsEl=el('pinDots');
-    if(dotsEl){
-      // Dots ficam vermelhos
-      document.querySelectorAll('.pin-dot').forEach(function(d){d.classList.add('erro');});
-      dotsEl.classList.add('shake');
-      // Flash vermelho no fundo
-      const wrap=document.querySelector('.totem-wrap')||document.body;
-      wrap.classList.add('erro-flash');
-      setTimeout(function(){
-        dotsEl.classList.remove('shake');
-        document.querySelectorAll('.pin-dot').forEach(function(d){d.classList.remove('erro');});
-        wrap.classList.remove('erro-flash');
-      },500);
-    }
-    pinAtual='';renderDots();
+    animarErro();
+    pin=''; renderDots();
     return;
   }
-
-  pinAtual='';renderDots();
+  pin=''; renderDots();
   mostrarConfirmacao(data);
 }
 
-function mostrarConfirmacao(data){
-  const overlay=el('confirmOverlay');
-  if(!overlay)return;
-  const nome=data.nome.split(' ')[0];
-  const numero=data.numero||1;
-  const msg=montarMensagem(numero,data.tipo,nome);
-  overlay.className='confirm-overlay open ok';
-  const iconEl=el('confirmIcon'), titleEl=el('confirmTitle'), horaEl=el('confirmHora'), tipoEl=el('confirmTipo'), motivEl2=el('confirmMotiv');
-  if(iconEl) iconEl.textContent='✓';
-  if(titleEl) titleEl.textContent=msg.titulo;
-  if(horaEl) horaEl.textContent=data.hora;
-  if(tipoEl) tipoEl.textContent=msg.sub;
-  if(motivEl2) motivEl2.textContent='';
-
-  setTimeout(function(){
-    overlay.classList.remove('open');
-  },4000);
+function animarErro(){
+  const dots=document.getElementById('pinDots');
+  document.querySelectorAll('.pin-dot').forEach(d=>d.classList.add('erro'));
+  dots.classList.add('shake');
+  document.body.classList.add('erro-flash');
+  setTimeout(()=>{
+    dots.classList.remove('shake');
+    document.querySelectorAll('.pin-dot').forEach(d=>d.classList.remove('erro'));
+    document.body.classList.remove('erro-flash');
+  },500);
 }
 
+function mostrarConfirmacao(data){
+  const ov=document.getElementById('confirmOverlay');
+  if(!ov) return;
+  const nome=data.nome.split(' ')[0];
+  const msg=montarMsg(data.numero||1,data.tipo,nome);
+
+  // Ícone via SVG (sem emoji)
+  document.getElementById('confIcon').innerHTML=`
+    <svg viewBox="0 0 24 24" fill="none" stroke="#3dd68c" stroke-width="2.5" stroke-linecap="round">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>`;
+  document.getElementById('confTitle').textContent=msg.titulo;
+  document.getElementById('confHora').textContent=data.hora;
+  document.getElementById('confTipo').textContent=msg.sub;
+  document.getElementById('confMotiv').textContent=msg.motiv||'';
+  ov.className='overlay open ok';
+  setTimeout(()=>ov.classList.remove('open'),4200);
+}
+
+// ── Fullscreen ───────────────────────────────────────
+function ativarFullscreen(){
+  const el=document.documentElement;
+  if(el.requestFullscreen) el.requestFullscreen();
+  else if(el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  document.getElementById('fs-return').classList.remove('show');
+}
+
+document.addEventListener('fullscreenchange',()=>{
+  if(!document.fullscreenElement){
+    document.getElementById('fs-return').classList.add('show');
+  } else {
+    document.getElementById('fs-return').classList.remove('show');
+  }
+});
+
+// ── Tutorial (primeira vez) ───────────────────────────
+const TUT_KEY='iw_totem_tutorial_visto';
+function fecharTutorial(){
+  document.getElementById('tutorial-overlay').classList.remove('open');
+  localStorage.setItem(TUT_KEY,'1');
+  ativarFullscreen();
+}
+
+// ── Inicialização ─────────────────────────────────────
+document.getElementById('fs-overlay').addEventListener('click',()=>{
+  const fsEl=document.getElementById('fs-overlay');
+  fsEl.classList.add('hidden');
+  setTimeout(()=>fsEl.style.display='none',400);
+
+  // Mostra tutorial se for primeira vez
+  if(!localStorage.getItem(TUT_KEY)){
+    document.getElementById('tutorial-overlay').classList.add('open');
+  } else {
+    ativarFullscreen();
+  }
+});
+
+// Wake Lock
 if('wakeLock' in navigator){
-  navigator.wakeLock.request('screen').catch(function(){});
+  navigator.wakeLock.request('screen').catch(()=>{});
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible'){
+      navigator.wakeLock.request('screen').catch(()=>{});
+    }
+  });
 }
 </script>
 </body>
