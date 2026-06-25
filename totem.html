@@ -45,6 +45,14 @@ body{
 .pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid #333;transition:all .15s;}
 .pin-dot.filled{background:#10b981;border-color:#10b981;transform:scale(1.1);}
 .pin-dots.shake{animation:shake .4s;}
+.pin-dots.erro{animation:shake .45s;}
+.totem-wrap.erro-flash{animation:erroFlash .5s;}
+@keyframes erroFlash{
+  0%,100%{background:#0a0a0c;}
+  20%,60%{background:rgba(248,113,113,.18);}
+  40%,80%{background:rgba(248,113,113,.08);}
+}
+.pin-dot.erro{border-color:#f87171!important;background:rgba(248,113,113,.3)!important;}
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-12px)}40%{transform:translateX(12px)}60%{transform:translateX(-9px)}80%{transform:translateX(9px)}}
 .pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(8px,1.8vh,14px);width:min(300px,70vw,60vh);flex-shrink:0;}
 .pin-key{
@@ -87,7 +95,6 @@ body{
     <div class="clock" id="clock">--:--</div>
     <div class="date" id="dateLbl">—</div>
   </div>
-  <div class="motiv" id="motiv"></div>
   <div class="pin-label">Digite seu PIN pra bater o ponto</div>
   <div class="pin-dots" id="pinDots">
     <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
@@ -125,16 +132,7 @@ const sb=window.supabase.createClient(SB_URL,SB_KEY);
 const params=new URLSearchParams(window.location.search);
 const TOKEN=params.get('t');
 
-const MOTIV_GERAL=[
-  '✨ Que seu dia seja leve, produtivo e cheio de boas energias.',
-  '💪 Um dia de cada vez. Você está construindo algo bom.',
-  '🙏 Que hoje seja um dia abençoado pra você e sua família.',
-  '🌱 Pequenos passos todos os dias levam a grandes resultados.',
-  '☀️ Comece o dia com gratidão — ele é um presente.',
-  '🤝 Seu trabalho importa. Obrigado por fazer parte disso.',
-  '🔥 Foco no que importa, leveza no resto. Bom trabalho!',
-  '💛 Cuide de você também. Um bom dia começa por dentro.'
-];
+;
 function saudacaoPorHora(){
   const h=new Date().getHours();
   if(h<12) return 'Bom dia';
@@ -167,17 +165,7 @@ function atualizarRelogio(){
 atualizarRelogio();
 setInterval(atualizarRelogio,1000);
 
-const motivEl=el('motiv');
-if(motivEl){
-  motivEl.style.transition='opacity .3s';
-  motivEl.textContent=sorteia(MOTIV_GERAL);
-  setInterval(function(){
-    const m=el('motiv');
-    if(!m)return;
-    m.style.opacity='0';
-    setTimeout(function(){m.textContent=sorteia(MOTIV_GERAL);m.style.opacity='.92';},300);
-  },12000);
-}
+
 
 function renderDots(){
   const dots=document.querySelectorAll('.pin-dot');
@@ -217,8 +205,17 @@ async function confirmarPin(){
   if(error||!data||data.erro){
     const dotsEl=el('pinDots');
     if(dotsEl){
+      // Dots ficam vermelhos
+      document.querySelectorAll('.pin-dot').forEach(function(d){d.classList.add('erro');});
       dotsEl.classList.add('shake');
-      setTimeout(function(){dotsEl.classList.remove('shake');},400);
+      // Flash vermelho no fundo
+      const wrap=document.querySelector('.totem-wrap')||document.body;
+      wrap.classList.add('erro-flash');
+      setTimeout(function(){
+        dotsEl.classList.remove('shake');
+        document.querySelectorAll('.pin-dot').forEach(function(d){d.classList.remove('erro');});
+        wrap.classList.remove('erro-flash');
+      },500);
     }
     pinAtual='';renderDots();
     return;
