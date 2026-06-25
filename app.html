@@ -283,6 +283,26 @@ body.light .toast{background:rgba(255,255,255,.97);}
   .dash-grid2{grid-template-columns:1fr;}
   .fgrid2{grid-template-columns:1fr;}
 }
+
+.plano-card:hover{border-color:rgba(16,185,129,.5)!important;background:rgba(16,185,129,.04);}
+.plano-card.selecionado{border-color:var(--em)!important;background:rgba(16,185,129,.07);}
+
+/* Configurações bloqueadas no Free */
+.cfg-locked{position:relative;}
+.cfg-locked::after{
+  content:'';position:absolute;inset:0;
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  border-radius:var(--r8);pointer-events:none;
+  background:rgba(var(--bg-rgb,10,10,12),.5);
+}
+.cfg-lock-badge{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  z-index:2;background:var(--s2);border:1px solid rgba(16,185,129,.3);
+  border-radius:20px;padding:3px 10px;font-size:10px;font-weight:700;
+  color:var(--em);cursor:pointer;white-space:nowrap;
+  box-shadow:0 2px 8px rgba(0,0,0,.2);
+}
+.cfg-locked input,.cfg-locked select{pointer-events:none;}
 </style>
 <div id="login">
   <div class="login-wrap">
@@ -339,7 +359,7 @@ body.light .toast{background:rgba(255,255,255,.97);}
       <div class="tb-sync"><span class="sdot" id="sdot"></span><span id="slbl">—</span></div>
       <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn" title="Alternar tema"></button>
       <span id="badge-plano" style="display:none;font-size:10px;font-weight:800;padding:3px 9px;border-radius:20px;letter-spacing:.05em;cursor:pointer" onclick="document.getElementById('m-cupom').classList.add('open')" title="Resgatar cupom de desconto"></span>
-      <button class="btn-sm" id="btn-config" style="display:none" onclick="temAcesso('configuracoes')?abrirConfigEmpresa():toast('Disponível no plano Essencial.','info')" title="Configurações"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;display:inline-block;vertical-align:-2px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+      <button class="btn-sm" id="btn-config" style="display:none" onclick="abrirConfigEmpresa()" title="Configurações"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;display:inline-block;vertical-align:-2px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
       <button class="btn-sm danger" onclick="doLogout()">Sair</button>
     </div>
   </div>
@@ -466,6 +486,56 @@ body.light .toast{background:rgba(255,255,255,.97);}
       <button class="btn-sm" onclick="closeModals()">Cancelar</button>
       <button class="btn" onclick="salvarEpiCad()">Salvar</button>
     </div>
+  </div>
+</div>
+
+<!-- MODAL ASSINAR PLANO -->
+<div class="moverlay" id="m-assinar">
+  <div class="modal" style="max-width:440px">
+    <div class="mhandle"></div>
+    <div class="mtitle">Escolher plano</div>
+    <div class="msub">Selecione o plano ideal para sua empresa</div>
+    <div style="display:flex;flex-direction:column;gap:.75rem;margin-top:1.25rem">
+      <!-- Essencial -->
+      <div id="plano-card-essencial" class="plano-card" onclick="selecionarPlano('essencial')" style="
+        border:2px solid rgba(16,185,129,.2);border-radius:var(--r12);padding:1rem 1.25rem;
+        cursor:pointer;transition:border-color .15s,background .15s;
+        display:flex;align-items:center;justify-content:space-between;
+      ">
+        <div>
+          <div style="font-size:15px;font-weight:800;color:var(--t1)">Essencial</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">Até 10 colaboradores · Férias, EPIs, atestados e relatórios</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;margin-left:1rem">
+          <div style="font-family:var(--mono);font-size:20px;font-weight:900;color:var(--t1)">R$ 89</div>
+          <div style="font-size:10px;color:var(--t2)">/mês</div>
+        </div>
+      </div>
+      <!-- Pro -->
+      <div id="plano-card-pro" class="plano-card" onclick="selecionarPlano('pro')" style="
+        border:2px solid rgba(16,185,129,.2);border-radius:var(--r12);padding:1rem 1.25rem;
+        cursor:pointer;transition:border-color .15s,background .15s;
+        display:flex;align-items:center;justify-content:space-between;
+      ">
+        <div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:15px;font-weight:800;color:var(--t1)">Pro</span>
+            <span style="font-size:9px;font-weight:800;color:var(--em);background:rgba(16,185,129,.12);padding:2px 7px;border-radius:20px">MAIS POPULAR</span>
+          </div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">Ilimitado · Encarregado, Excel e suporte prioritário</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;margin-left:1rem">
+          <div style="font-family:var(--mono);font-size:20px;font-weight:900;color:var(--t1)">R$ 169</div>
+          <div style="font-size:10px;color:var(--t2)">/mês</div>
+        </div>
+      </div>
+    </div>
+    <div id="assinar-msg" style="display:none;padding:.75rem 1rem;border-radius:var(--r8);margin-top:.75rem;font-size:13px;font-weight:600"></div>
+    <div class="mactions" style="margin-top:1rem">
+      <button class="btn-sm" onclick="closeModals()">Cancelar</button>
+      <button class="btn" id="assinar-btn" onclick="confirmarAssinatura()">Assinar agora</button>
+    </div>
+    <p style="font-size:11px;color:var(--t3);text-align:center;margin-top:.75rem">Pagamento seguro via Mercado Pago · Cancele quando quiser</p>
   </div>
 </div>
 
@@ -717,11 +787,18 @@ function cardUpgrade(feature,planoMin){
     <div style="font-size:13px;color:var(--t2);max-width:320px;line-height:1.6">
       Faça upgrade para desbloquear esta funcionalidade e muito mais.
     </div>
-    <button onclick="document.getElementById('m-cupom').classList.add('open')" style="
-      background:var(--em);color:#fff;padding:10px 24px;border-radius:30px;
-      font-size:13px;font-weight:800;cursor:pointer;border:none;
-      box-shadow:0 4px 14px rgba(16,185,129,.25);
-    ">Resgatar cupom →</button>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+      <button onclick="document.getElementById('m-cupom').classList.add('open')" style="
+        background:#10b981;color:#fff!important;padding:10px 22px;border-radius:30px;
+        font-size:13px;font-weight:800;cursor:pointer;border:none;
+        box-shadow:0 4px 14px rgba(16,185,129,.3);
+      ">🎟 Cupom</button>
+      <button onclick="abrirAssinarPlano()" style="
+        background:var(--s2);color:var(--t1);padding:10px 22px;border-radius:30px;
+        font-size:13px;font-weight:800;cursor:pointer;
+        border:1px solid rgba(16,185,129,.3);
+      ">⚡ Assinar plano</button>
+    </div>
     <div style="font-size:11px;color:var(--t3)">Plano atual: <b style="color:${cp.cor}">${cp.label}</b></div>
   </div>`;
 }
@@ -875,9 +952,39 @@ function abrirConfigEmpresa(){
   document.getElementById('cfg-tolerancia').value=TOL;
   document.getElementById('cfg-modalidade').value=MODALIDADE_HORAS;
   document.getElementById('cfg-metodo-ponto').value=METODO_PONTO;
+
+  // Blur nos campos avançados para plano Free
+  const isFree=!temAcesso('configuracoes');
+  const camposAvancados=['cfg-almoco-ini','cfg-almoco-fim','cfg-saida','cfg-saida-sex','cfg-tolerancia','cfg-modalidade','cfg-metodo-ponto'];
+  camposAvancados.forEach(id=>{
+    const wrapper=document.getElementById(id)?.closest('.field');
+    if(!wrapper)return;
+    wrapper.style.position='relative';
+    const badge=wrapper.querySelector('.cfg-lock-badge');
+    if(isFree){
+      wrapper.classList.add('cfg-locked');
+      if(!badge){
+        const b=document.createElement('div');
+        b.className='cfg-lock-badge';
+        b.textContent='🔒 Plano Essencial';
+        b.onclick=()=>{closeModals();setTimeout(()=>abrirAssinarPlano(),200);};
+        wrapper.appendChild(b);
+      }
+    } else {
+      wrapper.classList.remove('cfg-locked');
+      if(badge)badge.remove();
+    }
+  });
+
   document.getElementById('m-config').classList.add('open');
 }
 async function salvarConfigEmpresa(){
+  if(!temAcesso('configuracoes')){
+    toast('Configurações disponíveis no plano Essencial.','info');
+    closeModals();
+    setTimeout(()=>abrirAssinarPlano(),300);
+    return;
+  }
   if(!empresaAtual){toast('Empresa não identificada.','err');return;}
   const cfg={
     jornada_entrada:document.getElementById('cfg-entrada').value||'07:00',
@@ -1583,6 +1690,45 @@ function sugerirPeriodoAcerto(){
     return{label:'Jan–Jun/'+ano,inicio:ano+'-01-01',fim:ano+'-06-30'};
   }
   return{label:'Jul–Dez/'+ano,inicio:ano+'-07-01',fim:ano+'-12-31'};
+}
+
+let planoSelecionado='pro';
+
+function abrirAssinarPlano(){
+  planoSelecionado='pro';
+  document.querySelectorAll('.plano-card').forEach(c=>c.classList.remove('selecionado'));
+  document.getElementById('plano-card-pro')?.classList.add('selecionado');
+  const msg=document.getElementById('assinar-msg');
+  if(msg)msg.style.display='none';
+  document.getElementById('m-assinar').classList.add('open');
+}
+
+function selecionarPlano(p){
+  planoSelecionado=p;
+  document.querySelectorAll('.plano-card').forEach(c=>c.classList.remove('selecionado'));
+  document.getElementById('plano-card-'+p)?.classList.add('selecionado');
+}
+
+async function confirmarAssinatura(){
+  if(!planoSelecionado){toast('Selecione um plano.','err');return;}
+  const btn=document.getElementById('assinar-btn');
+  if(btn){btn.disabled=true;btn.textContent='Aguarde...';}
+  // Chama Edge Function do Mercado Pago (a implementar)
+  try{
+    const{data,error}=await sb.functions.invoke('mp-create-subscription',{
+      body:{plano:planoSelecionado}
+    });
+    if(error||!data?.init_point)throw new Error(error?.message||'Erro ao gerar link de pagamento.');
+    window.open(data.init_point,'_blank');
+    closeModals();
+    const msg=document.getElementById('assinar-msg');
+    if(msg){msg.textContent='Página de pagamento aberta! Após confirmar, seu plano será ativado automaticamente.';msg.style.display='block';msg.style.color='var(--g)';msg.style.background='rgba(61,214,140,.08)';msg.style.border='1px solid rgba(61,214,140,.15)';}
+  }catch(e){
+    const msg=document.getElementById('assinar-msg');
+    if(msg){msg.textContent='Pagamento via Mercado Pago em breve. Por enquanto, use um cupom ou fale com a gente.';msg.style.display='block';msg.style.color='var(--y)';msg.style.background='rgba(240,192,64,.08)';msg.style.border='1px solid rgba(240,192,64,.15)';}
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Assinar agora';}
+  }
 }
 
 async function resgatarCupom(){
