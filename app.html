@@ -678,7 +678,7 @@ function temAcesso(feature){
   return f[PLANO]===true;
 }
 function cardUpgrade(feature,planoMin){
-  const p=PLANOS[planoMin||'essencial'];
+  const p=PLANOS[planoMin||'essencial']||PLANOS.essencial;
   return `<div style="
     display:flex;flex-direction:column;align-items:center;justify-content:center;
     padding:3rem 2rem;text-align:center;gap:1rem;
@@ -697,7 +697,7 @@ function cardUpgrade(feature,planoMin){
       font-size:13px;font-weight:800;text-decoration:none;
       box-shadow:0 4px 14px rgba(96,165,250,.25);
     ">Ver planos →</a>
-    <div style="font-size:11px;color:var(--t3)">Plano atual: <b style="color:${PLANOS[PLANO].cor}">${PLANOS[PLANO].label}</b></div>
+    <div style="font-size:11px;color:var(--t3)">Plano atual: <b style="color:${(PLANOS[PLANO]||PLANOS.free).cor}">${(PLANOS[PLANO]||PLANOS.free).label}</b></div>
   </div>`;
 }
 let METODO_PONTO='ambos'; // 'biometrico', 'digital' ou 'ambos'
@@ -715,8 +715,10 @@ function aplicarConfigEmpresa(cfg){
   empresaNome=cfg.nome||'';
   // Plano — verifica se expirou
   if(cfg.plano){
+    const planosValidos=['free','essencial','pro'];
     const expirou=cfg.plano_expira_em && new Date(cfg.plano_expira_em)<new Date();
-    PLANO=expirou?'free':cfg.plano;
+    const planoRaw=expirou?'free':cfg.plano;
+    PLANO=planosValidos.includes(planoRaw)?planoRaw:'free';
   }
   const almocoMin=toMin(ALMOCO_FIM)-toMin(ALMOCO_INI);
   const minSemana=toMin(SAIDA_SEMANA)-toMin(ENTRADA_PAD)-almocoMin;
