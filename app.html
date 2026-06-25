@@ -13,7 +13,7 @@
 :root{
   --bg:#0a0a0c;--s1:#111114;--s2:#18181c;--s3:#222228;
   --b1:#2a2a32;--b2:#383844;
-  --acc:#10b981;--acc2:#f8d060;
+  --acc:#10b981;--acc2:#f8d060;--em:#10b981;
   --g:#3dd68c;--r:#f87171;--o:#fb923c;--bl:#60a5fa;--pu:#c084fc;
   --gd:rgba(61,214,140,.12);--rd:rgba(248,113,113,.12);--od:rgba(251,146,60,.12);
   --bld:rgba(96,165,250,.12);--ad:rgba(16,185,129,.12);--pud:rgba(192,132,252,.12);
@@ -24,7 +24,7 @@
 [data-theme="light"]{
   --bg:#f4f4f6;--s1:#ffffff;--s2:#f0f0f3;--s3:#e8e8ec;
   --b1:#dcdce8;--b2:#c8c8d8;
-  --acc:#10b981;--acc2:#059669;
+  --acc:#10b981;--acc2:#059669;--em:#10b981;
   --g:#16a34a;--r:#dc2626;--o:#ea580c;--bl:#2563eb;--pu:#9333ea;
   --gd:rgba(22,163,74,.1);--rd:rgba(220,38,38,.1);--od:rgba(234,88,12,.1);
   --bld:rgba(37,99,235,.1);--ad:rgba(16,185,129,.1);--pud:rgba(147,51,234,.1);
@@ -342,7 +342,7 @@ body.light .toast{background:rgba(255,255,255,.97);}
 .tour-skip-btn{font-size:12px;color:var(--t3);background:none;border:none;cursor:pointer;padding:0;}
 .tour-skip-btn:hover{color:var(--t2);}
 .tour-next-btn{
-  background:var(--em);color:#fff;border:none;
+  background:#10b981;color:#fff;border:none;
   border-radius:30px;padding:9px 22px;
   font-size:13px;font-weight:800;cursor:pointer;
   transition:opacity .15s;
@@ -3294,17 +3294,12 @@ function resetarTour(){
   toast('Tour resetado! Recarregue a página.','ok');
 }
 
-// Listeners dos botões do tour (addEventListener — mais confiável que onclick inline)
-document.addEventListener('DOMContentLoaded',function(){
-  const nextBtn=document.getElementById('tour-next');
-  const skipBtn=document.getElementById('tour-skip');
-  if(nextBtn) nextBtn.addEventListener('click',function(){
-    tourStep++;
-    if(tourStep>=TOUR_STEPS.length){fecharTour();return;}
-    renderTourStep();
-  });
-  if(skipBtn) skipBtn.addEventListener('click',fecharTour);
-});
+// Funções globais dos botões do tour
+function tourAvancar(){
+  tourStep++;
+  if(tourStep>=TOUR_STEPS.length){fecharTour();return;}
+  renderTourStep();
+}
 
 // ===== CHECKLIST ONBOARDING =====
 const CK_KEY='iw_ponto_checklist_v1';
@@ -3397,8 +3392,8 @@ function marcarChecklistItem(key){
     <div class="tour-ttitle" id="tour-ttitle"></div>
     <div class="tour-tdesc" id="tour-tdesc"></div>
     <div class="tour-footer">
-      <button class="tour-skip-btn" id="tour-skip">Pular tour</button>
-      <button class="tour-next-btn" id="tour-next">Próximo →</button>
+      <button class="tour-skip-btn" onclick="fecharTour()">Pular tour</button>
+      <button class="tour-next-btn" onclick="tourAvancar()">Próximo →</button>
     </div>
   </div>
 </div>
