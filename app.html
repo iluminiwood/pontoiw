@@ -338,7 +338,7 @@ body.light .toast{background:rgba(255,255,255,.97);}
     <div class="tb-right">
       <div class="tb-sync"><span class="sdot" id="sdot"></span><span id="slbl">—</span></div>
       <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn" title="Alternar tema"></button>
-      <span id="badge-plano" style="display:none;font-size:10px;font-weight:800;padding:3px 9px;border-radius:20px;letter-spacing:.05em;cursor:default"></span>
+      <span id="badge-plano" style="display:none;font-size:10px;font-weight:800;padding:3px 9px;border-radius:20px;letter-spacing:.05em;cursor:pointer" onclick="document.getElementById('m-cupom').classList.add('open')" title="Resgatar cupom de desconto"></span>
       <button class="btn-sm" id="btn-config" style="display:none" onclick="temAcesso('configuracoes')?abrirConfigEmpresa():toast('Disponível no plano Essencial.','info')" title="Configurações"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;display:inline-block;vertical-align:-2px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
       <button class="btn-sm danger" onclick="doLogout()">Sair</button>
     </div>
@@ -465,6 +465,26 @@ body.light .toast{background:rgba(255,255,255,.97);}
     <div class="mactions">
       <button class="btn-sm" onclick="closeModals()">Cancelar</button>
       <button class="btn" onclick="salvarEpiCad()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CUPOM -->
+<div class="moverlay" id="m-cupom">
+  <div class="modal" style="max-width:400px">
+    <div class="mhandle"></div>
+    <div class="mtitle">Resgatar cupom</div>
+    <div class="msub">Ative um plano ou estenda o acesso com um código promocional</div>
+    <div class="field" style="margin-top:1rem">
+      <label>Código do cupom</label>
+      <input type="text" id="cupom-code" placeholder="Ex: BETA30"
+        style="text-transform:uppercase;letter-spacing:.08em;font-weight:700;font-size:16px"
+        onkeydown="if(event.key==='Enter')resgatarCupom()">
+    </div>
+    <div id="cupom-msg" style="display:none;padding:.75rem 1rem;border-radius:var(--r8);margin-bottom:.5rem;font-size:13px;font-weight:600"></div>
+    <div class="mactions">
+      <button class="btn-sm" onclick="closeModals()">Cancelar</button>
+      <button class="btn" id="cupom-btn" onclick="resgatarCupom()">Ativar</button>
     </div>
   </div>
 </div>
@@ -837,7 +857,8 @@ async function abrirTotem(){
   if(!empresaAtual){toast('Empresa não identificada.','err');return;}
   const{data,error}=await sb.from('empresas').select('kiosk_token').eq('id',empresaAtual).single();
   if(error||!data){toast('Erro ao gerar link do totem.','err');return;}
-  const url=window.location.origin+window.location.pathname.replace('index.html','').replace('app.html','')+'totem.html?t='+data.kiosk_token;
+  const base=window.location.href.substring(0,window.location.href.lastIndexOf('/')+1);
+  const url=base+'totem.html?t='+data.kiosk_token;
   window.open(url,'_blank');
 }
 function abrirConfigEmpresa(){
@@ -1559,6 +1580,42 @@ function sugerirPeriodoAcerto(){
   return{label:'Jul–Dez/'+ano,inicio:ano+'-07-01',fim:ano+'-12-31'};
 }
 
+async function resgatarCupom(){
+  const code=document.getElementById('cupom-code').value.trim().toUpperCase();
+  const msg=document.getElementById('cupom-msg');
+  const btn=document.getElementById('cupom-btn');
+  if(!code){showCupomMsg('Digite um código.','err');return;}
+  btn.disabled=true;btn.textContent='Ativando...';
+  const{data,error}=await sb.rpc('resgatar_cupom',{p_code:code});
+  btn.disabled=false;btn.textContent='Ativar';
+  if(error){showCupomMsg('Erro ao processar: '+error.message,'err');return;}
+  if(!data||!data.ok){showCupomMsg(data?.msg||'Cupom inválido.','err');return;}
+  showCupomMsg(data.msg,'ok');
+  // Atualiza o plano localmente
+  const planosValidos=['free','essencial','pro'];
+  if(planosValidos.includes(data.plano)){
+    PLANO=data.plano;
+    const bp=document.getElementById('badge-plano');
+    if(bp){
+      const p=PLANOS[PLANO]||PLANOS.free;
+      bp.textContent=p.label.toUpperCase();
+      bp.style.background=PLANO==='free'?'rgba(168,168,184,.12)':PLANO==='essencial'?'rgba(96,165,250,.12)':'rgba(16,185,129,.12)';
+      bp.style.color=p.cor;
+    }
+  }
+  document.getElementById('cupom-code').value='';
+  setTimeout(()=>closeModals(),2400);
+}
+function showCupomMsg(text,type){
+  const el=document.getElementById('cupom-msg');
+  if(!el)return;
+  el.textContent=text;
+  el.style.display='block';
+  el.style.background=type==='ok'?'rgba(61,214,140,.1)':'rgba(248,113,113,.1)';
+  el.style.color=type==='ok'?'var(--g)':'var(--r)';
+  el.style.border='1px solid '+(type==='ok'?'rgba(61,214,140,.2)':'rgba(248,113,113,.2)');
+}
+
 function abrirComprovante(a){
   const fmtD=ds=>{if(!ds)return'—';const[y,m,d]=ds.split('-');return d+'/'+m+'/'+y;};
   const fmtBRL=v=>'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -2057,7 +2114,8 @@ async function carregarLinkTotem(){
       box.innerHTML='<span style="font-size:12px;color:var(--t3)">Não foi possível gerar o link.</span>';
       return;
     }
-    const link=window.location.origin+window.location.pathname.replace('index.html','')+'totem.html?t='+emp.kiosk_token;
+    const base2=window.location.href.substring(0,window.location.href.lastIndexOf('/')+1);
+    const link=base2+'totem.html?t='+emp.kiosk_token;
     box.innerHTML=`
       <div style="font-size:12px;color:var(--t2);margin-bottom:1rem;line-height:1.5">Abra esse acesso num tablet ou celular fixo na empresa. Os funcionários batem o ponto digitando o PIN — sem precisar de login.</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
