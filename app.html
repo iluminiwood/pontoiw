@@ -1771,20 +1771,36 @@ function selecionarPlano(p){
 async function confirmarAssinatura(){
   if(!planoSelecionado){toast('Selecione um plano.','err');return;}
   const btn=document.getElementById('assinar-btn');
-  if(btn){btn.disabled=true;btn.textContent='Aguarde...';}
-  // Chama Edge Function do Mercado Pago (a implementar)
+  const msg=document.getElementById('assinar-msg');
+  if(btn){btn.disabled=true;btn.textContent='Abrindo pagamento...';}
+  if(msg)msg.style.display='none';
   try{
     const{data,error}=await sb.functions.invoke('mp-create-subscription',{
       body:{plano:planoSelecionado}
     });
-    if(error||!data?.init_point)throw new Error(error?.message||'Erro ao gerar link de pagamento.');
+    if(error) throw new Error(error.message||'Erro na Edge Function.');
+    if(!data?.init_point) throw new Error('Link de pagamento não gerado. Tente novamente.');
+
+    // Abre checkout do Mercado Pago
     window.open(data.init_point,'_blank');
-    closeModals();
-    const msg=document.getElementById('assinar-msg');
-    if(msg){msg.textContent='Página de pagamento aberta! Após confirmar, seu plano será ativado automaticamente.';msg.style.display='block';msg.style.color='var(--g)';msg.style.background='rgba(61,214,140,.08)';msg.style.border='1px solid rgba(61,214,140,.15)';}
+
+    // Mostra instrução ao usuário
+    if(msg){
+      msg.textContent='Finalize o pagamento na página do Mercado Pago. Seu plano será ativado automaticamente em alguns minutos após a confirmação.';
+      msg.style.display='block';
+      msg.style.color='var(--g)';
+      msg.style.background='rgba(61,214,140,.08)';
+      msg.style.border='1px solid rgba(61,214,140,.15)';
+    }
   }catch(e){
-    const msg=document.getElementById('assinar-msg');
-    if(msg){msg.textContent='Pagamento via Mercado Pago em breve. Por enquanto, use um cupom ou fale com a gente.';msg.style.display='block';msg.style.color='var(--y)';msg.style.background='rgba(240,192,64,.08)';msg.style.border='1px solid rgba(240,192,64,.15)';}
+    console.error('Assinatura erro:',e);
+    if(msg){
+      msg.textContent='Erro: '+(e.message||'Tente novamente ou use um cupom.');
+      msg.style.display='block';
+      msg.style.color='var(--r)';
+      msg.style.background='rgba(248,113,113,.08)';
+      msg.style.border='1px solid rgba(248,113,113,.15)';
+    }
   }finally{
     if(btn){btn.disabled=false;btn.textContent='Assinar agora';}
   }
