@@ -306,21 +306,24 @@ body.light .toast{background:rgba(255,255,255,.97);}
 
 /* ===== TOUR ===== */
 #tour-overlay{
-  position:fixed;inset:0;z-index:900;pointer-events:none;
+  position:fixed;inset:0;z-index:9997;pointer-events:none;
   background:rgba(0,0,0,0);transition:background .3s;
 }
-#tour-overlay.active{pointer-events:all;background:rgba(0,0,0,.65);}
+#tour-overlay.active{background:rgba(0,0,0,.65);}
 .tour-highlight{
-  position:fixed;z-index:901;border-radius:12px;
-  box-shadow:0 0 0 4000px rgba(0,0,0,.65);
-  pointer-events:none;transition:all .35s cubic-bezier(.4,0,.2,1);
+  position:fixed;border-radius:12px;
+  box-shadow:0 0 0 4000px rgba(0,0,0,.72);
+  pointer-events:none;
+  transition:top .3s,left .3s,width .3s,height .3s;
+  z-index:9998;
 }
 .tour-tooltip{
-  position:fixed;z-index:902;
+  position:fixed;z-index:10000;
   background:var(--s1);border:1px solid var(--b1);
   border-radius:var(--r16);padding:1.25rem 1.4rem;
-  width:300px;box-shadow:0 8px 32px rgba(0,0,0,.4);
-  transition:all .35s cubic-bezier(.4,0,.2,1);
+  width:300px;max-width:calc(100vw - 32px);
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+  cursor:default;
 }
 .tour-step-label{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--em);margin-bottom:.4rem;}
 .tour-title{font-size:16px;font-weight:800;color:var(--t1);margin-bottom:.4rem;}
@@ -1397,13 +1400,28 @@ async function renderDash(c){
   const saldoMes=calcSaldoRegs(rm||[]);
 
   // Faltas semana
+  // Conta dias úteis passados desta semana onde houve ao menos 1 registro
+  // mas algum funcionário ficou sem registro (ausência confirmada)
   const semIni=getSemana(hoje);
-  const{data:rsem}=await sb.from('iw_registros_ponto').select('data_local').gte('data_local',semIni).lte('data_local',hoje);
-  const diasComReg=new Set((rsem||[]).map(r=>r.data_local));
+  const{data:rsem}=await sb.from('iw_registros_ponto').select('cpf,data_local').gte('data_local',semIni).lte('data_local',hoje);
+  // Dias onde ao menos 1 pessoa registrou (sistema estava em uso)
+  const diasComUso=new Set((rsem||[]).map(r=>r.data_local));
+  // CPFs que registraram por dia
+  const cpfsPorDia={};
+  (rsem||[]).forEach(r=>{
+    if(!cpfsPorDia[r.data_local]) cpfsPorDia[r.data_local]=new Set();
+    cpfsPorDia[r.data_local].add(r.cpf);
+  });
   let faltas=0;
+  const cpfsAtivos=new Set(funcionarios.map(f=>f.cpf));
   for(let dia=new Date(semIni+'T12:00:00');dia<new Date(hoje+'T12:00:00');dia.setDate(dia.getDate()+1)){
     const ds=dia.toISOString().split('T')[0];
-    if(isDiaUtil(ds)&&!diasComReg.has(ds)) faltas++;
+    // Só conta se: dia útil E sistema estava em uso nesse dia
+    if(isDiaUtil(ds) && diasComUso.has(ds)){
+      const presentes=cpfsPorDia[ds]||new Set();
+      // Conta funcionários ativos que não registraram
+      cpfsAtivos.forEach(cpf=>{if(!presentes.has(cpf)) faltas++;});
+    }
   }
 
   const saldoCor=saldoMes>=0?'var(--g)':'var(--r)';
@@ -3188,6 +3206,12 @@ async function reloadAtrasos(){
 }
 
 // ===== TOUR =====
+// Para testar o tour novamente: resetarTour() no console
+function resetarTour(){
+  localStorage.removeItem(TOUR_KEY);
+  localStorage.removeItem(CK_KEY);
+  toast('Tour resetado! Recarregue a página.','ok');
+}
 const TOUR_KEY='iw_ponto_tour_v1';
 let tourStep=0;
 
@@ -3387,8 +3411,10 @@ function marcarChecklistItem(key){
 </script>
 
 
+<!-- Tour overlay (só visual, pointer-events:none) -->
 <div id="tour-overlay"></div>
 <div class="tour-highlight" id="tour-hl" style="display:none"></div>
+<!-- Tooltip separado — sempre clicável -->
 <div class="tour-tooltip" id="tour-tip" style="display:none">
   <div class="tour-step-label" id="tour-label"></div>
   <div class="tour-title" id="tour-title"></div>
