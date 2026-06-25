@@ -594,7 +594,7 @@ body.light .toast{background:rgba(255,255,255,.97);}
       ">
         <div>
           <div style="font-size:15px;font-weight:800;color:var(--t1)">Essencial</div>
-          <div style="font-size:12px;color:var(--t2);margin-top:2px">Até 10 colaboradores · Férias, EPIs, atestados e relatórios</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">Até 5 colaboradores · Férias, EPIs, atestados e relatórios</div>
         </div>
         <div style="text-align:right;flex-shrink:0;margin-left:1rem">
           <div style="font-family:var(--mono);font-size:20px;font-weight:900;color:var(--t1)">R$ 89</div>
@@ -612,7 +612,7 @@ body.light .toast{background:rgba(255,255,255,.97);}
             <span style="font-size:15px;font-weight:800;color:var(--t1)">Pro</span>
             <span style="font-size:9px;font-weight:800;color:var(--em);background:rgba(16,185,129,.12);padding:2px 7px;border-radius:20px">MAIS POPULAR</span>
           </div>
-          <div style="font-size:12px;color:var(--t2);margin-top:2px">Ilimitado · Encarregado, Excel e suporte prioritário</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">Até 10 colaboradores · Encarregado, Excel e suporte prioritário</div>
         </div>
         <div style="text-align:right;flex-shrink:0;margin-left:1rem">
           <div style="font-family:var(--mono);font-size:20px;font-weight:900;color:var(--t1)">R$ 169</div>
@@ -835,8 +835,8 @@ let PLANO='free'; // sempre 'free', 'essencial' ou 'pro' — nunca null/undefine
 // Limites e permissões por plano
 const PLANOS={
   free:     {label:'Free',     limite:3,  cor:'#a8a8b8'},
-  essencial:{label:'Essencial',limite:10, cor:'#60a5fa'},
-  pro:      {label:'Pro',      limite:999,cor:'#10b981'}
+  essencial:{label:'Essencial',limite:5,  cor:'#60a5fa'},
+  pro:      {label:'Pro',      limite:10, cor:'#10b981'}
 };
 const FEATURES={
   // false = bloqueado no free, true = liberado
@@ -3094,10 +3094,18 @@ async function saveAdv(){
   if(currentTab==='adv')renderAdv(document.getElementById('content'));
 }
 async function saveFunc(){
-  const limite=PLANOS[PLANO]?.limite||3;
+  const _planoAtual=PLANOS[PLANO]||PLANOS.free;
+  const limite=_planoAtual.limite||3;
   const ativos=funcionarios.filter(f=>f.ativo!==false).length;
   if(ativos>=limite){
-    toast('Limite de '+limite+' colaboradores do plano '+PLANOS[PLANO].label+' atingido. Faça upgrade!','err');
+    if(PLANO==='pro'){
+      // Acima de 10 — redireciona para contato
+      toast('Acima de 10 colaboradores entre em contato para um plano personalizado.','info');
+      window.open('mailto:contato@iwponto.com.br?subject=Plano acima de 10 colaboradores','_blank');
+    } else {
+      toast('Limite de '+limite+' colaboradores do plano '+_planoAtual.label+'. Faça upgrade!','err');
+      setTimeout(()=>abrirAssinarPlano(),400);
+    }
     return;
   }
   const nome=document.getElementById('f-nome').value.trim();
