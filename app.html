@@ -421,7 +421,7 @@ body.light .toast{background:rgba(255,255,255,.97);}
         <input type="email" id="semail" placeholder="seu@email.com" onkeydown="if(event.key==='Enter')doSignup()" autocomplete="username">
       </div>
       <div class="field"><label>Senha</label>
-        <input type="password" id="spw" placeholder="Mínimo 6 caracteres" onkeydown="if(event.key==='Enter')doSignup()" autocomplete="new-password">
+        <input type="password" id="spw" placeholder="Mín. 8 caracteres, com letras e números" onkeydown="if(event.key==='Enter')doSignup()" autocomplete="new-password">
       </div>
       <button class="btn" id="signup-btn" onclick="doSignup()">Criar conta</button>
       <div class="err-msg" id="serr"></div>
@@ -1192,25 +1192,38 @@ async function doSignup(){
   const email=document.getElementById('semail').value.trim();
   const pw=document.getElementById('spw').value;
   const errEl=document.getElementById('serr');
-  errEl.textContent='';
+  errEl.textContent='';errEl.style.color='';
 
   if(!empresa||!nome||!email||!pw){errEl.textContent='Preencha todos os campos.';return;}
-  if(pw.length<6){errEl.textContent='Senha deve ter ao menos 6 caracteres.';return;}
+  if(pw.length<8){errEl.textContent='A senha deve ter ao menos 8 caracteres.';return;}
+  if(!/[a-zA-Z]/.test(pw)||!/[0-9]/.test(pw)){errEl.textContent='A senha deve conter letras e números.';return;}
 
   const btn=document.getElementById('signup-btn');
   if(btn){btn.disabled=true;btn.textContent='Criando...';}
 
-  const{data,error}=await sb.auth.signUp({email,password:pw});
+  const{data,error}=await sb.auth.signUp({email,password:pw,options:{data:{empresa_nome:empresa,user_nome:nome}}});
 
   if(error){
     if(btn){btn.disabled=false;btn.textContent='Criar conta';}
-    errEl.textContent=error.message.includes('already')||error.message.includes('registered')?'Este e-mail já está cadastrado.':'Erro ao criar conta: '+error.message;
+    const m=(error.message||'').toLowerCase();
+    if(m.includes('already')||m.includes('registered')){
+      errEl.textContent='Este e-mail já está cadastrado.';
+    } else if(m.includes('password')&&m.includes('least')&&m.includes('character')&&!m.includes('each')){
+      errEl.textContent='A senha deve ter ao menos 8 caracteres.';
+    } else if(m.includes('password')&&(m.includes('each')||m.includes('contain'))){
+      errEl.textContent='A senha deve conter letras e números.';
+    } else if(m.includes('weak')||m.includes('pwned')||m.includes('leaked')){
+      errEl.textContent='Essa senha é muito comum ou já apareceu em vazamentos. Escolha outra.';
+    } else {
+      errEl.textContent='Erro ao criar conta: '+error.message;
+    }
     return;
   }
 
   if(!data.session){
     if(btn){btn.disabled=false;btn.textContent='Criar conta';}
-    errEl.textContent='Verifique seu e-mail para confirmar a conta antes de entrar.';
+    errEl.style.color='var(--g)';
+    errEl.textContent='Conta criada! Enviamos um link de confirmação para '+email+'. Confirme (verifique o spam) e depois faça login.';
     return;
   }
 
@@ -1267,7 +1280,18 @@ async function doLogin(){
   }
 
   // Busca o perfil (empresa + papel) do usuário autenticado
-  const{data:profile,error:profErr}=await sb.from('profiles').select('*').eq('id',data.user.id).single();
+  let{data:profile,error:profErr}=await sb.from('profiles').select('*').eq('id',data.user.id).single();
+
+  // Primeiro login após confirmar o e-mail: cria empresa+perfil a partir dos metadados do cadastro
+  if((profErr||!profile) && data.user?.user_metadata?.empresa_nome){
+    const md=data.user.user_metadata;
+    const{error:rpcErr}=await sb.rpc('criar_empresa_e_perfil',{nome_empresa:md.empresa_nome,nome_usuario:md.user_nome||md.empresa_nome});
+    if(!rpcErr){
+      const r=await sb.from('profiles').select('*').eq('id',data.user.id).single();
+      profile=r.data;profErr=r.error;
+    }
+  }
+
   if(profErr||!profile){
     if(btn){btn.disabled=false;btn.textContent='Entrar';}
     document.getElementById('lerr').textContent='Usuário sem empresa vinculada. Contate o suporte.';
