@@ -731,7 +731,7 @@ body.light .toast{background:rgba(255,255,255,.97);}
         <span id="periodo-total-val" style="font-size:14px;font-weight:800;font-family:var(--mono)"></span>
       </div>
     </div>
-    <div class="field"><label>Valor pago (R$)</label><input type="number" id="acerto-valor" step="0.01" min="0"></div>
+    <div class="field"><label>Valor pago (R$) <span style="font-size:10px;color:var(--t3);font-weight:400">calculado automaticamente</span></label><input type="number" id="acerto-valor" step="0.01" min="0" oninput="this.dataset.manual='1'"></div>
     <div class="field"><label>Data do pagamento</label><input type="date" id="acerto-data-pag"></div>
     <div class="field"><label>Observação</label><input type="text" id="acerto-obs" placeholder="Opcional"></div>
     <div class="mactions">
@@ -1968,64 +1968,92 @@ function showCupomMsg(text,type){
 function abrirComprovante(a){
   const fmtD=ds=>{if(!ds)return'—';const[y,m,d]=ds.split('-');return d+'/'+m+'/'+y;};
   const fmtBRL=v=>'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const h=Number(a.saldo_min||0);
-  const extras=h>0?h:0, devendo=h<0?Math.abs(h):0;
-  const vlrHora=a.vlrHora||0;
-  const custoExtras=vlrHora?extras/60*vlrHora:0;
-  const custoDevendo=vlrHora?devendo/60*vlrHora:0;
   const emp=empresaNome||'Empresa';
   const hoje=new Date().toLocaleDateString('pt-BR');
+  const vlrHora=a.vlrHora||0;
+
+  // Período atual
+  const saldoAtual=Number(a.saldo_min||0);
+  const extrasAtual=saldoAtual>0?saldoAtual:0;
+  const devendoAtual=saldoAtual<0?Math.abs(saldoAtual):0;
+  const vlrExtras=vlrHora?extrasAtual/60*vlrHora:0;
+  const vlrDevendo=vlrHora?devendoAtual/60*vlrHora:0;
+
+  // Períodos anteriores
+  const periodos=a.periodos_anteriores||[];
+  const saldoAnt=periodos.reduce((s,p)=>s+(Number(p.saldo_min)||0),0);
+  const saldoTotal=saldoAtual+saldoAnt;
+
+  // HTML dos períodos anteriores
+  let periodosHtml='';
+  if(periodos.length){
+    let rows=periodos.map(p=>{
+      const min=Number(p.saldo_min)||0;
+      const vlr=Number(p.valor)||0;
+      const cor=min>=0?'var(--g)':'var(--r)';
+      return `<div style="display:flex;justify-content:space-between;padding:.35rem 0;border-bottom:1px solid var(--b1)">
+        <span style="font-size:13px;color:var(--t2)">${p.label||'Período anterior'}</span>
+        <span style="font-size:13px;font-weight:700;color:${cor}">${fromMin(min)}${vlr?` · ${fmtBRL(vlr)}`:''}
+        </span>
+      </div>`;
+    }).join('');
+    periodosHtml=`<div style="background:var(--s2);border-radius:var(--r8);padding:.75rem;margin-bottom:.85rem">
+      <div style="font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;margin-bottom:.5rem">Períodos anteriores</div>
+      ${rows}
+    </div>`;
+  }
 
   document.getElementById('comp-body').innerHTML=`
     <div id="comp-print-area" style="font-family:var(--font)">
-      <!-- Cabeçalho -->
       <div style="border-bottom:2px solid var(--acc);padding-bottom:.75rem;margin-bottom:1rem">
         <div style="font-size:13px;font-weight:800;color:var(--acc);letter-spacing:.06em">IW · PONTO</div>
         <div style="font-size:18px;font-weight:900;color:var(--t1);margin:.25rem 0 .1rem">Comprovante de Acerto de Horas</div>
         <div style="font-size:11px;color:var(--t2)">Emitido em ${hoje}</div>
       </div>
 
-      <!-- Dados do colaborador -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:1rem">
-        <div>
-          <div style="font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;margin-bottom:2px">Colaborador</div>
-          <div style="font-size:14px;font-weight:700;color:var(--t1)">${a.funcionario_nome||'—'}</div>
+        <div><div style="font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;margin-bottom:2px">Colaborador</div>
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">${a.funcionario_nome||'—'}</div></div>
+        <div><div style="font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;margin-bottom:2px">CPF</div>
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">${a.cpf||'—'}</div></div>
+        <div><div style="font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;margin-bottom:2px">Período apurado</div>
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">${a.periodo_label||'—'}</div></div>
+        <div><div style="font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;margin-bottom:2px">Data de competência</div>
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">${fmtD(a.data_pagamento)}</div></div>
+      </div>
+
+      <!-- Saldo do período atual -->
+      <div style="background:var(--s2);border-radius:var(--r8);padding:.75rem;margin-bottom:.85rem">
+        <div style="font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;margin-bottom:.5rem">Período atual (${a.periodo_label||'—'})</div>
+        <div style="display:flex;justify-content:space-between;padding:.35rem 0;border-bottom:1px solid var(--b1)">
+          <span style="font-size:13px;color:var(--t2)">Horas extras</span>
+          <span style="font-size:13px;font-weight:700;color:var(--g)">${fromMin(extrasAtual)}${vlrHora?' · '+fmtBRL(vlrExtras):''}</span>
         </div>
-        <div>
-          <div style="font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;margin-bottom:2px">CPF</div>
-          <div style="font-size:14px;font-weight:700;color:var(--t1)">${a.cpf||'—'}</div>
+        <div style="display:flex;justify-content:space-between;padding:.35rem 0;border-bottom:1px solid var(--b1)">
+          <span style="font-size:13px;color:var(--t2)">Horas em débito</span>
+          <span style="font-size:13px;font-weight:700;color:var(--r)">${fromMin(devendoAtual)}${vlrHora&&devendoAtual?' · '+fmtBRL(vlrDevendo):''}</span>
         </div>
-        <div>
-          <div style="font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;margin-bottom:2px">Período apurado</div>
-          <div style="font-size:14px;font-weight:700;color:var(--t1)">${a.periodo_label||'—'}</div>
-        </div>
-        <div>
-          <div style="font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;margin-bottom:2px">Data de competência</div>
-          <div style="font-size:14px;font-weight:700;color:var(--t1)">${fmtD(a.data_pagamento)}</div>
+        <div style="display:flex;justify-content:space-between;padding:.35rem 0">
+          <span style="font-size:13px;color:var(--t2)">Saldo do período</span>
+          <span style="font-size:13px;font-weight:800;color:${saldoAtual>=0?'var(--g)':'var(--r)'}">${fromMin(saldoAtual)}</span>
         </div>
       </div>
 
-      <!-- Tabela de horas -->
-      <div style="background:var(--s2);border-radius:var(--r8);padding:.75rem;margin-bottom:.85rem">
-        <div style="font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;margin-bottom:.6rem">Apuração do período</div>
-        <div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--b1)">
-          <span style="font-size:13px;color:var(--t2)">Horas extras trabalhadas</span>
-          <span style="font-size:13px;font-weight:700;color:var(--g)">${fromMin(extras)}</span>
+      <!-- Períodos anteriores (se houver) -->
+      ${periodosHtml}
+
+      <!-- Saldo total (só mostra se tiver períodos anteriores) -->
+      ${periodos.length?`<div style="background:var(--s2);border-radius:var(--r8);padding:.75rem;margin-bottom:.85rem">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:13px;font-weight:800;color:var(--t1)">Saldo total acumulado</span>
+          <span style="font-size:16px;font-weight:900;font-family:var(--mono);color:${saldoTotal>=0?'var(--g)':'var(--r)'}">${fromMin(saldoTotal)}</span>
         </div>
-        <div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--b1)">
-          <span style="font-size:13px;color:var(--t2)">Horas em débito</span>
-          <span style="font-size:13px;font-weight:700;color:var(--r)">${fromMin(devendo)}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:.4rem 0">
-          <span style="font-size:13px;color:var(--t2)">Saldo líquido</span>
-          <span style="font-size:13px;font-weight:800;color:${h>=0?'var(--g)':'var(--r)'}">${fromMin(h)}</span>
-        </div>
-      </div>
+      </div>`:''}
 
       <!-- Valor do acerto -->
       ${Number(a.valor_pago)!==0?`<div style="background:var(--s2);border-radius:var(--r8);padding:.75rem;margin-bottom:.85rem">
-        <div style="font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;margin-bottom:.6rem">Valor do acerto</div>
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:.25rem 0">
+        <div style="font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;margin-bottom:.5rem">Valor do acerto</div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
           <span style="font-size:14px;font-weight:800;color:var(--t1)">${Number(a.valor_pago)>=0?'Valor a receber':'Valor a descontar'}</span>
           <span style="font-size:22px;font-weight:900;font-family:var(--mono);color:${Number(a.valor_pago)>=0?'var(--g)':'var(--r)'}">${fmtBRL(Math.abs(Number(a.valor_pago)))}</span>
         </div>
@@ -2035,7 +2063,6 @@ function abrirComprovante(a){
         <b style="color:var(--t1)">Observação:</b> ${a.observacao}
       </div>`:''}
 
-      <!-- Assinaturas -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--b1)">
         <div style="text-align:center">
           <div style="border-top:1px solid var(--t3);padding-top:.4rem;font-size:11px;color:var(--t2)">Assinatura do colaborador</div>
@@ -2047,111 +2074,13 @@ function abrirComprovante(a){
         </div>
       </div>
     </div>`;
-  document.getElementById('m-comprovante').classList.add('open');
-  // Guarda ID para eventual exclusão
+
   const excBtn=document.getElementById('btn-excluir-acerto');
   if(excBtn) excBtn.style.display=a.id?'':'none';
   window._compAcertoId=a.id||null;
+  document.getElementById('m-comprovante').classList.add('open');
 }
 
-// ===== PERÍODOS ANTERIORES =====
-let periodosRows=[];
-
-function adicionarPeriodo(dados){
-  const id=Date.now();
-  const row={id, label:dados?.label||'', saldo_min:dados?.saldo_min||0, valor:dados?.valor||0};
-  periodosRows.push(row);
-  renderPeriodosLista();
-}
-
-function removerPeriodo(id){
-  periodosRows=periodosRows.filter(r=>r.id!==id);
-  renderPeriodosLista();
-}
-
-function renderPeriodosLista(){
-  const el=document.getElementById('periodos-lista');
-  const totalEl=document.getElementById('periodo-total');
-  const totalVal=document.getElementById('periodo-total-val');
-  if(!el) return;
-
-  if(!periodosRows.length){
-    el.innerHTML='';
-    if(totalEl) totalEl.style.display='none';
-    return;
-  }
-
-  let html='';
-  periodosRows.forEach(row=>{
-    const sinal=row.saldo_min>=0?'+':'';
-    html+=`<div class="periodo-row" id="prow-${row.id}">
-      <input type="text" class="finput" placeholder="Ex: Jan–Dez/2025"
-        value="${row.label}" oninput="updatePeriodo(${row.id},'label',this.value)"
-        style="font-size:12px">
-      <input type="number" class="finput" placeholder="min (neg=débito)"
-        value="${row.saldo_min}" step="1"
-        oninput="updatePeriodo(${row.id},'saldo_min',+this.value);atualizarTotalPeriodos()"
-        style="width:90px;font-size:12px" title="Minutos (negativo = débito)">
-      <input type="number" class="finput" placeholder="R$ valor"
-        value="${row.valor}" step="0.01" min="0"
-        oninput="updatePeriodo(${row.id},'valor',+this.value)"
-        style="width:80px;font-size:12px">
-      <button onclick="removerPeriodo(${row.id})" style="background:none;border:none;cursor:pointer;color:var(--r);padding:0 4px" title="Remover">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>`;
-  });
-  el.innerHTML=html;
-
-  // Total acumulado
-  atualizarTotalPeriodos();
-}
-
-function updatePeriodo(id,campo,val){
-  const row=periodosRows.find(r=>r.id===id);
-  if(row) row[campo]=val;
-}
-
-function atualizarTotalPeriodos(){
-  const totalEl=document.getElementById('periodo-total');
-  const totalVal=document.getElementById('periodo-total-val');
-  if(!totalEl||!totalVal) return;
-
-  // Saldo atual do funcionário + períodos anteriores
-  const saldoAtual=acertoCtx?.saldoMin||0;
-  const saldoAnt=periodosRows.reduce((s,r)=>s+(r.saldo_min||0),0);
-  const total=saldoAtual+saldoAnt;
-
-  totalEl.style.display='flex';
-  totalVal.textContent=fromMin(total);
-  totalVal.style.color=total>=0?'var(--g)':'var(--r)';
-}
-
-function getPeriodosParaSalvar(){
-  return periodosRows.map(r=>({
-    label:r.label,
-    saldo_min:Number(r.saldo_min)||0,
-    valor:Number(r.valor)||0
-  }));
-}
-
-function carregarPeriodosNoModal(lista){
-  periodosRows=[];
-  (lista||[]).forEach(p=>adicionarPeriodo(p));
-}
-
-async function excluirAcertoAtual(){
-  const id=window._compAcertoId;
-  if(!id){toast('Acerto não identificado.','err');return;}
-  if(!confirm('Excluir este acerto? O saldo do banco de horas voltará a incluir o período quitado.')) return;
-  const{error}=await sb.from('iw_acertos_horas').delete().eq('id',id);
-  if(error){toast('Erro ao excluir: '+error.message,'err');return;}
-  // Limpa cache
-  acertosCache=acertosCache.filter(a=>a.id!==id);
-  toast('Acerto excluído. Saldo restaurado.','ok');
-  closeModals();
-  reloadBanco();
-}
 
 function imprimirComprovante(){
   const area=document.getElementById('comp-print-area');
@@ -2245,6 +2174,83 @@ function gerarHtmlAcertos(cpf,nome,funcId,saldo,vlrHora){
 let acertosCache=[];
 let acertosPorCpf={};
 let cortePorCpf={};
+
+let periodosRows=[];
+
+function adicionarPeriodo(dados){
+  const id=Date.now()+(Math.random()*100|0);
+  const row={id,label:dados?.label||'',saldo_min:Number(dados?.saldo_min)||0,valor:Number(dados?.valor)||0};
+  if(!row.valor&&row.saldo_min&&acertoCtx?.vlrHora)
+    row.valor=+(Math.abs(row.saldo_min)/60*acertoCtx.vlrHora).toFixed(2);
+  periodosRows.push(row);
+  renderPeriodosLista();
+}
+function removerPeriodo(id){periodosRows=periodosRows.filter(r=>r.id!==id);renderPeriodosLista();}
+function updatePeriodo(id,campo,val){const row=periodosRows.find(r=>r.id===id);if(row)row[campo]=val;}
+function recalcPeriodo(id){const row=periodosRows.find(r=>r.id===id);if(!row||!acertoCtx?.vlrHora)return;row.valor=+(Math.abs(row.saldo_min||0)/60*acertoCtx.vlrHora).toFixed(2);}
+
+function renderPeriodosLista(){
+  const el=document.getElementById('periodos-lista');
+  const totalEl=document.getElementById('periodo-total');
+  if(!el)return;
+  if(!periodosRows.length){
+    el.innerHTML='';
+    if(totalEl)totalEl.style.display='none';
+    return;
+  }
+  const vlrH=acertoCtx?.vlrHora||0;
+  let rows='';
+  periodosRows.forEach(row=>{
+    rows+=`<div style="display:grid;grid-template-columns:1fr 85px 75px auto;gap:.35rem;align-items:center;padding:.35rem 0;border-bottom:1px solid var(--b1)">
+      <input class="finput" placeholder="Ex: Jan–Dez/2025" value="${row.label||''}" oninput="updatePeriodo(${row.id},'label',this.value)" style="font-size:12px">
+      <input class="finput" type="number" placeholder="min" value="${row.saldo_min||''}" step="1" title="Negativo=débito (ex: -1297 = 21h37)" oninput="updatePeriodo(${row.id},'saldo_min',+this.value);recalcPeriodo(${row.id});atualizarTotalPeriodos()" style="font-size:12px;width:100%">
+      <input class="finput" type="number" placeholder="R$" step="0.01" value="${row.valor||''}" oninput="updatePeriodo(${row.id},'valor',+this.value)" style="font-size:12px;width:100%">
+      <button onclick="removerPeriodo(${row.id})" style="background:none;border:none;cursor:pointer;color:var(--r);padding:0 2px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>`;
+  });
+  el.innerHTML=`<div style="display:grid;grid-template-columns:1fr 85px 75px auto;gap:.35rem;margin-bottom:3px">
+    <span style="font-size:10px;color:var(--t3)">Período</span>
+    <span style="font-size:10px;color:var(--t3)">Minutos</span>
+    <span style="font-size:10px;color:var(--t3)">Valor R$</span><span></span></div>${rows}`;
+  atualizarTotalPeriodos();
+}
+
+function atualizarTotalPeriodos(){
+  const totalEl=document.getElementById('periodo-total');
+  const totalVal=document.getElementById('periodo-total-val');
+  if(!totalEl||!totalVal)return;
+  const saldoAtual=acertoCtx?.saldoMin||0;
+  const saldoAnt=periodosRows.reduce((s,r)=>s+(Number(r.saldo_min)||0),0);
+  const total=saldoAtual+saldoAnt;
+  const vlrH=acertoCtx?.vlrHora||0;
+  totalEl.style.display='flex';
+  totalVal.textContent=fromMin(total)+(vlrH?' · R$ '+(Math.abs(total)/60*vlrH).toFixed(2):'');
+  totalVal.style.color=total>=0?'var(--g)':'var(--r)';
+  const vlrFld=document.getElementById('acerto-valor');
+  if(vlrFld&&vlrH&&!vlrFld.dataset.manual)
+    vlrFld.value=(Math.abs(total)/60*vlrH).toFixed(2);
+}
+
+function getPeriodosParaSalvar(){
+  return periodosRows.map(r=>({label:r.label,saldo_min:Number(r.saldo_min)||0,valor:Number(r.valor)||0}));
+}
+function carregarPeriodosNoModal(lista){
+  periodosRows=[];
+  (lista||[]).forEach(p=>adicionarPeriodo({label:p.label,saldo_min:p.saldo_min,valor:p.valor}));
+  renderPeriodosLista();
+}
+
+async function excluirAcertoAtual(){
+  const id=window._compAcertoId;
+  if(!id){toast('Acerto não identificado.','err');return;}
+  if(!confirm('Excluir este acerto? O saldo do banco de horas voltará a incluir o período quitado.'))return;
+  const{error}=await sb.from('iw_acertos_horas').delete().eq('id',id);
+  if(error){toast('Erro ao excluir: '+error.message,'err');return;}
+  acertosCache=acertosCache.filter(a=>a.id!==id);
+  toast('Acerto excluído. Saldo restaurado.','ok');
+  closeModals();
+  reloadBanco();
+}
 
 async function abrirComprovanteById(id){
   // Busca o acerto no cache ou no banco
