@@ -2111,6 +2111,8 @@ function gerarHtmlAcertos(cpf,nome,funcId,saldo,vlrHora){
 
 // Cache de acertos para edição/comprovante
 let acertosCache=[];
+let acertosPorCpf={};
+let cortePorCpf={};
 
 async function abrirComprovanteById(id){
   // Busca o acerto no cache ou no banco
@@ -2378,8 +2380,8 @@ async function reloadBanco(){
   // Busca o último acerto registrado de cada funcionário
   const{data:acertosData}=await sb.from('iw_acertos_horas').select('id,cpf,funcionario_nome,periodo_label,periodo_inicio,periodo_fim,saldo_min,valor_pago,data_pagamento,observacao').order('data_pagamento',{ascending:false}).limit(200);
   const ultimoAcertoPorCpf={};
-  const acertosPorCpf={};       // histórico completo por CPF
-  const cortePorCpf={};         // data de corte do saldo (dia seguinte ao último periodo_fim)
+  acertosPorCpf={};             // histórico completo por CPF (global)
+  cortePorCpf={};               // data de corte do saldo (global)
   acertosCache=acertosData||[];
   (acertosData||[]).forEach(a=>{
     if(!ultimoAcertoPorCpf[a.cpf]) ultimoAcertoPorCpf[a.cpf]=a;
