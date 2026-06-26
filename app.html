@@ -994,6 +994,7 @@ function aplicarConfigEmpresa(cfg){
 }
 
 let funcionarios=[],advertencias=[],currentTab='dash',sbOk=false;
+let salariosVisiveis=false;
 let loginAttempts=0,loginBlocked=false,currentAdvFunc=null,sessionTimer=null;
 let editCtx=null, addCtx=null;
 let feriados=new Set();
@@ -2730,12 +2731,15 @@ async function saveFuncEdit(){
   await loadBase();
   renderEquipe(document.getElementById('content'));
 }
-function toggleSalario(el){
-  const card=el.closest('.fcard');
-  const vals=card.querySelectorAll('.sal-hidden');
-  const oculto=vals[0]?.style.filter==='blur(5px)';
-  vals.forEach(v=>v.style.filter=oculto?'none':'blur(5px)');
-  el.innerHTML=oculto?`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;display:inline-block;vertical-align:-2px"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;display:inline-block;vertical-align:-2px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+function salToggleIcon(){
+  const eyeOpen=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;display:inline-block;vertical-align:-2px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+  const eyeOff=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;display:inline-block;vertical-align:-2px"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+  return `${salariosVisiveis?eyeOff:eyeOpen}<span style="font-size:11px;margin-left:4px">Salários</span>`;
+}
+function toggleSalariosGlobal(){
+  salariosVisiveis=!salariosVisiveis;
+  document.querySelectorAll('.sal-hidden').forEach(v=>v.style.filter=salariosVisiveis?'none':'blur(5px)');
+  const b=document.getElementById('btn-toggle-sal'); if(b) b.innerHTML=salToggleIcon();
 }
 async function editPin(id){
   const f=funcionarios.find(x=>x.id===id);
@@ -2956,6 +2960,26 @@ async function delAfastamento(id){
   renderAfastamentos(document.getElementById('content'));
 }
 
+// ===== CONTRATO DE EXPERIÊNCIA (45 + 45 dias) =====
+const EXP_FASE1=45, EXP_FASE2=45; // dias de cada período do contrato de experiência
+const STAR_SVG=`<svg viewBox="0 0 24 24" fill="#f5b301" stroke="#f5b301" stroke-width="1" style="width:13px;height:13px;display:inline-block;vertical-align:-2px;margin-left:5px"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
+function corPrazo(d){ return d<=3?'var(--r)' : d<=10?'var(--o)' : 'var(--acc)'; }
+function infoExperiencia(admissaoStr){
+  if(!admissaoStr) return null;
+  const adm=new Date(admissaoStr+'T12:00:00'); if(isNaN(adm)) return null;
+  const hoje=new Date(); hoje.setHours(12,0,0,0);
+  const addD=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;};
+  const fmtD=d=>String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
+  // Dia da admissão = dia 1 → último dia do período N = admissão + (N-1) dias
+  const fim1=addD(adm, EXP_FASE1-1);
+  const fim2=addD(adm, EXP_FASE1+EXP_FASE2-1);
+  if(hoje>fim2) return null; // experiência encerrada → já efetivado
+  const fase = hoje<=fim1 ? 1 : 2;
+  const restFase = Math.ceil(((fase===1?fim1:fim2)-hoje)/864e5);
+  const restTotal= Math.ceil((fim2-hoje)/864e5);
+  return {fase,fim1,fim2,restFase,restTotal,fmtD};
+}
+
 async function renderEquipe(c){
   const totemBoxHtml=METODO_PONTO!=='biometrico'?`<div class="tcard" style="margin-bottom:1rem">
     <div class="thead-row"><span class="thead-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;display:inline-block;vertical-align:-2px"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg> Batidas Digital — link do totem</span></div>
@@ -2963,8 +2987,11 @@ async function renderEquipe(c){
   </div>`:'';
   c.innerHTML=`
   ${totemBoxHtml}
-  <div class="srow"><h3>Funcionários (${funcionarios.length})</h3><button class="btn-sm accent" onclick="document.getElementById('m-func').classList.add('open')">+ Novo</button></div><div class="flist" id="flist" class="fgrid2"></div>`;
+  <div class="srow"><h3>Funcionários (${funcionarios.length})</h3><div style="display:flex;gap:8px;align-items:center"><button class="btn-sm" id="btn-toggle-sal" onclick="toggleSalariosGlobal()" title="Mostrar/ocultar salários">${salToggleIcon()}</button><button class="btn-sm accent" onclick="document.getElementById('m-func').classList.add('open')">+ Novo</button></div></div><div class="flist" id="flist" class="fgrid2"></div>`;
   if(METODO_PONTO!=='biometrico') carregarLinkTotem();
+  const nExp=funcionarios.filter(f=>infoExperiencia(f.admissao)).length;
+  const expChip=nExp?` <span class="chip a" style="vertical-align:2px">${STAR_SVG} ${nExp} em experiência</span>`:'';
+  const srow=c.querySelector('.srow h3'); if(srow) srow.innerHTML=`Funcionários (${funcionarios.length})${expChip}`;
   const g=document.getElementById('flist');
   if(!funcionarios.length){g.innerHTML='<div class="empty">Nenhum funcionário.</div>';return;}
   funcionarios.forEach(f=>{
@@ -2974,11 +3001,25 @@ async function renderEquipe(c){
     const fmtAniv=ds=>{if(!ds)return'—';const[y,m,dv]=ds.split('-');return dv+'/'+m;};
     const salStr=f.salario?'R$ '+Number(f.salario).toLocaleString('pt-BR'):'—';
     const vhStr=f.salario?'R$ '+(f.salario/220).toFixed(2):'—';
+    const exp=infoExperiencia(f.admissao);
+    const prazoTxt=r=>r<=0?'hoje':'faltam '+r+'d';
+    const expHtml=exp?`<div style="background:var(--ad);border:1px solid rgba(16,185,129,.22);border-radius:9px;padding:.55rem .7rem;margin-bottom:.6rem">
+      <div style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--acc);margin-bottom:.4rem">${STAR_SVG} Em experiência · fase ${exp.fase} de 2</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:10.5px;color:var(--t2);margin-bottom:3px">
+        <span>1º período (45 dias)</span>
+        <span style="font-weight:700;font-family:var(--mono);color:${exp.fase===1?corPrazo(exp.restFase):'var(--t3)'}">${exp.fmtD(exp.fim1)}${exp.fase===1?' · '+prazoTxt(exp.restFase):' ✓'}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:10.5px;color:var(--t2)">
+        <span>Fim da experiência (90 dias)</span>
+        <span style="font-weight:700;font-family:var(--mono);color:${corPrazo(exp.restTotal)}">${exp.fmtD(exp.fim2)} · ${prazoTxt(exp.restTotal)}</span>
+      </div>
+    </div>`:'';
     d.innerHTML=`<div class="frow">
       <div class="fav" style="background:${f.color}22;color:${f.color}">${f.nome[0]}</div>
-      <div style="flex:1"><div class="fname">${f.nome.split(' ')[0]}</div>
+      <div style="flex:1"><div class="fname">${f.nome.split(' ')[0]}${exp?STAR_SVG:''}</div>
         <div class="fcargo">${f.cargo||'—'} · CPF <span style="font-family:var(--mono)">${f.cpf||'—'}</span></div></div>
     </div>
+    ${expHtml}
     <div class="fstats" style="grid-template-columns:1fr 1fr 1fr">
       <div class="fstat"><div class="fstat-l">Admissão</div><div class="fstat-v" style="font-size:11px">${fmtDate(f.admissao)}</div></div>
       <div class="fstat"><div class="fstat-l"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px;display:inline-block;vertical-align:-1px"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Aniversário</div><div class="fstat-v" style="font-size:11px">${fmtAniv(f.aniversario)}</div></div>
@@ -2986,12 +3027,12 @@ async function renderEquipe(c){
     </div>
     <div class="fstats" style="grid-template-columns:1fr 1fr 1fr;margin-top:0">
       <div class="fstat">
-        <div class="fstat-l" style="display:flex;align-items:center;justify-content:space-between">Salário <span onclick="toggleSalario(this)" style="cursor:pointer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;display:inline-block;vertical-align:-2px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
-        <div class="fstat-v sal-hidden" style="color:var(--g);filter:blur(5px);transition:filter .2s">${salStr}</div>
+        <div class="fstat-l">Salário</div>
+        <div class="fstat-v sal-hidden" style="color:var(--g);filter:${salariosVisiveis?'none':'blur(5px)'};transition:filter .2s">${salStr}</div>
       </div>
       <div class="fstat">
         <div class="fstat-l">Valor/hora</div>
-        <div class="fstat-v sal-hidden" style="filter:blur(5px);transition:filter .2s">${vhStr}</div>
+        <div class="fstat-v sal-hidden" style="filter:${salariosVisiveis?'none':'blur(5px)'};transition:filter .2s">${vhStr}</div>
       </div>
       <div class="fstat"><div class="fstat-l">Carga semanal</div><div class="fstat-v">44h</div></div>
     </div>
