@@ -312,6 +312,7 @@ body.light .toast{background:rgba(255,255,255,.97);}
   padding:.5rem 0;border-bottom:1px solid var(--b1);
 }
 .periodo-row:last-child{border:none;}
+.finput{background:var(--s2);border:1px solid var(--b1);border-radius:var(--r8);padding:.4rem .6rem;color:var(--t1);font-size:13px;width:100%;}
 .periodo-add-btn{
   display:flex;align-items:center;gap:.4rem;
   font-size:12px;color:var(--em);background:none;
@@ -718,10 +719,8 @@ body.light .toast{background:rgba(255,255,255,.97);}
     <div class="field"><label>Saldo a acertar</label>
       <input type="text" id="acerto-saldo-display" readonly style="background:var(--s2);color:var(--t2)">
     </div>
-    <div class="field"><label>Valor pago (R$)</label><input type="number" id="acerto-valor" step="0.01" min="0"></div>
-    <div class="field"><label>Data do pagamento</label><input type="date" id="acerto-data-pag"></div>
     <div class="field">
-      <label>Períodos anteriores <span style="font-size:10px;color:var(--t3);font-weight:400">(saldos de outros períodos a compensar)</span></label>
+      <label>Períodos anteriores <span style="font-size:10px;color:var(--t3);font-weight:400">opcional · outros saldos a compensar</span></label>
       <div id="periodos-lista"></div>
       <button class="periodo-add-btn" onclick="adicionarPeriodo()">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -732,6 +731,8 @@ body.light .toast{background:rgba(255,255,255,.97);}
         <span id="periodo-total-val" style="font-size:14px;font-weight:800;font-family:var(--mono)"></span>
       </div>
     </div>
+    <div class="field"><label>Valor pago (R$)</label><input type="number" id="acerto-valor" step="0.01" min="0"></div>
+    <div class="field"><label>Data do pagamento</label><input type="date" id="acerto-data-pag"></div>
     <div class="field"><label>Observação</label><input type="text" id="acerto-obs" placeholder="Opcional"></div>
     <div class="mactions">
       <button class="btn-sm" onclick="closeModals()">Cancelar</button>
