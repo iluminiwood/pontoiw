@@ -2258,11 +2258,13 @@ async function abrirComprovanteById(id){
   const f=funcionarios.find(x=>x.cpf===a.cpf)||{};
   const vlrHora=f.salario?f.salario/220:0; // mesma fórmula do reloadBanco
   abrirComprovante({
+    id:a.id,
     funcionario_nome:a.funcionario_nome,cpf:a.cpf,
     periodo_label:a.periodo_label,
     periodo_inicio:a.periodo_inicio,periodo_fim:a.periodo_fim,
     saldo_min:a.saldo_min||0,valor_pago:a.valor_pago||0,
     data_pagamento:a.data_pagamento,observacao:a.observacao,
+    periodos_anteriores:a.periodos_anteriores||[],
     vlrHora
   });
 }
@@ -2356,7 +2358,12 @@ async function salvarAcerto(){
   if(error){toast('Erro ao salvar: '+error.message,'err');return;}
 
   toast(acertoCtx.acertoId?'Acerto atualizado!':'Acerto registrado!','ok');
+  // Busca o acerto recém salvo para obter o id
+  const{data:acertoSalvo}=await sb.from('iw_acertos_horas')
+    .select('id').eq('cpf',acertoCtx.cpf)
+    .order('id',{ascending:false}).limit(1).single();
   const _comp={
+    id:acertoCtx.acertoId||(acertoSalvo?.id)||null,
     funcionario_nome:acertoCtx.nome,cpf:acertoCtx.cpf,
     periodo_label:document.getElementById('acerto-periodo').value,
     periodo_inicio:document.getElementById('acerto-inicio').value,
@@ -2365,6 +2372,7 @@ async function salvarAcerto(){
     valor_pago:parseFloat(document.getElementById('acerto-valor').value)||0,
     data_pagamento:document.getElementById('acerto-data-pag').value,
     observacao:document.getElementById('acerto-obs').value,
+    periodos_anteriores:getPeriodosParaSalvar(),
     vlrHora:acertoCtx.vlrHora||0,
   };
   closeModals();
