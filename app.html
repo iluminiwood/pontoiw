@@ -305,6 +305,27 @@ body.light .toast{background:rgba(255,255,255,.97);}
 .cfg-locked input,.cfg-locked select{pointer-events:none;}
 
 
+/* ===== PERÍODOS ANTERIORES ===== */
+.periodo-row{
+  display:grid;grid-template-columns:1fr auto auto auto;
+  gap:.5rem;align-items:center;
+  padding:.5rem 0;border-bottom:1px solid var(--b1);
+}
+.periodo-row:last-child{border:none;}
+.periodo-add-btn{
+  display:flex;align-items:center;gap:.4rem;
+  font-size:12px;color:var(--em);background:none;
+  border:1px dashed rgba(16,185,129,.3);border-radius:var(--r8);
+  padding:.4rem .75rem;cursor:pointer;width:100%;margin-top:.5rem;
+  justify-content:center;
+}
+.periodo-add-btn:hover{background:rgba(16,185,129,.05);}
+.periodo-total{
+  background:var(--s2);border-radius:var(--r8);
+  padding:.6rem .85rem;margin-top:.75rem;
+  display:flex;justify-content:space-between;align-items:center;
+}
+
 /* ===== TOUR ===== */
 #tour-modal{
   position:fixed;inset:0;z-index:99999;
@@ -699,6 +720,18 @@ body.light .toast{background:rgba(255,255,255,.97);}
     </div>
     <div class="field"><label>Valor pago (R$)</label><input type="number" id="acerto-valor" step="0.01" min="0"></div>
     <div class="field"><label>Data do pagamento</label><input type="date" id="acerto-data-pag"></div>
+    <div class="field">
+      <label>Períodos anteriores <span style="font-size:10px;color:var(--t3);font-weight:400">(saldos de outros períodos a compensar)</span></label>
+      <div id="periodos-lista"></div>
+      <button class="periodo-add-btn" onclick="adicionarPeriodo()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Adicionar período anterior
+      </button>
+      <div class="periodo-total" id="periodo-total" style="display:none">
+        <span style="font-size:12px;color:var(--t2)">Saldo total acumulado</span>
+        <span id="periodo-total-val" style="font-size:14px;font-weight:800;font-family:var(--mono)"></span>
+      </div>
+    </div>
     <div class="field"><label>Observação</label><input type="text" id="acerto-obs" placeholder="Opcional"></div>
     <div class="mactions">
       <button class="btn-sm" onclick="closeModals()">Cancelar</button>
@@ -2020,6 +2053,92 @@ function abrirComprovante(a){
   window._compAcertoId=a.id||null;
 }
 
+// ===== PERÍODOS ANTERIORES =====
+let periodosRows=[];
+
+function adicionarPeriodo(dados){
+  const id=Date.now();
+  const row={id, label:dados?.label||'', saldo_min:dados?.saldo_min||0, valor:dados?.valor||0};
+  periodosRows.push(row);
+  renderPeriodosLista();
+}
+
+function removerPeriodo(id){
+  periodosRows=periodosRows.filter(r=>r.id!==id);
+  renderPeriodosLista();
+}
+
+function renderPeriodosLista(){
+  const el=document.getElementById('periodos-lista');
+  const totalEl=document.getElementById('periodo-total');
+  const totalVal=document.getElementById('periodo-total-val');
+  if(!el) return;
+
+  if(!periodosRows.length){
+    el.innerHTML='';
+    if(totalEl) totalEl.style.display='none';
+    return;
+  }
+
+  let html='';
+  periodosRows.forEach(row=>{
+    const sinal=row.saldo_min>=0?'+':'';
+    html+=`<div class="periodo-row" id="prow-${row.id}">
+      <input type="text" class="finput" placeholder="Ex: Jan–Dez/2025"
+        value="${row.label}" oninput="updatePeriodo(${row.id},'label',this.value)"
+        style="font-size:12px">
+      <input type="number" class="finput" placeholder="min (neg=débito)"
+        value="${row.saldo_min}" step="1"
+        oninput="updatePeriodo(${row.id},'saldo_min',+this.value);atualizarTotalPeriodos()"
+        style="width:90px;font-size:12px" title="Minutos (negativo = débito)">
+      <input type="number" class="finput" placeholder="R$ valor"
+        value="${row.valor}" step="0.01" min="0"
+        oninput="updatePeriodo(${row.id},'valor',+this.value)"
+        style="width:80px;font-size:12px">
+      <button onclick="removerPeriodo(${row.id})" style="background:none;border:none;cursor:pointer;color:var(--r);padding:0 4px" title="Remover">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>`;
+  });
+  el.innerHTML=html;
+
+  // Total acumulado
+  atualizarTotalPeriodos();
+}
+
+function updatePeriodo(id,campo,val){
+  const row=periodosRows.find(r=>r.id===id);
+  if(row) row[campo]=val;
+}
+
+function atualizarTotalPeriodos(){
+  const totalEl=document.getElementById('periodo-total');
+  const totalVal=document.getElementById('periodo-total-val');
+  if(!totalEl||!totalVal) return;
+
+  // Saldo atual do funcionário + períodos anteriores
+  const saldoAtual=acertoCtx?.saldoMin||0;
+  const saldoAnt=periodosRows.reduce((s,r)=>s+(r.saldo_min||0),0);
+  const total=saldoAtual+saldoAnt;
+
+  totalEl.style.display='flex';
+  totalVal.textContent=fromMin(total);
+  totalVal.style.color=total>=0?'var(--g)':'var(--r)';
+}
+
+function getPeriodosParaSalvar(){
+  return periodosRows.map(r=>({
+    label:r.label,
+    saldo_min:Number(r.saldo_min)||0,
+    valor:Number(r.valor)||0
+  }));
+}
+
+function carregarPeriodosNoModal(lista){
+  periodosRows=[];
+  (lista||[]).forEach(p=>adicionarPeriodo(p));
+}
+
 async function excluirAcertoAtual(){
   const id=window._compAcertoId;
   if(!id){toast('Acerto não identificado.','err');return;}
@@ -2177,6 +2296,7 @@ async function editarAcerto(id){
   document.getElementById('acerto-valor').value=a.valor_pago||'';
   document.getElementById('acerto-data-pag').value=a.data_pagamento||'';
   document.getElementById('acerto-obs').value=a.observacao||'';
+  carregarPeriodosNoModal(a.periodos_anteriores||[]);
   document.getElementById('m-acerto').classList.add('open');
 }
 
@@ -2193,6 +2313,7 @@ function abrirAcerto(cpf,nome,funcId,saldoMin,vlrHora){
   document.getElementById('acerto-obs').value='';
   acertoCtx.saldoMin=saldoMin;
   acertoCtx.acertoId=null;// novo registro
+  periodosRows=[];renderPeriodosLista();
   const titleEl=document.getElementById('m-acerto-title');if(titleEl)titleEl.textContent='Registrar acerto de horas';
   document.getElementById('m-acerto').classList.add('open');
 }
@@ -2218,7 +2339,8 @@ async function salvarAcerto(){
     // EDIÇÃO — atualiza registro existente
     ({error}=await sb.from('iw_acertos_horas').update({
       periodo_label,periodo_inicio:periodo_inicio||null,periodo_fim:periodo_fim||null,
-      valor_pago,data_pagamento,observacao:observacao||null
+      valor_pago,data_pagamento,observacao:observacao||null,
+      periodos_anteriores:getPeriodosParaSalvar()
     }).eq('id',acertoCtx.acertoId));
   } else {
     // NOVO — insere registro
@@ -2390,7 +2512,7 @@ async function reloadBanco(){
   }
 
   // Busca o último acerto registrado de cada funcionário
-  const{data:acertosData}=await sb.from('iw_acertos_horas').select('id,cpf,funcionario_nome,periodo_label,periodo_inicio,periodo_fim,saldo_min,valor_pago,data_pagamento,observacao').order('data_pagamento',{ascending:false}).limit(200);
+  const{data:acertosData}=await sb.from('iw_acertos_horas').select('id,cpf,funcionario_nome,periodo_label,periodo_inicio,periodo_fim,saldo_min,valor_pago,data_pagamento,observacao,periodos_anteriores').order('data_pagamento',{ascending:false}).limit(200);
   const ultimoAcertoPorCpf={};
   acertosPorCpf={};             // histórico completo por CPF (global)
   cortePorCpf={};               // data de corte do saldo (global)
