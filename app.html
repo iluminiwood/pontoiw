@@ -733,19 +733,25 @@ body.light .toast{background:rgba(255,255,255,.97);}
     </div>
     <div class="field">
       <label>Tipo de encerramento</label>
-      <div style="display:flex;flex-direction:column;gap:.35rem;margin-top:.25rem">
-        <label style="display:flex;align-items:center;gap:.5rem;font-size:13px;cursor:pointer">
-          <input type="radio" name="tipo-acerto" id="tipo-pagamento" value="pagamento" checked onchange="acertoTipo=this.value">
-          Pagamento de horas extras ao colaborador
-        </label>
-        <label style="display:flex;align-items:center;gap:.5rem;font-size:13px;cursor:pointer">
-          <input type="radio" name="tipo-acerto" id="tipo-desconto" value="desconto" onchange="acertoTipo=this.value">
-          Desconto de horas em débito do colaborador
-        </label>
-        <label style="display:flex;align-items:center;gap:.5rem;font-size:13px;cursor:pointer">
-          <input type="radio" name="tipo-acerto" id="tipo-bonificacao" value="bonificacao" onchange="acertoTipo=this.value">
-          Quitação como bonificação — saldo absorvido pela empresa, sem desconto
-        </label>
+      <div style="margin-top:.35rem">
+        <div style="margin-bottom:.5rem">
+          <label style="display:block;padding:.5rem .65rem;border-radius:var(--r8);border:1px solid var(--b1);cursor:pointer;font-size:13px;color:var(--t1)">
+            <input type="radio" name="tipo-acerto" value="pagamento" checked onchange="acertoTipo=this.value" style="margin-right:.5rem">
+            Pagamento de extras ao colaborador
+          </label>
+        </div>
+        <div style="margin-bottom:.5rem">
+          <label style="display:block;padding:.5rem .65rem;border-radius:var(--r8);border:1px solid var(--b1);cursor:pointer;font-size:13px;color:var(--t1)">
+            <input type="radio" name="tipo-acerto" value="desconto" onchange="acertoTipo=this.value" style="margin-right:.5rem">
+            Desconto de horas em débito na folha
+          </label>
+        </div>
+        <div>
+          <label style="display:block;padding:.5rem .65rem;border-radius:var(--r8);border:1px solid var(--b1);cursor:pointer;font-size:13px;color:var(--t1)">
+            <input type="radio" name="tipo-acerto" value="bonificacao" onchange="acertoTipo=this.value" style="margin-right:.5rem">
+            Quitação como bonificação — sem desconto
+          </label>
+        </div>
       </div>
     </div>
     <div class="field"><label>Valor de referência (R$) <span style="font-size:10px;color:var(--t3);font-weight:400">calculado automaticamente</span></label><input type="number" id="acerto-valor" step="0.01" min="0" oninput="this.dataset.manual='1'"></div>
@@ -2370,7 +2376,7 @@ function abrirAcerto(cpf,nome,funcId,saldoMin,vlrHora){
   acertoCtx.saldoMin=saldoMin;
   acertoCtx.acertoId=null;
   acertoTipo='pagamento';
-  document.querySelectorAll('input[name="tipo-acerto"]').forEach(r=>r.checked=(r.value==='pagamento'));
+  document.querySelectorAll('input[name="tipo-acerto"]').forEach(r=>{r.checked=r.value==='pagamento';});
   periodosRows=[];renderPeriodosLista();
   const titleEl=document.getElementById('m-acerto-title');if(titleEl)titleEl.textContent='Registrar acerto de horas';
   document.getElementById('m-acerto').classList.add('open');
