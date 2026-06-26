@@ -674,8 +674,11 @@ body.light .toast{background:rgba(255,255,255,.97);}
     </div>
     <div id="comp-body"></div>
     <div class="mactions" style="margin-top:1.25rem">
-      <button class="btn-sm" onclick="closeModals()">Fechar</button>
-      <button class="btn" onclick="imprimirComprovante()">Imprimir</button>
+      <button class="btn-sm" style="color:var(--r);border-color:rgba(248,113,113,.3)" id="btn-excluir-acerto" onclick="excluirAcertoAtual()" title="Remover este acerto e restaurar o saldo">Excluir acerto</button>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn-sm" onclick="closeModals()">Fechar</button>
+        <button class="btn" onclick="imprimirComprovante()">Imprimir</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1985,20 +1988,12 @@ function abrirComprovante(a){
         </div>
       </div>
 
-      <!-- Valores financeiros -->
-      ${vlrHora?`<div style="background:var(--s2);border-radius:var(--r8);padding:.75rem;margin-bottom:.85rem">
-        <div style="font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;margin-bottom:.6rem">Valores (base: ${fmtBRL(vlrHora)}/hora)</div>
-        <div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--b1)">
-          <span style="font-size:13px;color:var(--t2)">Valor horas extras</span>
-          <span style="font-size:13px;font-weight:700;color:var(--g)">${fmtBRL(custoExtras)}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--b1)">
-          <span style="font-size:13px;color:var(--t2)">Valor horas em débito</span>
-          <span style="font-size:13px;font-weight:700;color:var(--r)">${fmtBRL(custoDevendo)}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:.5rem 0 0">
-          <span style="font-size:14px;font-weight:800;color:var(--t1)">Valor pago / descontado</span>
-          <span style="font-size:16px;font-weight:900;font-family:var(--mono);color:${Number(a.valor_pago)>=0?'var(--g)':'var(--r)'}">${fmtBRL(a.valor_pago)}</span>
+      <!-- Valor do acerto -->
+      ${Number(a.valor_pago)!==0?`<div style="background:var(--s2);border-radius:var(--r8);padding:.75rem;margin-bottom:.85rem">
+        <div style="font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;margin-bottom:.6rem">Valor do acerto</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:.25rem 0">
+          <span style="font-size:14px;font-weight:800;color:var(--t1)">${Number(a.valor_pago)>=0?'Valor a receber':'Valor a descontar'}</span>
+          <span style="font-size:22px;font-weight:900;font-family:var(--mono);color:${Number(a.valor_pago)>=0?'var(--g)':'var(--r)'}">${fmtBRL(Math.abs(Number(a.valor_pago)))}</span>
         </div>
       </div>`:''}
 
@@ -2019,6 +2014,23 @@ function abrirComprovante(a){
       </div>
     </div>`;
   document.getElementById('m-comprovante').classList.add('open');
+  // Guarda ID para eventual exclusão
+  const excBtn=document.getElementById('btn-excluir-acerto');
+  if(excBtn) excBtn.style.display=a.id?'':'none';
+  window._compAcertoId=a.id||null;
+}
+
+async function excluirAcertoAtual(){
+  const id=window._compAcertoId;
+  if(!id){toast('Acerto não identificado.','err');return;}
+  if(!confirm('Excluir este acerto? O saldo do banco de horas voltará a incluir o período quitado.')) return;
+  const{error}=await sb.from('iw_acertos_horas').delete().eq('id',id);
+  if(error){toast('Erro ao excluir: '+error.message,'err');return;}
+  // Limpa cache
+  acertosCache=acertosCache.filter(a=>a.id!==id);
+  toast('Acerto excluído. Saldo restaurado.','ok');
+  closeModals();
+  reloadBanco();
 }
 
 function imprimirComprovante(){
@@ -2124,7 +2136,7 @@ async function abrirComprovanteById(id){
   }
   // Busca salário do funcionário
   const f=funcionarios.find(x=>x.cpf===a.cpf)||{};
-  const vlrHora=f.salario?(f.salario*12/52/(f.carga||44)):0;
+  const vlrHora=f.salario?f.salario/220:0; // mesma fórmula do reloadBanco
   abrirComprovante({
     funcionario_nome:a.funcionario_nome,cpf:a.cpf,
     periodo_label:a.periodo_label,
@@ -2143,7 +2155,7 @@ async function editarAcerto(id){
     a=data;
   }
   const f=funcionarios.find(x=>x.cpf===a.cpf)||{};
-  const vlrHora=f.salario?(f.salario*12/52/(f.carga||44)):0;
+  const vlrHora=f.salario?f.salario/220:0; // mesma fórmula do reloadBanco
 
   // Preenche contexto como edição
   acertoCtx={
