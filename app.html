@@ -896,8 +896,6 @@ body.light .toast{background:rgba(255,255,255,.97);}
 <script>
 const SB_URL='https://mcoemytfdrfrtbfbpvqr.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jb2VteXRmZHJmcnRiZmJwdnFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3OTgyODcsImV4cCI6MjA5NTM3NDI4N30.uJZKW5oUlexLo_XENDCohlchGKlG54Pwt0gvqpuy-i8';
-const ADMIN_HASH='03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4';
-const ENC_HASH='c33670090565d2f1e5404c12c3a6a1b0710338799fb6803f59401f15a455c6f6';
 const sb=supabase.createClient(SB_URL,SB_KEY);
 const COLORS=['#10b981','#3dd68c','#60a5fa','#f87171','#fb923c','#c084fc','#34d399'];
 let JORNADA={1:540,2:540,3:540,4:540,5:480}; // Seg-Qui 9h, Sex 8h (será recalculado pela config da empresa)
@@ -1083,10 +1081,6 @@ function applyTheme(theme){
   applyTheme(saved);
 })();
 
-async function sha256(msg){
-  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(msg));
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-}
 function toast(msg,tipo){
   tipo=tipo||'info';
   var wrap=document.getElementById('toast-wrap');
@@ -3523,7 +3517,16 @@ async function saveFunc(){
   const sal=parseFloat(document.getElementById('f-salario').value)||0;
   const adm=document.getElementById('f-admissao').value||new Date().toISOString().split('T')[0];
   const aniv=document.getElementById('f-aniversario').value||null;
-  await sb.from('iw_funcionarios').insert({id:Date.now(),nome,cargo,pin:pv,cpf,carga:9,ativo:true,salario:sal,admissao:adm,aniversario:aniv,atualizado_em:new Date().toISOString()});
+  const{error:insErr}=await sb.from('iw_funcionarios').insert({id:Date.now(),nome,cargo,pin:pv,cpf,carga:9,ativo:true,salario:sal,admissao:adm,aniversario:aniv,atualizado_em:new Date().toISOString()});
+  if(insErr){
+    if((insErr.message||'').includes('LIMITE_PLANO')){
+      toast('Você atingiu o limite de colaboradores do seu plano. Faça upgrade para adicionar mais.','err');
+      setTimeout(()=>abrirAssinarPlano(),400);
+    } else {
+      toast('Não foi possível cadastrar: '+(insErr.message||'erro desconhecido'),'err');
+    }
+    return;
+  }
   ['f-nome','f-cargo','f-pin','f-cpf','f-salario','f-admissao','f-aniversario'].forEach(id=>document.getElementById(id).value='');
   toast('Funcionário cadastrado!','ok');
   closeModals();await loadBase();renderEquipe(document.getElementById('content'));
