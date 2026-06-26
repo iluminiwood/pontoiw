@@ -684,7 +684,7 @@ body.light .toast{background:rgba(255,255,255,.97);}
 <div class="moverlay" id="m-acerto">
   <div class="modal">
     <div class="mhandle"></div>
-    <div class="mtitle">Registrar acerto de horas</div>
+    <div class="mtitle" id="m-acerto-title">Registrar acerto de horas</div>
     <div class="msub" id="m-acerto-sub"></div>
     <div class="field"><label>Período</label><input type="text" id="acerto-periodo" placeholder="Ex: Jan–Jun/2026"></div>
     <div class="frow-2col" style="display:flex;gap:10px">
@@ -2068,6 +2068,104 @@ function imprimirComprovante(){
   w.document.close();
 }
 
+// Gera HTML dos acertos por funcionário (evita template literal aninhado)
+function gerarHtmlAcertos(cpf,nome,funcId,saldo,vlrHora){
+  const lista=acertosPorCpf[cpf]||[];
+  const corte=cortePorCpf[cpf];
+  let out='';
+
+  // Histórico de acertos (max 3 mais recentes)
+  lista.slice(0,3).forEach(a=>{
+    const[y,m,dd]=(a.data_pagamento||'').split('-');
+    const vlr=Number(a.valor_pago||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
+    out+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--b1)">
+      <div>
+        <span style="font-size:12px;font-weight:700;color:var(--t1)">${a.periodo_label||'Acerto'}</span>
+        <span style="font-size:11px;color:var(--t2);margin-left:.4rem">${dd}/${m}/${y} · R$ ${vlr}</span>
+      </div>
+      <div style="display:flex;gap:4px">
+        <button class="btn-xs" onclick="abrirComprovanteById(${a.id})" style="font-size:10px;padding:2px 8px">Ver</button>
+        <button class="btn-xs" onclick="editarAcerto(${a.id})" style="font-size:10px;padding:2px 8px;color:var(--acc);border-color:rgba(16,185,129,.3)">Editar</button>
+      </div>
+    </div>`;
+  });
+
+  // Nenhum acerto
+  if(!lista.length){
+    out+='<div style="font-size:11px;color:var(--t3);margin-bottom:.4rem">Nenhum acerto registrado ainda</div>';
+  }
+
+  // Data de corte do saldo
+  if(corte){
+    const[y,m,d]=corte.split('-');
+    out+=`<div style="font-size:10px;color:var(--em);margin:.3rem 0">Saldo desde ${d}/${m}/${y} (após último acerto)</div>`;
+  }
+
+  // Botão novo acerto
+  const nomeEsc=nome.replace(/'/g,"\'");
+  out+=`<div style="text-align:right;margin-top:.4rem">
+    <button class="btn-xs accent" style="color:var(--acc);border-color:rgba(16,185,129,.3)" onclick="abrirAcerto('${cpf}','${nomeEsc}',${funcId},${saldo},${vlrHora})">+ Registrar acerto</button>
+  </div>`;
+  return out;
+}
+
+// Cache de acertos para edição/comprovante
+let acertosCache=[];
+
+async function abrirComprovanteById(id){
+  // Busca o acerto no cache ou no banco
+  let a=acertosCache.find(x=>x.id===id);
+  if(!a){
+    const{data}=await sb.from('iw_acertos_horas').select('*').eq('id',id).single();
+    if(!data){toast('Acerto não encontrado.','err');return;}
+    a=data;
+  }
+  // Busca salário do funcionário
+  const f=funcionarios.find(x=>x.cpf===a.cpf)||{};
+  const vlrHora=f.salario?(f.salario*12/52/(f.carga||44)):0;
+  abrirComprovante({
+    funcionario_nome:a.funcionario_nome,cpf:a.cpf,
+    periodo_label:a.periodo_label,
+    periodo_inicio:a.periodo_inicio,periodo_fim:a.periodo_fim,
+    saldo_min:a.saldo_min||0,valor_pago:a.valor_pago||0,
+    data_pagamento:a.data_pagamento,observacao:a.observacao,
+    vlrHora
+  });
+}
+
+async function editarAcerto(id){
+  let a=acertosCache.find(x=>x.id===id);
+  if(!a){
+    const{data}=await sb.from('iw_acertos_horas').select('*').eq('id',id).single();
+    if(!data){toast('Acerto não encontrado.','err');return;}
+    a=data;
+  }
+  const f=funcionarios.find(x=>x.cpf===a.cpf)||{};
+  const vlrHora=f.salario?(f.salario*12/52/(f.carga||44)):0;
+
+  // Preenche contexto como edição
+  acertoCtx={
+    nome:a.funcionario_nome,cpf:a.cpf,
+    funcId:a.funcionario_id,saldoMin:a.saldo_min||0,
+    vlrHora,acertoId:a.id  // ← flag de edição
+  };
+
+  // Título do modal
+  const titleEl=document.getElementById('m-acerto-title');
+  if(titleEl) titleEl.textContent='Editar acerto de horas';
+  const subEl=document.getElementById('m-acerto-sub');
+  if(subEl) subEl.textContent=a.funcionario_nome?.split(' ')[0]+' · Editando acerto';
+
+  // Preenche os campos
+  document.getElementById('acerto-periodo').value=a.periodo_label||'';
+  document.getElementById('acerto-inicio').value=a.periodo_inicio||'';
+  document.getElementById('acerto-fim').value=a.periodo_fim||'';
+  document.getElementById('acerto-valor').value=a.valor_pago||'';
+  document.getElementById('acerto-data-pag').value=a.data_pagamento||'';
+  document.getElementById('acerto-obs').value=a.observacao||'';
+  document.getElementById('m-acerto').classList.add('open');
+}
+
 function abrirAcerto(cpf,nome,funcId,saldoMin,vlrHora){
   acertoCtx={cpf,nome,funcId,vlrHora};
   document.getElementById('m-acerto-sub').textContent=nome.split(' ')[0];
@@ -2080,6 +2178,8 @@ function abrirAcerto(cpf,nome,funcId,saldoMin,vlrHora){
   document.getElementById('acerto-data-pag').value=new Date().toISOString().split('T')[0];
   document.getElementById('acerto-obs').value='';
   acertoCtx.saldoMin=saldoMin;
+  acertoCtx.acertoId=null;// novo registro
+  const titleEl=document.getElementById('m-acerto-title');if(titleEl)titleEl.textContent='Registrar acerto de horas';
   document.getElementById('m-acerto').classList.add('open');
 }
 
@@ -2099,16 +2199,26 @@ async function salvarAcerto(){
   const btn=document.getElementById('acerto-save-btn');
   if(btn){btn.disabled=true;btn.textContent='Salvando...';}
 
-  const{error}=await sb.from('iw_acertos_horas').insert({
-    funcionario_id:acertoCtx.funcId,funcionario_nome:acertoCtx.nome,cpf:acertoCtx.cpf,
-    periodo_label,periodo_inicio:periodo_inicio||null,periodo_fim:periodo_fim||null,
-    saldo_min:acertoCtx.saldoMin||0,valor_pago,data_pagamento,observacao:observacao||null
-  });
+  let error;
+  if(acertoCtx.acertoId){
+    // EDIÇÃO — atualiza registro existente
+    ({error}=await sb.from('iw_acertos_horas').update({
+      periodo_label,periodo_inicio:periodo_inicio||null,periodo_fim:periodo_fim||null,
+      valor_pago,data_pagamento,observacao:observacao||null
+    }).eq('id',acertoCtx.acertoId));
+  } else {
+    // NOVO — insere registro
+    ({error}=await sb.from('iw_acertos_horas').insert({
+      funcionario_id:acertoCtx.funcId,funcionario_nome:acertoCtx.nome,cpf:acertoCtx.cpf,
+      periodo_label,periodo_inicio:periodo_inicio||null,periodo_fim:periodo_fim||null,
+      saldo_min:acertoCtx.saldoMin||0,valor_pago,data_pagamento,observacao:observacao||null
+    }));
+  }
 
   if(btn){btn.disabled=false;btn.textContent='Salvar';}
   if(error){toast('Erro ao salvar: '+error.message,'err');return;}
 
-  toast('Acerto registrado!','ok');
+  toast(acertoCtx.acertoId?'Acerto atualizado!':'Acerto registrado!','ok');
   const _comp={
     funcionario_nome:acertoCtx.nome,cpf:acertoCtx.cpf,
     periodo_label:document.getElementById('acerto-periodo').value,
@@ -2266,12 +2376,27 @@ async function reloadBanco(){
   }
 
   // Busca o último acerto registrado de cada funcionário
-  const{data:acertosData}=await sb.from('iw_acertos_horas').select('cpf,periodo_label,valor_pago,data_pagamento').order('data_pagamento',{ascending:false}).limit(200);
+  const{data:acertosData}=await sb.from('iw_acertos_horas').select('id,cpf,funcionario_nome,periodo_label,periodo_inicio,periodo_fim,saldo_min,valor_pago,data_pagamento,observacao').order('data_pagamento',{ascending:false}).limit(200);
   const ultimoAcertoPorCpf={};
-  (acertosData||[]).forEach(a=>{if(!ultimoAcertoPorCpf[a.cpf])ultimoAcertoPorCpf[a.cpf]=a;});
+  const acertosPorCpf={};       // histórico completo por CPF
+  const cortePorCpf={};         // data de corte do saldo (dia seguinte ao último periodo_fim)
+  acertosCache=acertosData||[];
+  (acertosData||[]).forEach(a=>{
+    if(!ultimoAcertoPorCpf[a.cpf]) ultimoAcertoPorCpf[a.cpf]=a;
+    if(!acertosPorCpf[a.cpf]) acertosPorCpf[a.cpf]=[];
+    acertosPorCpf[a.cpf].push(a);
+    // Corte: dia seguinte ao fim do período mais recente quitado
+    if(!cortePorCpf[a.cpf] && a.periodo_fim){
+      const d=new Date(a.periodo_fim+'T12:00:00');
+      d.setDate(d.getDate()+1);
+      cortePorCpf[a.cpf]=d.toISOString().split('T')[0];
+    }
+  });
 
   const porCpf={};
   todosR.forEach(r=>{
+    // Ignora registros já quitados (anteriores à data de corte)
+    if(cortePorCpf[r.cpf] && r.data_local < cortePorCpf[r.cpf]) return;
     if(!porCpf[r.cpf])porCpf[r.cpf]={nome:r.funcionario_nome,dias:{}};
     if(!porCpf[r.cpf].dias[r.data_local])porCpf[r.cpf].dias[r.data_local]=[];
     porCpf[r.cpf].dias[r.data_local].push({hora:r.data_hora_local?.slice(11,16)||'00:00',tipo:r.tipo});
@@ -2355,8 +2480,7 @@ async function reloadBanco(){
       </div>
       ${custoHtml}
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--b1);gap:8px;flex-wrap:wrap">
-        ${ultimoAcertoPorCpf[f.cpf]?`<div style="font-size:11px;color:var(--t2)">Último acerto: ${(()=>{const d=ultimoAcertoPorCpf[f.cpf].data_pagamento;const[y,m,dd]=d.split('-');return dd+'/'+m+'/'+y;})()} · R$ ${Number(ultimoAcertoPorCpf[f.cpf].valor_pago||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>`:'<div style="font-size:11px;color:var(--t3)">Nenhum acerto registrado ainda</div>'}
-        <button class="btn-xs accent" style="color:var(--acc);border-color:rgba(16,185,129,.3)" onclick="abrirAcerto('${f.cpf}','${f.nome.replace(/'/g,"\'")}',${f.id},${saldo},${vlrHora})">Registrar acerto</button>
+        ${gerarHtmlAcertos(f.cpf,f.nome,f.id,saldo,vlrHora)}
       </div>
     </div>`;
   });
