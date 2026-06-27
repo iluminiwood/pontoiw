@@ -3714,15 +3714,16 @@ function tourAvancar(){
 
 // ===== CHECKLIST ONBOARDING =====
 const CK_KEY='iw_ponto_checklist_v1';
+function ckKey(){ return CK_KEY+'_'+(empresaAtual||'none'); }
 
 function getChecklistState(){
-  try{return JSON.parse(localStorage.getItem(CK_KEY)||'{}');}
+  try{return JSON.parse(localStorage.getItem(ckKey())||'{}');}
   catch{return {};}
 }
 function saveChecklistItem(key){
   const st=getChecklistState();
   st[key]=true;
-  localStorage.setItem(CK_KEY,JSON.stringify(st));
+  localStorage.setItem(ckKey(),JSON.stringify(st));
 }
 function checklistCompleto(){
   const st=getChecklistState();
