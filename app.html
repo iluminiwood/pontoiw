@@ -1393,7 +1393,8 @@ async function initApp(){
     document.getElementById('slbl').textContent=sbOk?'Online':'Offline';
     if(sbOk){
       if(empresaAtual){
-        const{data:cfg}=await sb.from('empresas').select('nome,jornada_entrada,jornada_almoco_ini,jornada_almoco_fim,jornada_saida,jornada_saida_sexta,tolerancia_min,modalidade_horas,metodo_ponto,plano,plano_expira_em').eq('id',empresaAtual).single();
+        const{data:cfg}=await sb.from('empresas').select('nome,jornada_entrada,jornada_almoco_ini,jornada_almoco_fim,jornada_saida,jornada_saida_sexta,tolerancia_min,modalidade_horas,metodo_ponto,plano,plano_expira_em,onboarding_tour_visto,onboarding_checklist').eq('id',empresaAtual).single();
+        if(cfg){ onbTourVisto=!!cfg.onboarding_tour_visto; onbChecklist=cfg.onboarding_checklist||{}; }
         aplicarConfigEmpresa(cfg);
       }
       await loadBase();
@@ -1437,7 +1438,7 @@ async function renderDash(c){
   // Checklist de onboarding (só admin, só quando incompleto)
   if(perfilUsuario==='admin' && !checklistCompleto()){
     // Só mostra checklist se o tour já foi visto
-    if(localStorage.getItem(TOUR_KEY)){
+    if(onbTourVisto){
       setTimeout(()=>renderChecklist(),400);
     }
   }
@@ -3634,7 +3635,6 @@ async function reloadAtrasos(){
 
 // ===== TOUR =====
 // resetarTour() no console para testar novamente
-const TOUR_KEY='iw_ponto_tour_v2';
 let tourStep=0;
 
 const SVG_ICONS={
@@ -3659,7 +3659,7 @@ const TOUR_STEPS=[
 ];
 
 function iniciarTour(){
-  if(localStorage.getItem(TOUR_KEY)) return;
+  if(onbTourVisto) return;
   if(perfilUsuario!=='admin') return;
   tourStep=0;
   renderTourStep();
@@ -3694,14 +3694,15 @@ function renderTourStep(){
 }
 
 function fecharTour(){
-  localStorage.setItem(TOUR_KEY,'1');
+  onbTourVisto=true;
+  if(empresaAtual){ sb.from('empresas').update({onboarding_tour_visto:true}).eq('id',empresaAtual).then(()=>{},()=>{}); }
   document.getElementById('tour-modal').classList.remove('open');
   renderChecklist();
 }
 
 function resetarTour(){
-  localStorage.removeItem(TOUR_KEY);
-  localStorage.removeItem(CK_KEY);
+  onbTourVisto=false; onbChecklist={};
+  if(empresaAtual){ sb.from('empresas').update({onboarding_tour_visto:false,onboarding_checklist:{}}).eq('id',empresaAtual).then(()=>{},()=>{}); }
   toast('Tour resetado! Recarregue a página.','ok');
 }
 
@@ -3713,17 +3714,18 @@ function tourAvancar(){
 }
 
 // ===== CHECKLIST ONBOARDING =====
-const CK_KEY='iw_ponto_checklist_v1';
-function ckKey(){ return CK_KEY+'_'+(empresaAtual||'none'); }
+let onbChecklist={};      // estado do checklist (espelho do banco)
+let onbTourVisto=false;   // tour já visto (espelho do banco)
 
-function getChecklistState(){
-  try{return JSON.parse(localStorage.getItem(ckKey())||'{}');}
-  catch{return {};}
-}
+function getChecklistState(){ return onbChecklist||{}; }
 function saveChecklistItem(key){
-  const st=getChecklistState();
-  st[key]=true;
-  localStorage.setItem(ckKey(),JSON.stringify(st));
+  if(!onbChecklist) onbChecklist={};
+  if(onbChecklist[key]) return;            // já marcado, evita escrita repetida
+  onbChecklist[key]=true;
+  if(empresaAtual){
+    sb.from('empresas').update({onboarding_checklist:onbChecklist}).eq('id',empresaAtual)
+      .then(()=>{}, ()=>{});               // fire-and-forget, não trava a UI
+  }
 }
 function checklistCompleto(){
   const st=getChecklistState();
@@ -3754,7 +3756,7 @@ function renderChecklist(){
   const st2=getChecklistState();
   const total=items.length;
   const feitos=items.filter(i=>st2[i.key]).length;
-  if(feitos===total){localStorage.setItem(CK_KEY,JSON.stringify(Object.fromEntries(items.map(i=>[i.key,true]))));return;}
+  if(feitos===total){return;}
 
   const ckHtml=`<div class="onboard-card" id="onboard-card">
     <div class="onboard-title">
@@ -3780,9 +3782,8 @@ function renderChecklist(){
 
 function dispensarChecklist(){
   const items=['funcionarios','pin','jornada','totem','batida'];
-  const st=getChecklistState();
-  items.forEach(k=>st[k]=true);
-  localStorage.setItem(CK_KEY,JSON.stringify(st));
+  items.forEach(k=>{ onbChecklist[k]=true; });
+  if(empresaAtual){ sb.from('empresas').update({onboarding_checklist:onbChecklist}).eq('id',empresaAtual).then(()=>{},()=>{}); }
   document.getElementById('onboard-card')?.remove();
 }
 
