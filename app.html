@@ -1398,6 +1398,7 @@ async function initApp(){
       await loadBase();
     }
   }catch(e){document.getElementById('sdot').className='sdot err';}
+  initAssistente();
 }
 async function loadBase(){
   // Busca tudo em paralelo em vez de sequencial — bem mais rápido
@@ -3787,7 +3788,82 @@ function marcarChecklistItem(key){
   saveChecklistItem(key);
 }
 
+// ===== ASSISTENTE DE IA (Gemini via Edge Function) =====
+const IA_URL=SB_URL+'/functions/v1/iw-assistente';
+let iaHistorico=[]; // {role:'user'|'assistant', content}
+let iaEnviando=false;
 
+function initAssistente(){
+  // Mostra o botão só para admin
+  const l=document.getElementById('ia-launcher');
+  if(l) l.style.display=(perfilUsuario==='admin')?'flex':'none';
+}
+
+function toggleAssistente(){
+  const p=document.getElementById('ia-panel');
+  if(!p) return;
+  const abrindo=!p.classList.contains('open');
+  p.classList.toggle('open');
+  if(abrindo){
+    if(iaHistorico.length===0){
+      addIaMsg('bot','Olá! Sou o assistente do IW Ponto. Pergunte como usar qualquer parte do app — cadastro, banco de horas, totem, planos e mais.');
+    }
+    setTimeout(()=>{const i=document.getElementById('ia-input');if(i)i.focus();},100);
+  }
+}
+
+function addIaMsg(tipo,texto,isErr){
+  const box=document.getElementById('ia-msgs');
+  const d=document.createElement('div');
+  d.className='ia-msg '+(tipo==='user'?'user':'bot')+(isErr?' err':'');
+  d.textContent=texto;
+  box.appendChild(d);
+  box.scrollTop=box.scrollHeight;
+  return d;
+}
+
+async function enviarAssistente(){
+  if(iaEnviando) return;
+  const input=document.getElementById('ia-input');
+  const texto=(input.value||'').trim();
+  if(!texto) return;
+  input.value='';
+  addIaMsg('user',texto);
+  iaHistorico.push({role:'user',content:texto});
+
+  iaEnviando=true;
+  document.getElementById('ia-send').disabled=true;
+  const box=document.getElementById('ia-msgs');
+  const typing=document.createElement('div');
+  typing.className='ia-typing';typing.textContent='digitando...';
+  box.appendChild(typing);box.scrollTop=box.scrollHeight;
+
+  try{
+    const{data:{session}}=await sb.auth.getSession();
+    const token=session?.access_token;
+    if(!token){throw new Error('sem sessão');}
+    const res=await fetch(IA_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body:JSON.stringify({messages:iaHistorico.slice(-10)})
+    });
+    typing.remove();
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok){
+      addIaMsg('bot',data.error||'O assistente está indisponível no momento. Tente novamente.',true);
+    } else {
+      addIaMsg('bot',data.reply);
+      iaHistorico.push({role:'assistant',content:data.reply});
+    }
+  }catch(e){
+    typing.remove();
+    addIaMsg('bot','Não consegui falar com o assistente. Verifique sua conexão e tente de novo.',true);
+  }finally{
+    iaEnviando=false;
+    document.getElementById('ia-send').disabled=false;
+    input.focus();
+  }
+}
 
 </script>
 
@@ -3807,5 +3883,44 @@ function marcarChecklistItem(key){
   </div>
 </div>
 <div id="toast-wrap"></div>
+
+<!-- ===== ASSISTENTE DE IA (só admin) ===== -->
+<style>
+#ia-launcher{position:fixed;bottom:20px;right:20px;width:56px;height:56px;border-radius:50%;background:var(--acc);border:none;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.25);display:none;align-items:center;justify-content:center;z-index:900;transition:transform .15s}
+#ia-launcher:hover{transform:scale(1.06)}
+#ia-launcher svg{width:26px;height:26px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#ia-panel{position:fixed;bottom:88px;right:20px;width:360px;max-width:calc(100vw - 32px);height:520px;max-height:calc(100vh - 120px);background:var(--s1);border:1px solid var(--b1);border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.4);display:none;flex-direction:column;overflow:hidden;z-index:901}
+#ia-panel.open{display:flex}
+#ia-head{background:var(--acc);padding:14px 16px;display:flex;align-items:center;justify-content:space-between}
+#ia-head .t{color:#fff;font-weight:700;font-size:14px;display:flex;align-items:center;gap:7px}
+#ia-head .t svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#ia-head button{background:transparent;border:none;color:#fff;cursor:pointer;font-size:20px;line-height:1;opacity:.85}
+#ia-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+.ia-msg{max-width:85%;padding:9px 12px;border-radius:12px;font-size:13px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word}
+.ia-msg.user{align-self:flex-end;background:var(--acc);color:#fff;border-bottom-right-radius:4px}
+.ia-msg.bot{align-self:flex-start;background:var(--ad);color:var(--t1);border:1px solid rgba(16,185,129,.18);border-bottom-left-radius:4px}
+.ia-msg.bot.err{background:var(--rd);border-color:rgba(248,113,113,.25);color:var(--r)}
+.ia-typing{align-self:flex-start;color:var(--t2);font-size:12px;padding:4px 12px}
+#ia-foot{padding:10px;border-top:1px solid var(--b1);display:flex;gap:8px;align-items:flex-end}
+#ia-input{flex:1;background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:9px 11px;color:var(--t1);font-size:13px;font-family:inherit;resize:none;max-height:90px;outline:none}
+#ia-input:focus{border-color:var(--acc)}
+#ia-send{background:var(--acc);border:none;border-radius:10px;width:38px;height:38px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+#ia-send:disabled{opacity:.5;cursor:default}
+#ia-send svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+</style>
+<button id="ia-launcher" onclick="toggleAssistente()" title="Assistente IW Ponto">
+  <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+</button>
+<div id="ia-panel">
+  <div id="ia-head">
+    <span class="t"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Assistente IW Ponto</span>
+    <button onclick="toggleAssistente()">×</button>
+  </div>
+  <div id="ia-msgs"></div>
+  <div id="ia-foot">
+    <textarea id="ia-input" rows="1" placeholder="Pergunte algo sobre o app..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enviarAssistente()}"></textarea>
+    <button id="ia-send" onclick="enviarAssistente()"><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+  </div>
+</div>
 </body>
 </html>
