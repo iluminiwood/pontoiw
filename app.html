@@ -1201,7 +1201,8 @@ async function doSignup(){
   const btn=document.getElementById('signup-btn');
   if(btn){btn.disabled=true;btn.textContent='Criando...';}
 
-  const{data,error}=await sb.auth.signUp({email,password:pw,options:{data:{empresa_nome:empresa,user_nome:nome}}});
+  const redirectURL=location.origin+location.pathname;
+  const{data,error}=await sb.auth.signUp({email,password:pw,options:{emailRedirectTo:redirectURL,data:{empresa_nome:empresa,user_nome:nome}}});
 
   if(error){
     if(btn){btn.disabled=false;btn.textContent='Criar conta';}
