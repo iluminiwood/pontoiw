@@ -1324,7 +1324,16 @@ async function checkExistingSession(){
   try{
     const{data:{session}}=await sb.auth.getSession();
     if(!session) return false;
-    const{data:profile}=await sb.from('profiles').select('*').eq('id',session.user.id).single();
+    let{data:profile}=await sb.from('profiles').select('*').eq('id',session.user.id).single();
+    // Primeiro acesso após confirmar o e-mail (chega com token na URL): cria empresa+perfil
+    if(!profile && session.user?.user_metadata?.empresa_nome){
+      const md=session.user.user_metadata;
+      const{error:rpcErr}=await sb.rpc('criar_empresa_e_perfil',{nome_empresa:md.empresa_nome,nome_usuario:md.user_nome||md.empresa_nome});
+      if(!rpcErr){
+        const r=await sb.from('profiles').select('*').eq('id',session.user.id).single();
+        profile=r.data;
+      }
+    }
     if(!profile){await sb.auth.signOut();return false;}
     perfilUsuario=profile.role;
     empresaAtual=profile.empresa_id;
