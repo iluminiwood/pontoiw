@@ -1081,19 +1081,22 @@ function applyTheme(theme){
   applyTheme(saved);
 })();
 
-function toast(msg,tipo){
+function toast(msg,tipo,dur){
   tipo=tipo||'info';
   var wrap=document.getElementById('toast-wrap');
-  if(!wrap)return;
+  if(!wrap)return null;
   var icons={ok:'✓',err:'✕',info:'i'};
   var el=document.createElement('div');
   el.className='toast '+tipo;
   el.innerHTML='<span class="ticon">'+icons[tipo]+'</span><span>'+msg+'</span>';
   wrap.appendChild(el);
-  setTimeout(function(){
-    el.classList.add('out');
-    setTimeout(function(){el.remove();},200);
-  },3500);
+  if(dur!==0){
+    setTimeout(function(){
+      el.classList.add('out');
+      setTimeout(function(){el.remove();},200);
+    },dur||3500);
+  }
+  return el;
 }
 async function abrirTotemDepoisTutorial(){
   const naoMostrar=document.getElementById('tut-nao-mostrar')?.checked;
@@ -2591,6 +2594,7 @@ async function renderBanco(c){
       <option value="mes-ant">Mês anterior</option>
       <option value="tudo">Total geral</option>
     </select>
+    <button class="btn-sm" onclick="gerarRelBanco()" style="white-space:nowrap;margin-left:auto;display:flex;align-items:center;gap:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>Acertos (PDF)</button>
   </div>
   <div id="banco-body"><div class="loading">Carregando...</div></div>`;
   await reloadBanco();
@@ -2865,7 +2869,7 @@ async function renderAfastamentos(c){
     </div>`;
   }
 
-  let html=bannerHtml;
+  let html=`<div class="srow"><h3>Afastamentos e Atestados</h3><button class="btn-sm" onclick="gerarRelAfastamentos()" style="white-space:nowrap;display:flex;align-items:center;gap:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>PDF</button></div>`+bannerHtml;
 
   let htmlWrap='<div class="fgrid2">';
   funcionarios.forEach(f=>{
@@ -3349,7 +3353,7 @@ async function renderEpis(c){
   html+=`</div></div>`;
 
   // Histórico de entregas
-  html+=`<div class="tcard"><div class="thead-row"><span class="thead-title">Histórico de entregas</span></div>`;
+  html+=`<div class="tcard"><div class="thead-row" style="display:flex;align-items:center;justify-content:space-between"><span class="thead-title">Histórico de entregas</span><button class="btn-sm" onclick="gerarRelEpis()" style="white-space:nowrap;display:flex;align-items:center;gap:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>PDF</button></div>`;
   if(!listaEntregas.length){
     html+=`<div class="empty">Nenhuma entrega registrada.</div>`;
   } else {
@@ -3499,7 +3503,7 @@ async function delEntrega(id){
 
 function renderAdv(c){
   if(!temAcesso('adv')){c.innerHTML=cardUpgrade('adv','essencial');return;}
-  c.innerHTML=`<div class="srow"><h3>Advertências</h3><span style="font-size:11px;color:var(--t2)">${advertencias.length} total</span></div><div id="al"></div>`;
+  c.innerHTML=`<div class="srow"><h3>Advertências</h3><div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--t2)">${advertencias.length} total</span><button class="btn-sm" onclick="gerarRelAdv()" style="white-space:nowrap;display:flex;align-items:center;gap:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>PDF</button></div></div><div id="al"></div>`;
   const al=document.getElementById('al');
   if(!advertencias.length){al.innerHTML='<div class="empty">Nenhuma advertência.</div>';return;}
   let advHtml='<div class="fgrid2">';
@@ -3825,9 +3829,9 @@ async function gerarEspelhoPonto(){
   const{ini,fim}=getPeriodo(per);
   const lblPer={mes:'Mês atual','mes-ant':'Mês anterior',semana:'Esta semana',tudo:'Período completo'}[per]||per;
 
-  toast('Gerando relatório...','ok');
+  const tGer=toast('Gerando relatório...','info',0);
   try{ await carregarJsPDF(); }
-  catch(e){ toast('Não foi possível carregar o gerador de PDF. Verifique sua conexão.','err'); return; }
+  catch(e){ tGer&&tGer.remove(); toast('Não foi possível carregar o gerador de PDF. Verifique sua conexão.','err'); return; }
 
   // Busca os registros do período (mesma fonte da aba Batidas)
   let todos=[],from=0;
@@ -3938,12 +3942,138 @@ async function gerarEspelhoPonto(){
     doc.text('Documento de controle de jornada gerado pelo IW Ponto em '+new Date().toLocaleString('pt-BR')+'. Uso interno de gestão.',14,288);
   });
 
-  if(!algumGerado){ toast('Nenhum registro no período para gerar o relatório.','err'); return; }
+  if(!algumGerado){ tGer&&tGer.remove(); toast('Nenhum registro no período para gerar o relatório.','err'); return; }
 
   const nomeArq='espelho-ponto-'+(cpfF&&fmap[cpfF]?fmap[cpfF].nome.split(' ')[0].toLowerCase():'equipe')+'-'+ini+'.pdf';
   doc.save(nomeArq);
+  tGer&&tGer.remove();
   toast('Relatório gerado!','ok');
 }
+
+// ===== HELPERS COMPARTILHADOS DE PDF =====
+async function _pdfStart(subtitulo){
+  if(!temAcesso('relatorios')){
+    toast('Relatórios em PDF estão disponíveis nos planos pagos. Faça upgrade para liberar.','err');
+    setTimeout(()=>abrirAssinarPlano&&abrirAssinarPlano(),400);
+    return null;
+  }
+  const tGer=toast('Gerando relatório...','info',0);
+  try{ await carregarJsPDF(); }
+  catch(e){ tGer&&tGer.remove(); toast('Não foi possível carregar o gerador de PDF. Verifique sua conexão.','err'); return null; }
+  const { jsPDF }=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  doc.setFillColor(16,185,129); doc.rect(0,0,210,22,'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(15);
+  doc.text((empresaNome||'Empresa').toUpperCase(),14,11);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.text(subtitulo,14,17.5);
+  doc.setTextColor(40,40,50);
+  return {doc,tGer};
+}
+function _pdfTabela(doc,head,body,startY){
+  doc.autoTable({
+    startY:startY||32,
+    head:[head], body:body,
+    styles:{fontSize:8,cellPadding:1.8,overflow:'linebreak'},
+    headStyles:{fillColor:[30,30,40],textColor:255,fontSize:8},
+    alternateRowStyles:{fillColor:[245,245,247]},
+    margin:{left:14,right:14}
+  });
+}
+function _pdfFooter(doc){
+  doc.setFontSize(7); doc.setTextColor(150,150,160);
+  doc.text('Documento de controle gerado pelo IW Ponto em '+new Date().toLocaleString('pt-BR')+'. Uso interno de gestão.',14,288);
+}
+function _pdfFim(doc,tGer,nomeArq){
+  _pdfFooter(doc);
+  doc.save(nomeArq);
+  tGer&&tGer.remove();
+  toast('Relatório gerado!','ok');
+}
+
+// ===== RELATÓRIO: BANCO DE HORAS (acertos) =====
+async function gerarRelBanco(){
+  const r=await _pdfStart('Relatório de Acertos · Banco de Horas'); if(!r) return;
+  const {doc,tGer}=r;
+  const{data:acertos}=await sb.from('iw_acertos_horas').select('*').order('data_pagamento',{ascending:false}).limit(500);
+  if(!acertos||!acertos.length){ tGer&&tGer.remove(); toast('Nenhum acerto de banco de horas registrado ainda.','err'); return; }
+  doc.setFontSize(9); doc.text('Histórico de acertos de banco de horas',14,30);
+  const linhas=acertos.map(a=>[
+    a.data_pagamento?fmtData(a.data_pagamento):'—',
+    (a.funcionario_nome||'').split(' ').slice(0,2).join(' '),
+    a.periodo_label||'—',
+    (a.saldo_min>=0?'+':'')+fromMin(a.saldo_min||0),
+    a.tipo_encerramento||'—',
+    a.valor_pago?('R$ '+Number(a.valor_pago).toFixed(2)):'—'
+  ]);
+  _pdfTabela(doc,['Data','Funcionário','Período','Saldo','Encerramento','Valor pago'],linhas,36);
+  _pdfFim(doc,tGer,'banco-horas-acertos-'+new Date().toISOString().slice(0,10)+'.pdf');
+}
+
+// ===== RELATÓRIO: AFASTAMENTOS / ATESTADOS =====
+async function gerarRelAfastamentos(){
+  const r=await _pdfStart('Relatório de Afastamentos e Atestados'); if(!r) return;
+  const {doc,tGer}=r;
+  const{data:afast}=await sb.from('iw_afastamentos').select('*').order('data_inicio',{ascending:false}).limit(500);
+  if(!afast||!afast.length){ tGer&&tGer.remove(); toast('Nenhum afastamento registrado ainda.','err'); return; }
+  doc.setFontSize(9); doc.text('Registro de afastamentos, atestados e licenças',14,30);
+  const linhas=afast.map(a=>[
+    (a.funcionario_nome||'').split(' ').slice(0,2).join(' '),
+    a.tipo||'—',
+    (a.data_inicio?fmtData(a.data_inicio):'?')+' a '+(a.data_fim?fmtData(a.data_fim):'?'),
+    a.documento_nome?'Sim':'Não',
+    a.observacao||'—'
+  ]);
+  _pdfTabela(doc,['Funcionário','Tipo','Período','Atestado','Observação'],linhas,36);
+  _pdfFim(doc,tGer,'afastamentos-'+new Date().toISOString().slice(0,10)+'.pdf');
+}
+
+// ===== RELATÓRIO: ADVERTÊNCIAS =====
+async function gerarRelAdv(){
+  const r=await _pdfStart('Relatório de Advertências'); if(!r) return;
+  const {doc,tGer}=r;
+  const lista=(typeof advertencias!=='undefined'&&advertencias)?advertencias:[];
+  if(!lista.length){ tGer&&tGer.remove(); toast('Nenhuma advertência registrada ainda.','err'); return; }
+  doc.setFontSize(9); doc.text('Registro de advertências aplicadas',14,30);
+  const linhas=lista.map(a=>[
+    a.data_registro||'—',
+    (a.funcionario_nome||'').split(' ').slice(0,2).join(' '),
+    a.tipo||'—',
+    a.descricao||'—'
+  ]);
+  _pdfTabela(doc,['Data','Funcionário','Tipo','Descrição'],linhas,36);
+  _pdfFim(doc,tGer,'advertencias-'+new Date().toISOString().slice(0,10)+'.pdf');
+}
+
+// ===== RELATÓRIO: EPIs ENTREGUES =====
+async function gerarRelEpis(){
+  const r=await _pdfStart('Relatório de Entrega de EPIs'); if(!r) return;
+  const {doc,tGer}=r;
+  const{data:entregas}=await sb.from('iw_epi_entregas').select('*').order('criado_em',{ascending:false}).limit(500);
+  if(!entregas||!entregas.length){ tGer&&tGer.remove(); toast('Nenhuma entrega de EPI registrada ainda.','err'); return; }
+  doc.setFontSize(9); doc.text('Comprovante de entrega de Equipamentos de Proteção Individual',14,30);
+  const linhas=entregas.map(e=>{
+    const itens=(e.itens||[]).map(i=>(i.qtd?i.qtd+'x ':'')+i.nome+(i.ca?' (CA '+i.ca+')':'')).join('; ');
+    return [
+      e.criado_em?fmtData(e.criado_em.slice(0,10)):'—',
+      (e.funcionario_nome||'').split(' ').slice(0,2).join(' '),
+      itens||'—',
+      e.assinatura?'Assinado':'—'
+    ];
+  });
+  doc.autoTable({
+    startY:36,
+    head:[['Data','Funcionário','EPIs entregues','Recibo']],
+    body:linhas,
+    styles:{fontSize:8,cellPadding:1.8,overflow:'linebreak'},
+    headStyles:{fillColor:[30,30,40],textColor:255,fontSize:8},
+    alternateRowStyles:{fillColor:[245,245,247]},
+    columnStyles:{0:{cellWidth:24},1:{cellWidth:38},3:{cellWidth:22}},
+    margin:{left:14,right:14}
+  });
+  _pdfFim(doc,tGer,'epis-entregues-'+new Date().toISOString().slice(0,10)+'.pdf');
+}
+
 
 
 // ===== ASSISTENTE DE IA (Gemini via Edge Function) =====
