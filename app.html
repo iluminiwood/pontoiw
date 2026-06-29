@@ -1703,6 +1703,10 @@ async function renderBatidas(c){
       ${funcionarios.map(f=>`<option value="${f.cpf}">${f.nome.split(' ')[0]}</option>`).join('')}
     </select>
     <span id="bat-refresh-lbl" style="font-size:11px;color:var(--t3);white-space:nowrap"></span>
+    <button class="btn-sm" onclick="gerarEspelhoPonto()" style="white-space:nowrap;margin-left:auto;display:flex;align-items:center;gap:5px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>
+      Espelho (PDF)
+    </button>
   </div>
   <div id="bat-body"><div class="loading">Carregando...</div></div>`;
   await reloadBatidas();
@@ -3790,6 +3794,157 @@ function dispensarChecklist(){
 function marcarChecklistItem(key){
   saveChecklistItem(key);
 }
+
+// ===== ESPELHO DE PONTO (PDF) =====
+let _jspdfPronto=null;
+function carregarJsPDF(){
+  if(_jspdfPronto) return _jspdfPronto;
+  _jspdfPronto=new Promise((resolve,reject)=>{
+    const s1=document.createElement('script');
+    s1.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s1.onload=()=>{
+      const s2=document.createElement('script');
+      s2.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js';
+      s2.onload=resolve; s2.onerror=reject;
+      document.head.appendChild(s2);
+    };
+    s1.onerror=reject;
+    document.head.appendChild(s1);
+  });
+  return _jspdfPronto;
+}
+
+async function gerarEspelhoPonto(){
+  if(!temAcesso('relatorios')){
+    toast('Relatórios em PDF estão disponíveis nos planos pagos. Faça upgrade para liberar.','err');
+    setTimeout(()=>abrirAssinarPlano&&abrirAssinarPlano(),400);
+    return;
+  }
+  const per=document.getElementById('b-periodo')?.value||'mes';
+  const cpfF=document.getElementById('b-func')?.value||'';
+  const{ini,fim}=getPeriodo(per);
+  const lblPer={mes:'Mês atual','mes-ant':'Mês anterior',semana:'Esta semana',tudo:'Período completo'}[per]||per;
+
+  toast('Gerando relatório...','ok');
+  try{ await carregarJsPDF(); }
+  catch(e){ toast('Não foi possível carregar o gerador de PDF. Verifique sua conexão.','err'); return; }
+
+  // Busca os registros do período (mesma fonte da aba Batidas)
+  let todos=[],from=0;
+  while(true){
+    let q=sb.from('iw_registros_ponto').select('*').gte('data_local',ini).lte('data_local',fim).order('id').range(from,from+999);
+    if(cpfF) q=q.eq('cpf',cpfF);
+    const{data:lote}=await q;
+    if(!lote||!lote.length) break;
+    todos=todos.concat(lote);
+    if(lote.length<1000) break;
+    from+=1000;
+  }
+
+  // Agrupa por CPF e por dia
+  const porCpf={};
+  todos.forEach(r=>{
+    if(!porCpf[r.cpf]) porCpf[r.cpf]={nome:r.funcionario_nome,dias:{}};
+    if(!porCpf[r.cpf].dias[r.data_local]) porCpf[r.cpf].dias[r.data_local]=[];
+    porCpf[r.cpf].dias[r.data_local].push({hora:r.data_hora_local?.slice(11,16)||'00:00',tipo:r.tipo});
+  });
+
+  const fmap={};funcionarios.forEach(f=>{fmap[f.cpf]=f;});
+  const cpfsExib=cpfF?[cpfF]:funcionarios.map(f=>f.cpf);
+  const { jsPDF } = window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  const dowNomes=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  let paginou=false, algumGerado=false;
+
+  cpfsExib.forEach(cpf=>{
+    const f=fmap[cpf]; if(!f) return;
+    const pf=porCpf[cpf]||{nome:f.nome,dias:{}};
+    const datas=Object.keys(pf.dias).sort();
+    if(!datas.length) return; // pula quem não tem registro no período
+
+    if(paginou) doc.addPage();
+    paginou=true; algumGerado=true;
+
+    // Cabeçalho
+    doc.setFillColor(16,185,129);
+    doc.rect(0,0,210,22,'F');
+    doc.setTextColor(255,255,255);
+    doc.setFont('helvetica','bold'); doc.setFontSize(15);
+    doc.text((empresaNome||'Empresa').toUpperCase(),14,11);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    doc.text('Espelho de Ponto · Relatório de Jornada',14,17.5);
+
+    doc.setTextColor(40,40,50);
+    doc.setFontSize(10); doc.setFont('helvetica','bold');
+    doc.text('Funcionário: '+f.nome,14,32);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    doc.text('Cargo: '+(f.cargo||'—')+'    CPF: '+(f.cpf||'—'),14,37.5);
+    doc.text('Período: '+lblPer+'  ('+fmtData(ini)+' a '+fmtData(fim)+')',14,42.5);
+
+    // Linhas da tabela
+    let totTrab=0, totSaldo=0, totFaltas=0;
+    const linhas=datas.map(data=>{
+      const bats=[...pf.dias[data]].sort((a,b)=>a.hora.localeCompare(b.hora));
+      const jMin=jornadaMin(data);
+      const trab=calcTrab(bats);
+      const completo=isDiaCompleto(data,bats);
+      const saldo=jMin?(trab-jMin):0;
+      totTrab+=trab; totSaldo+=saldo;
+      const dow=new Date(data+'T12:00:00').getDay();
+      const bathtml=bats.map(b=>(b.tipo==='ENTRADA'?'E ':'S ')+b.hora).join('   ');
+      let falta='';
+      if(jMin && trab===0){ falta='Falta'; totFaltas++; }
+      return [
+        fmtData(data),
+        dowNomes[dow],
+        bathtml||'—',
+        trab?fromMin(trab):'—',
+        jMin?fromMin(jMin):'—',
+        (jMin?((saldo>=0?'+':'')+fromMin(saldo)):'—')+(falta?'  ('+falta+')':'')
+      ];
+    });
+
+    doc.autoTable({
+      startY:48,
+      head:[['Data','Dia','Batidas (E=entrada S=saída)','Trab.','Jornada','Saldo']],
+      body:linhas,
+      styles:{fontSize:8,cellPadding:1.8},
+      headStyles:{fillColor:[30,30,40],textColor:255,fontSize:8},
+      alternateRowStyles:{fillColor:[245,245,247]},
+      columnStyles:{0:{cellWidth:24},1:{cellWidth:14},3:{cellWidth:18,halign:'right'},4:{cellWidth:18,halign:'right'},5:{cellWidth:30,halign:'right'}},
+      margin:{left:14,right:14}
+    });
+
+    let y=doc.lastAutoTable.finalY+6;
+    // Resumo
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(40,40,50);
+    doc.text('Resumo do período',14,y); y+=5;
+    doc.setFont('helvetica','normal');
+    doc.text('Total trabalhado: '+fromMin(totTrab),14,y);
+    doc.text('Saldo do período: '+(totSaldo>=0?'+':'')+fromMin(totSaldo),74,y);
+    doc.text('Faltas: '+totFaltas,140,y);
+    y+=16;
+
+    // Assinaturas
+    if(y>250){ doc.addPage(); y=30; }
+    doc.setDrawColor(120,120,130);
+    doc.line(20,y,90,y); doc.line(120,y,190,y);
+    doc.setFontSize(8); doc.setTextColor(90,90,100);
+    doc.text('Assinatura do funcionário',24,y+4);
+    doc.text('Assinatura do responsável',124,y+4);
+
+    // Rodapé
+    doc.setFontSize(7); doc.setTextColor(150,150,160);
+    doc.text('Documento de controle de jornada gerado pelo IW Ponto em '+new Date().toLocaleString('pt-BR')+'. Uso interno de gestão.',14,288);
+  });
+
+  if(!algumGerado){ toast('Nenhum registro no período para gerar o relatório.','err'); return; }
+
+  const nomeArq='espelho-ponto-'+(cpfF&&fmap[cpfF]?fmap[cpfF].nome.split(' ')[0].toLowerCase():'equipe')+'-'+ini+'.pdf';
+  doc.save(nomeArq);
+  toast('Relatório gerado!','ok');
+}
+
 
 // ===== ASSISTENTE DE IA (Gemini via Edge Function) =====
 const IA_URL=SB_URL+'/functions/v1/iw-assistente';
