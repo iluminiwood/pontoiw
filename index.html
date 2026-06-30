@@ -340,8 +340,9 @@ h1 em{
 
 /* PRICING */
 #price{text-align:center;}
-.pg{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;max-width:860px;margin:0 auto;}
-@media(max-width:720px){.pg{grid-template-columns:1fr;max-width:360px;}}
+.pg{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;max-width:1080px;margin:0 auto;}
+@media(max-width:980px){.pg{grid-template-columns:repeat(2,1fr);max-width:600px;}}
+@media(max-width:560px){.pg{grid-template-columns:1fr;max-width:360px;}}
 .pc{background:var(--s1);border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:1.75rem 1.5rem;display:flex;flex-direction:column;}
 .pc.hi{border-color:rgba(16,185,129,.3);background:linear-gradient(135deg,rgba(16,185,129,.07),rgba(16,185,129,.02));box-shadow:0 0 0 1px rgba(16,185,129,.08),0 20px 48px rgba(16,185,129,.05);}
 .ppop{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--em);background:rgba(16,185,129,.1);padding:3px 10px;border-radius:20px;margin-bottom:.75rem;display:inline-block;}
@@ -511,7 +512,7 @@ footer{border-top:1px solid rgba(255,255,255,.05);padding:2rem;text-align:center
     <div style="text-align:center" class="reveal">
       <span class="sey">O que o IW Ponto resolve</span>
       <h2 class="sh2">Tudo que você precisa.<br>Nada do que não usa.</h2>
-      <p class="ssub" style="max-width:480px;margin:0 auto 3rem">Desenvolvido para empresas de 3 a 200 colaboradores que querem controle real sem pagar preço de enterprise.</p>
+      <p class="ssub" style="max-width:480px;margin:0 auto 3rem">Desenvolvido para pequenas empresas que querem controle real sem pagar preço de enterprise.</p>
     </div>
     <div class="fg">
       <div class="fc reveal d1"><div class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg></div><div class="ft">Ponto biométrico + digital</div><div class="fd">Integra com Control-ID ou usa celular/tablet como totem com PIN. Sem depender de hardware exclusivo.</div></div>
@@ -629,45 +630,54 @@ footer{border-top:1px solid rgba(255,255,255,.05);padding:2rem;text-align:center
         <div style="margin-bottom:.35rem"><span class="pf">Grátis</span></div>
         <div class="plim">Até 3 colaboradores</div>
         <ul class="pi-list">
-          <li class="pi-item"><svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3dd68c" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Ponto biométrico + digital</li>
-          <li class="pi-item"><svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3dd68c" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Totem digital</li>
+          <li class="pi-item"><svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3dd68c" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Ponto digital + totem</li>
           <li class="pi-item"><svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3dd68c" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Saldo do banco de horas</li>
           <li class="pi-item off"><svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#55556a" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Férias, EPIs, atestados</li>
-          <li class="pi-item off"><svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#55556a" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Relatórios</li>
+          <li class="pi-item off"><svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#55556a" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Advertências e relatórios</li>
         </ul>
         <a href="app.html" class="pbtn pbout">Criar conta grátis</a>
       </div>
+      <div class="pc">
+        <div class="pn">Essencial</div><div class="pd">Equipes pequenas</div>
+        <div><div class="pnum"><span class="pcur">R$</span><span class="pvn">199</span><span class="pper">/mês</span></div></div>
+        <div class="plim">Até 8 colaboradores</div>
+        <ul class="pi-list">
+          <li class="pi-item"><svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Banco de horas completo</li>
+          <li class="pi-item"><svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Férias, atestados e EPIs</li>
+          <li class="pi-item"><svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Advertências e acertos</li>
+          <li class="pi-item"><svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Relatórios + encarregado</li>
+        </ul>
+        <a href="app.html" class="pbtn pbout">Começar 14 dias grátis</a>
+      </div>
       <div class="pc hi">
         <div class="ppop">Mais popular</div>
-        <div class="pn">Essencial</div><div class="pd">Para pequenas e médias empresas</div>
-        <div><div class="pnum"><span class="pcur">R$</span><span class="pvn">89</span><span class="pper">/mês</span></div></div>
-        <div class="plim">Até 5 colaboradores</div>
+        <div class="pn">Pro</div><div class="pd">Equipes em crescimento</div>
+        <div><div class="pnum"><span class="pcur">R$</span><span class="pvn">299</span><span class="pper">/mês</span></div></div>
+        <div class="plim">Até 15 colaboradores</div>
         <ul class="pi-list">
-          <li class="pi-item"><svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Tudo do Free</li>
-          <li class="pi-item"><svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Atrasos e faltas</li>
-          <li class="pi-item"><svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Férias + Atestados + EPIs</li>
+          <li class="pi-item"><svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Banco de horas completo</li>
+          <li class="pi-item"><svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Férias, atestados e EPIs</li>
           <li class="pi-item"><svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Advertências e acertos</li>
-          <li class="pi-item"><svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Relatórios para contabilidade</li>
-          <li class="pi-item off"><svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#55556a" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Login de encarregado</li>
+          <li class="pi-item"><svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Relatórios + encarregado</li>
         </ul>
         <a href="app.html" class="pbtn pbem">Começar 14 dias grátis</a>
       </div>
       <div class="pc">
-        <div class="pn">Pro</div><div class="pd">Para operações maiores</div>
-        <div><div class="pnum"><span class="pcur">R$</span><span class="pvn">169</span><span class="pper">/mês</span></div></div>
-        <div class="plim">Até 10 colaboradores</div>
+        <div class="pn">Master</div><div class="pd">Operações maiores</div>
+        <div><div class="pnum"><span class="pcur">R$</span><span class="pvn">449</span><span class="pper">/mês</span></div></div>
+        <div class="plim">Até 20 colaboradores</div>
         <ul class="pi-list">
-          <li class="pi-item"><svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3dd68c" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Tudo do Essencial</li>
-          <li class="pi-item"><svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3dd68c" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Login de encarregado</li>
-          <li class="pi-item"><svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3dd68c" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Exportação Excel</li>
-          <li class="pi-item"><svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3dd68c" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Suporte prioritário</li>
+          <li class="pi-item"><svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3dd68c" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Banco de horas completo</li>
+          <li class="pi-item"><svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3dd68c" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Férias, atestados e EPIs</li>
+          <li class="pi-item"><svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3dd68c" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Advertências e acertos</li>
+          <li class="pi-item"><svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3dd68c" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Relatórios + encarregado</li>
         </ul>
         <a href="app.html" class="pbtn pbout">Começar 14 dias grátis</a>
       </div>
     </div>
     <div style="margin-top:1.25rem;background:var(--s1);border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:1.25rem 1.5rem;max-width:860px;margin-left:auto;margin-right:auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem">
   <div>
-    <div style="font-size:16px;font-weight:800;color:var(--t1)">Acima de 10 colaboradores?</div>
+    <div style="font-size:16px;font-weight:800;color:var(--t1)">Acima de 20 colaboradores?</div>
     <div style="font-size:13px;color:var(--t2);margin-top:2px">Entre em contato para um plano personalizado para sua operação</div>
   </div>
   <a href="mailto:contato@iwponto.com.br?subject=Plano personalizado" style="background:var(--s2);color:var(--t1);border:1px solid rgba(255,255,255,.1);padding:10px 22px;border-radius:30px;font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap">Falar com a gente</a>
