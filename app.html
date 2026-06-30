@@ -1564,7 +1564,16 @@ async function renderDash(c){
   // Banco geral do mês
   const mesIni=new Date().toISOString().slice(0,7)+'-01';
   const{data:rm}=await sb.from('iw_registros_ponto').select('cpf,data_local,data_hora_local,tipo').gte('data_local',mesIni).lte('data_local',hoje).limit(5000);
-  const saldoMes=calcSaldoRegs(rm||[]);
+  // Respeita a data de corte do último acerto de cada funcionário (não conta horas já quitadas)
+  const{data:acertosDash}=await sb.from('iw_acertos_horas').select('cpf,periodo_fim,data_pagamento').order('data_pagamento',{ascending:false}).limit(200);
+  const corteDash={};
+  (acertosDash||[]).forEach(a=>{
+    if(!corteDash[a.cpf] && a.periodo_fim){
+      const d=new Date(a.periodo_fim+'T12:00:00'); d.setDate(d.getDate()+1);
+      corteDash[a.cpf]=d.toISOString().split('T')[0];
+    }
+  });
+  const saldoMes=calcSaldoRegs(rm||[], corteDash);
 
   // Faltas semana
   // Conta dias úteis passados desta semana onde houve ao menos 1 registro
@@ -1690,11 +1699,14 @@ async function carregarNoticias(forcar){
   el.innerHTML=newsCache;
 }
 
-function calcSaldoRegs(regs){
+function calcSaldoRegs(regs, corteMap){
+  corteMap=corteMap||{};
   const cpfsAtivos=new Set(funcionarios.map(f=>f.cpf));
   const mapa={};
   regs.forEach(r=>{
     if(!cpfsAtivos.has(r.cpf)) return;
+    // Ignora dias já quitados em acerto (antes da data de corte)
+    if(corteMap[r.cpf] && r.data_local < corteMap[r.cpf]) return;
     if(!mapa[r.cpf]) mapa[r.cpf]={};
     if(!mapa[r.cpf][r.data_local]) mapa[r.cpf][r.data_local]=[];
     mapa[r.cpf][r.data_local].push({hora:r.data_hora_local?.slice(11,16)||'00:00',tipo:r.tipo});
@@ -1705,10 +1717,8 @@ function calcSaldoRegs(regs){
     const adm=admissaoMap[cpf]||'2026-02-01';
     Object.entries(dias).forEach(([data,bats])=>{
       if(data<adm)return; // antes da admissão
-      if(!isDiaUtilFunc(data,cpf))return;
-      if(!isDiaCompleto(data,bats))return;
-      const j=jornadaMin(data);if(!j)return;
-      total+=calcTrab(bats)-j;
+      const r=saldoDoDia(data,bats,cpf);   // fonte única (folga/feriado/meio período consistentes)
+      if(r.conta) total+=r.saldo;
     });
   });
   return total;
