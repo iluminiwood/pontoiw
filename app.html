@@ -634,7 +634,7 @@ body.light .toast{background:rgba(255,255,255,.97);}
   <div class="modal" style="max-width:440px">
     <div class="mhandle"></div>
     <div class="mtitle">Escolher plano</div>
-    <div class="msub">Selecione o plano ideal para sua empresa</div>
+    <div class="msub">Todos os planos pagos incluem tudo: ponto com foto, banco de horas, férias, atestados, EPIs, advertências e relatórios. A diferença é só o tamanho da equipe.</div>
     <div style="display:flex;flex-direction:column;gap:.75rem;margin-top:1.25rem">
       <!-- Essencial -->
       <div id="plano-card-essencial" class="plano-card" onclick="selecionarPlano('essencial')" style="
@@ -644,14 +644,14 @@ body.light .toast{background:rgba(255,255,255,.97);}
       ">
         <div>
           <div style="font-size:15px;font-weight:800;color:var(--t1)">Essencial</div>
-          <div style="font-size:12px;color:var(--t2);margin-top:2px">Até 5 colaboradores · Férias, EPIs, atestados e relatórios</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">Até 8 colaboradores · todos os recursos inclusos</div>
         </div>
         <div style="text-align:right;flex-shrink:0;margin-left:1rem">
-          <div style="font-family:var(--mono);font-size:20px;font-weight:900;color:var(--t1)">R$ 89</div>
+          <div style="font-family:var(--mono);font-size:20px;font-weight:900;color:var(--t1)">R$ 199</div>
           <div style="font-size:10px;color:var(--t2)">/mês</div>
         </div>
       </div>
-      <!-- Pro -->
+      <!-- Pro (âncora) -->
       <div id="plano-card-pro" class="plano-card" onclick="selecionarPlano('pro')" style="
         border:2px solid rgba(16,185,129,.2);border-radius:var(--r12);padding:1rem 1.25rem;
         cursor:pointer;transition:border-color .15s,background .15s;
@@ -662,13 +662,29 @@ body.light .toast{background:rgba(255,255,255,.97);}
             <span style="font-size:15px;font-weight:800;color:var(--t1)">Pro</span>
             <span style="font-size:9px;font-weight:800;color:var(--em);background:rgba(16,185,129,.12);padding:2px 7px;border-radius:20px">MAIS POPULAR</span>
           </div>
-          <div style="font-size:12px;color:var(--t2);margin-top:2px">Até 10 colaboradores · Encarregado, Excel e suporte prioritário</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">Até 15 colaboradores · todos os recursos inclusos</div>
         </div>
         <div style="text-align:right;flex-shrink:0;margin-left:1rem">
-          <div style="font-family:var(--mono);font-size:20px;font-weight:900;color:var(--t1)">R$ 169</div>
+          <div style="font-family:var(--mono);font-size:20px;font-weight:900;color:var(--t1)">R$ 299</div>
           <div style="font-size:10px;color:var(--t2)">/mês</div>
         </div>
       </div>
+      <!-- Master -->
+      <div id="plano-card-master" class="plano-card" onclick="selecionarPlano('master')" style="
+        border:2px solid rgba(16,185,129,.2);border-radius:var(--r12);padding:1rem 1.25rem;
+        cursor:pointer;transition:border-color .15s,background .15s;
+        display:flex;align-items:center;justify-content:space-between;
+      ">
+        <div>
+          <div style="font-size:15px;font-weight:800;color:var(--t1)">Master</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">Até 20 colaboradores · todos os recursos inclusos</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;margin-left:1rem">
+          <div style="font-family:var(--mono);font-size:20px;font-weight:900;color:var(--t1)">R$ 449</div>
+          <div style="font-size:10px;color:var(--t2)">/mês</div>
+        </div>
+      </div>
+      <p style="font-size:11px;color:var(--t3);text-align:center;margin:.25rem 0 0">Mais de 20 colaboradores? <b>Fale com a gente</b> para um plano sob medida.</p>
     </div>
     <div id="assinar-msg" style="display:none;padding:.75rem 1rem;border-radius:var(--r8);margin-top:.75rem;font-size:13px;font-weight:600"></div>
     <div class="mactions" style="margin-top:1rem">
@@ -921,23 +937,25 @@ let PLANO='free'; // sempre 'free', 'essencial' ou 'pro' — nunca null/undefine
 
 // Limites e permissões por plano
 const PLANOS={
-  free:     {label:'Free',     limite:3,  cor:'#a8a8b8'},
-  essencial:{label:'Essencial',limite:5,  cor:'#60a5fa'},
-  pro:      {label:'Pro',      limite:10, cor:'#10b981'}
+  free:     {label:'Free',     limite:3,  preco:0,   cor:'#a8a8b8'},
+  essencial:{label:'Essencial',limite:8,  preco:199, cor:'#60a5fa'},
+  pro:      {label:'Pro',      limite:15, preco:299, cor:'#10b981'},
+  master:   {label:'Master',   limite:20, preco:449, cor:'#f59e0b'}
 };
 const FEATURES={
-  // false = bloqueado no free, true = liberado
-  edicao_manual:   {free:false, essencial:true,  pro:true},
-  atrasos:         {free:false, essencial:true,  pro:true},
-  acertos:         {free:false, essencial:true,  pro:true},
-  ferias:          {free:false, essencial:true,  pro:true},
-  atestados:       {free:false, essencial:true,  pro:true},
-  epis:            {free:false, essencial:true,  pro:true},
-  adv:             {free:false, essencial:true,  pro:true},
-  configuracoes:   {free:false, essencial:true,  pro:true},
-  relatorios:      {free:false, essencial:true,  pro:true},
-  encarregado:     {free:false, essencial:false, pro:true},
-  excel:           {free:false, essencial:false, pro:true},
+  // false = bloqueado no free, true = liberado. Todas as faixas pagas têm TUDO (sem capar).
+  edicao_manual:   {free:false, essencial:true, pro:true, master:true},
+  atrasos:         {free:false, essencial:true, pro:true, master:true},
+  acertos:         {free:false, essencial:true, pro:true, master:true},
+  ferias:          {free:false, essencial:true, pro:true, master:true},
+  atestados:       {free:false, essencial:true, pro:true, master:true},
+  epis:            {free:false, essencial:true, pro:true, master:true},
+  adv:             {free:false, essencial:true, pro:true, master:true},
+  configuracoes:   {free:false, essencial:true, pro:true, master:true},
+  relatorios:      {free:false, essencial:true, pro:true, master:true},
+  encarregado:     {free:false, essencial:true, pro:true, master:true},
+  excel:           {free:false, essencial:true, pro:true, master:true},
+  foto:            {free:false, essencial:true, pro:true, master:true},
 };
 function temAcesso(feature){
   const f=typeof FEATURES!=='undefined'?FEATURES[feature]:null;
