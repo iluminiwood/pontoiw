@@ -1809,32 +1809,68 @@ async function reloadBatidas(){
     const pf=porCpf[cpf]||{nome:f.nome,dias:{}};
     if(!Object.keys(pf.dias).length)return;
 
+    const hojeStr=new Date().toISOString().split('T')[0];
+    const admF=f.admissao||ini;
+    const iniIter = ini>admF ? ini : admF;
     const semanas={};
-    Object.entries(pf.dias).forEach(([data,bats])=>{
+    const addDiaSem=(data,bats)=>{
       const sem=getSemana(data);
       if(!semanas[sem])semanas[sem]=[];
-      semanas[sem].push({data,bats:[...bats].sort((a,b)=>a.hora.localeCompare(b.hora))});
-    });
+      semanas[sem].push({data,bats:bats?[...bats].sort((a,b)=>a.hora.localeCompare(b.hora)):null});
+    };
+    for(let d=new Date(iniIter+'T12:00:00'); d<=new Date(fim+'T12:00:00'); d.setDate(d.getDate()+1)){
+      const data=d.toISOString().split('T')[0];
+      if(data>hojeStr) break;
+      const bats=pf.dias[data];
+      if(bats&&bats.length){ addDiaSem(data,bats); continue; }
+      const dw=d.getDay();
+      const chave=cpf+'_'+data;
+      // dias especiais sem batida (folga compensada, férias, afastamento)
+      if(diasFolgaCompCpf.has(chave)||diasFeriasCpf.has(chave)||diasAfastamentoCpf.has(chave)){ addDiaSem(data,null); continue; }
+      // falta: dia útil, não feriado, no passado
+      if(dw>=1&&dw<=5 && !feriados.has(data) && data<hojeStr){ addDiaSem(data,null); continue; }
+      // senão (fim de semana vazio, feriado vazio, hoje sem batida) → não mostra
+    }
 
     let saldoTotal=0,semHtml='';
     Object.entries(semanas).sort((a,b)=>b[0].localeCompare(a[0])).forEach(([semIni,dias])=>{
       let saldoSem=0,diasHtml='';
       dias.sort((a,b)=>a.data.localeCompare(b.data)).forEach(({data,bats})=>{
-        const trab=calcTrab(bats);
-        const r=saldoDoDia(data,bats,cpf);
+        const temBatida=bats&&bats.length;
+        const trab=temBatida?calcTrab(bats):0;
+        const r=saldoDoDia(data, temBatida?bats:undefined, cpf);
         const saldo=r.saldo;
-        const mostraSaldo = r.classe==='excluido' ? false
-                          : r.emAndamento ? false
-                          : r.classe==='folga' ? r.trab>0
-                          : true;
+        // etiqueta para dias sem batida
+        let et=null;
+        if(!temBatida){
+          const ET={
+            folga:{t:'Folga compensada',c:'#D08700',b:'rgba(208,135,0,.13)'},
+            ferias:{t:'Férias',c:'#7F77DD',b:'rgba(127,119,221,.13)'},
+            afast:{t:'Afastamento',c:'#378ADD',b:'rgba(55,138,221,.13)'},
+            falta:{t:'Falta',c:'#E24B4A',b:'rgba(226,75,74,.13)'}
+          };
+          let k='falta';
+          if(r.classe==='folga_comp')k='folga';
+          else if(diasFeriasCpf.has(cpf+'_'+data))k='ferias';
+          else if(diasAfastamentoCpf.has(cpf+'_'+data))k='afast';
+          et=ET[k];
+        }
+        const mostraSaldo = !temBatida
+          ? (r.classe==='folga_comp')
+          : (r.classe==='excluido' ? false : r.emAndamento ? false : r.classe==='folga' ? r.trab>0 : true);
         saldoSem+=saldo;saldoTotal+=saldo;
-        const batsHtml=montarSlotsBatida(data,bats,cpf,f.nome);
         const sc=saldo>=0?'var(--g)':'var(--r)';
+        const addBtn=`<span onclick="abrirAdd('${data}','${cpf}','${f.nome.replace(/'/g,"\\'")}')" style="cursor:pointer;font-size:11px;color:var(--t3);padding:1px 3px;border-radius:3px;border:1px dashed var(--b2)" title="Adicionar batida">+</span>`;
+        let batsArea;
+        if(temBatida){
+          batsArea=montarSlotsBatida(data,bats,cpf,f.nome)+addBtn;
+        } else {
+          batsArea=`<span style="font-size:11px;color:${et.c};background:${et.b};padding:2px 10px;border-radius:20px;font-weight:600">${et.t}</span>`;
+          if(et.t==='Falta') batsArea+=' '+addBtn;
+        }
         diasHtml+=`<div class="bdia">
           <span class="bdia-data">${fmtData(data)}</span>
-          <div class="bdia-batidas">${batsHtml}
-            <span onclick="abrirAdd('${data}','${cpf}','${f.nome.replace(/'/g,"\\'")}')" style="cursor:pointer;font-size:11px;color:var(--t3);padding:1px 3px;border-radius:3px;border:1px dashed var(--b2)" title="Adicionar batida">+</span>
-          </div>
+          <div class="bdia-batidas">${batsArea}</div>
           <span class="bdia-hrs">${trab?fromMin(trab):'—'}</span>
           <span class="bdia-saldo" style="color:${mostraSaldo?sc:'var(--t3)'}">${mostraSaldo?(saldo>=0?'+':'')+fromMin(saldo):'—'}</span>
         </div>`;
