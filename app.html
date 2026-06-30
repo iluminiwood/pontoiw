@@ -1048,6 +1048,28 @@ function calcTrab(bats){
   return t;
 }
 
+// Saldo de UM dia conforme a regra de banco de horas — FONTE ÚNICA usada em todo o sistema
+// (aba Batidas, aba Banco e relatório PDF), para nunca divergirem.
+// Regras:
+//  - Férias/afastamento: não conta (conta:false).
+//  - Dia útil (seg-sex e não feriado): saldo = trabalhado - jornada.
+//  - Folga (fim de semana ou feriado) trabalhada: credita TUDO como positivo.
+function saldoDoDia(ds, bats, cpf){
+  const trab = (bats && bats.length) ? calcTrab(bats) : 0;
+  if(cpf && (diasFeriasCpf.has(cpf+'_'+ds) || diasAfastamentoCpf.has(cpf+'_'+ds))){
+    return {classe:'excluido', saldo:0, trab, jornada:0, conta:false};
+  }
+  if(isDiaUtil(ds)){
+    const j = jornadaMin(ds);
+    if(!bats || !bats.length) return {classe:'util', saldo:0, trab:0, jornada:j, conta:false, semBatida:true};
+    if(!isDiaCompleto(ds,bats)) return {classe:'util', saldo:trab-j, trab, jornada:j, conta:false, incompleto:true};
+    return {classe:'util', saldo:trab-j, trab, jornada:j, conta:true};
+  }
+  // Folga: fim de semana ou feriado
+  if(trab > 0) return {classe:'folga', saldo:trab, trab, jornada:0, conta:true};
+  return {classe:'folga', saldo:0, trab:0, jornada:0, conta:false, semBatida:true};
+}
+
 function getPeriodo(p){
   const hoje=new Date(),hs=hoje.toISOString().split('T')[0];
   if(p==='semana') return {ini:getSemana(hs),fim:hs};
@@ -1775,9 +1797,10 @@ async function reloadBatidas(){
     Object.entries(semanas).sort((a,b)=>b[0].localeCompare(a[0])).forEach(([semIni,dias])=>{
       let saldoSem=0,diasHtml='';
       dias.sort((a,b)=>a.data.localeCompare(b.data)).forEach(({data,bats})=>{
-        const jMin=jornadaMin(data),trab=calcTrab(bats);
-        const completo=isDiaCompleto(data,bats);
-        const saldo=jMin&&completo?trab-jMin:jMin&&!completo&&trab>0?trab-jMin:0;
+        const trab=calcTrab(bats);
+        const r=saldoDoDia(data,bats,cpf);
+        const saldo=r.saldo;
+        const mostraSaldo=(r.classe==='folga')?r.trab>0:(r.classe!=='excluido');
         saldoSem+=saldo;saldoTotal+=saldo;
         const batsHtml=montarSlotsBatida(data,bats,cpf,f.nome);
         const sc=saldo>=0?'var(--g)':'var(--r)';
@@ -1787,7 +1810,7 @@ async function reloadBatidas(){
             <span onclick="abrirAdd('${data}','${cpf}','${f.nome.replace(/'/g,"\\'")}')" style="cursor:pointer;font-size:11px;color:var(--t3);padding:1px 3px;border-radius:3px;border:1px dashed var(--b2)" title="Adicionar batida">+</span>
           </div>
           <span class="bdia-hrs">${trab?fromMin(trab):'—'}</span>
-          <span class="bdia-saldo" style="color:${jMin?sc:'var(--t3)'}">${jMin?(saldo>=0?'+':'')+fromMin(saldo):'—'}</span>
+          <span class="bdia-saldo" style="color:${mostraSaldo?sc:'var(--t3)'}">${mostraSaldo?(saldo>=0?'+':'')+fromMin(saldo):'—'}</span>
         </div>`;
       });
       const sf=new Date(semIni+'T12:00:00');sf.setDate(sf.getDate()+4);
@@ -2662,20 +2685,20 @@ async function reloadBanco(){
 
     for(let dia=new Date(dIni2);dia<=dFim2;dia.setDate(dia.getDate()+1)){
       const ds=dia.toISOString().split('T')[0];
-      if(!isDiaUtilFunc(ds,f.cpf))continue;
       const bats=pf.dias[ds];
-      if(!bats||!bats.length){
-        if(ds<hoje2)faltas++;
-        continue;
+      const r=saldoDoDia(ds,bats,f.cpf);
+      // Dia útil sem batida no passado = falta
+      if(r.classe==='util'&&r.semBatida){ if(ds<hoje2)faltas++; continue; }
+      // Não conta: dia incompleto, excluído (férias/afast) ou folga sem trabalho
+      if(!r.conta) continue;
+      saldo+=r.saldo;dias++;
+      if(r.saldo>0)extras+=r.saldo;else if(r.saldo<0)devendo+=Math.abs(r.saldo);
+      // Atraso só faz sentido em dia útil
+      if(r.classe==='util'){
+        const sorted=[...bats].sort((a,b)=>a.hora.localeCompare(b.hora));
+        const ent=sorted.find(b=>b.tipo==='ENTRADA'&&toMin(b.hora)<=toMin('10:00'));
+        if(ent&&toMin(ent.hora)-toMin(ENTRADA_PAD)>TOL)atrasos++;
       }
-      if(!isDiaCompleto(ds,bats))continue;
-      const j=jornadaMin(ds);
-      const t=calcTrab(bats),s=t-j;
-      saldo+=s;dias++;
-      if(s>0)extras+=s;else if(s<0)devendo+=Math.abs(s);
-      const sorted=[...bats].sort((a,b)=>a.hora.localeCompare(b.hora));
-      const ent=sorted.find(b=>b.tipo==='ENTRADA'&&toMin(b.hora)<=toMin('10:00'));
-      if(ent&&toMin(ent.hora)-toMin(ENTRADA_PAD)>TOL)atrasos++;
     }
     saldoGeral+=saldo;
 
@@ -3889,22 +3912,23 @@ async function gerarEspelhoPonto(){
     let totTrab=0, totSaldo=0, totFaltas=0;
     const linhas=datas.map(data=>{
       const bats=[...pf.dias[data]].sort((a,b)=>a.hora.localeCompare(b.hora));
-      const jMin=jornadaMin(data);
-      const trab=calcTrab(bats);
-      const completo=isDiaCompleto(data,bats);
-      const saldo=jMin?(trab-jMin):0;
+      const r=saldoDoDia(data,bats,cpf);
+      const jMin=r.jornada;
+      const trab=r.trab;
+      const saldo=r.saldo;
+      const mostraSaldo=(r.classe==='folga')?r.trab>0:(r.classe!=='excluido');
       totTrab+=trab; totSaldo+=saldo;
       const dow=new Date(data+'T12:00:00').getDay();
       const bathtml=bats.map(b=>(b.tipo==='ENTRADA'?'E ':'S ')+b.hora).join('   ');
       let falta='';
-      if(jMin && trab===0){ falta='Falta'; totFaltas++; }
+      if(r.classe==='util' && jMin && trab===0){ falta='Falta'; totFaltas++; }
       return [
         fmtData(data),
         dowNomes[dow],
         bathtml||'—',
         trab?fromMin(trab):'—',
         jMin?fromMin(jMin):'—',
-        (jMin?((saldo>=0?'+':'')+fromMin(saldo)):'—')+(falta?'  ('+falta+')':'')
+        (mostraSaldo?((saldo>=0?'+':'')+fromMin(saldo)):'—')+(falta?'  ('+falta+')':'')
       ];
     });
 
