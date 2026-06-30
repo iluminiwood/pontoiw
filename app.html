@@ -1061,8 +1061,14 @@ function saldoDoDia(ds, bats, cpf){
   }
   if(isDiaUtil(ds)){
     const j = jornadaMin(ds);
+    const hojeStr = new Date().toISOString().split('T')[0];
     if(!bats || !bats.length) return {classe:'util', saldo:0, trab:0, jornada:j, conta:false, semBatida:true};
-    if(!isDiaCompleto(ds,bats)) return {classe:'util', saldo:trab-j, trab, jornada:j, conta:false, incompleto:true};
+    if(!isDiaCompleto(ds,bats)){
+      // Dia de hoje (ou futuro) com batida incompleta = em andamento, não conta negativo
+      if(ds>=hojeStr) return {classe:'util', saldo:0, trab, jornada:j, conta:false, emAndamento:true};
+      // Dia passado incompleto = pendência real (esqueceu de bater saída)
+      return {classe:'util', saldo:trab-j, trab, jornada:j, conta:false, incompleto:true};
+    }
     return {classe:'util', saldo:trab-j, trab, jornada:j, conta:true};
   }
   // Folga: fim de semana ou feriado
@@ -1800,7 +1806,10 @@ async function reloadBatidas(){
         const trab=calcTrab(bats);
         const r=saldoDoDia(data,bats,cpf);
         const saldo=r.saldo;
-        const mostraSaldo=(r.classe==='folga')?r.trab>0:(r.classe!=='excluido');
+        const mostraSaldo = r.classe==='excluido' ? false
+                          : r.emAndamento ? false
+                          : r.classe==='folga' ? r.trab>0
+                          : true;
         saldoSem+=saldo;saldoTotal+=saldo;
         const batsHtml=montarSlotsBatida(data,bats,cpf,f.nome);
         const sc=saldo>=0?'var(--g)':'var(--r)';
@@ -3916,12 +3925,15 @@ async function gerarEspelhoPonto(){
       const jMin=r.jornada;
       const trab=r.trab;
       const saldo=r.saldo;
-      const mostraSaldo=(r.classe==='folga')?r.trab>0:(r.classe!=='excluido');
+      const mostraSaldo = r.classe==='excluido' ? false
+                        : r.emAndamento ? false
+                        : r.classe==='folga' ? r.trab>0
+                        : true;
       totTrab+=trab; totSaldo+=saldo;
       const dow=new Date(data+'T12:00:00').getDay();
       const bathtml=bats.map(b=>(b.tipo==='ENTRADA'?'E ':'S ')+b.hora).join('   ');
       let falta='';
-      if(r.classe==='util' && jMin && trab===0){ falta='Falta'; totFaltas++; }
+      if(r.classe==='util' && !r.emAndamento && jMin && trab===0){ falta='Falta'; totFaltas++; }
       return [
         fmtData(data),
         dowNomes[dow],
