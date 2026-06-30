@@ -777,6 +777,7 @@ body.light .toast{background:rgba(255,255,255,.97);}
         <option value="Licença paternidade">Licença paternidade</option>
         <option value="Acidente de trabalho">Acidente de trabalho</option>
         <option value="Licença óbito">Licença óbito</option>
+        <option value="Folga compensatória">Folga compensatória (debita banco de horas)</option>
         <option value="Outro">Outro</option>
       </select>
     </div>
@@ -998,6 +999,7 @@ let editCtx=null, addCtx=null;
 let feriados=new Set();
 let diasFeriasCpf=new Set();
 let diasAfastamentoCpf=new Set();
+let diasFolgaCompCpf=new Set(); // dias de folga compensatória (debitam jornada do banco)
 let perfilUsuario='admin'; let empresaAtual=null; // 'admin' ou 'encarregado' // Set de strings "YYYY-MM-DD"
 
 function isFeriado(ds){return feriados.has(ds);}
@@ -1056,6 +1058,11 @@ function calcTrab(bats){
 //  - Folga (fim de semana ou feriado) trabalhada: credita TUDO como positivo.
 function saldoDoDia(ds, bats, cpf){
   const trab = (bats && bats.length) ? calcTrab(bats) : 0;
+  // Folga compensatória: debita a jornada do dia do banco e NÃO conta falta
+  if(cpf && diasFolgaCompCpf.has(cpf+'_'+ds)){
+    const j = jornadaMin(ds);
+    return {classe:'folga_comp', saldo:-j, trab:0, jornada:j, conta:j>0};
+  }
   if(cpf && (diasFeriasCpf.has(cpf+'_'+ds) || diasAfastamentoCpf.has(cpf+'_'+ds))){
     return {classe:'excluido', saldo:0, trab, jornada:0, conta:false};
   }
@@ -1435,18 +1442,28 @@ async function initApp(){
 }
 async function loadBase(){
   // Busca tudo em paralelo em vez de sequencial — bem mais rápido
-  const[{data:f},{data:a},{data:fer},{data:ferDias},{data:afastDias}]=await Promise.all([
+  const[{data:f},{data:a},{data:fer},{data:ferDias},{data:afastDias},{data:afastTipos}]=await Promise.all([
     sb.from('iw_funcionarios').select('*').eq('ativo',true).order('nome'),
     sb.from('iw_advertencias').select('*').order('criado_em',{ascending:false}),
     sb.from('iw_feriados').select('data'),
     sb.from('iw_ferias_dias').select('cpf,data').limit(2000),
-    sb.from('iw_afastamentos_dias').select('cpf,data').limit(2000)
+    sb.from('iw_afastamentos_dias').select('cpf,data,afastamento_id').limit(2000),
+    sb.from('iw_afastamentos').select('id,tipo').limit(1000)
   ]);
   funcionarios=(f||[]).map((x,i)=>({...x,color:COLORS[i%COLORS.length],admissao:x.admissao||'2026-02-01',salario:x.salario||0,aniversario:x.aniversario||null}));
   advertencias=a||[];
   feriados=new Set((fer||[]).map(x=>x.data));
   diasFeriasCpf=new Set((ferDias||[]).map(x=>x.cpf+'_'+x.data));
-  diasAfastamentoCpf=new Set((afastDias||[]).map(x=>x.cpf+'_'+x.data));
+  // Separa dias de folga compensatória (debitam banco) dos demais afastamentos (ignoram o dia)
+  const _tipoAfast={}; (afastTipos||[]).forEach(x=>{_tipoAfast[x.id]=x.tipo;});
+  const _diasAfast=[], _diasFolga=[];
+  (afastDias||[]).forEach(x=>{
+    const chave=x.cpf+'_'+x.data;
+    if(_tipoAfast[x.afastamento_id]==='Folga compensatória') _diasFolga.push(chave);
+    else _diasAfast.push(chave);
+  });
+  diasAfastamentoCpf=new Set(_diasAfast);
+  diasFolgaCompCpf=new Set(_diasFolga);
 }
 
 // ===== TABS =====
