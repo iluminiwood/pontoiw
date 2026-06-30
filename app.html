@@ -2755,7 +2755,11 @@ async function reloadBanco(){
   funcionarios.forEach((f,fi)=>{
     const pf=porCpf[f.cpf]||{dias:{}};
     const admF=f.admissao||'2026-02-01';
-    const iniAdm=ini<admF?admF:ini;
+    let iniAdm=ini<admF?admF:ini;
+    // Respeita a data de corte do último acerto: dias já quitados não são percorridos
+    // (senão virariam "faltas fantasma" por terem as batidas removidas pelo corte)
+    const corteCpf=cortePorCpf[f.cpf];
+    if(corteCpf && iniAdm<corteCpf) iniAdm=corteCpf;
     const dIni2=new Date(iniAdm+'T12:00:00'),dFim2=new Date(fim+'T12:00:00');
     const hoje2=new Date().toISOString().split('T')[0];
     let saldo=0,dias=0,extras=0,devendo=0,atrasos=0,faltas=0;
