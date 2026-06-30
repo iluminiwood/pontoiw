@@ -3449,34 +3449,48 @@ async function saveFerias(){
     observacao:obs||null
   };
 
+  let feriasId;
   if(editId){
     await sb.from('iw_ferias').update(reg).eq('id',editId);
+    feriasId=Number(editId);
   } else {
     reg.id=Date.now();
     await sb.from('iw_ferias').insert(reg);
+    feriasId=reg.id;
   }
 
-  // Se tem período de gozo, cadastra dias individuais para excluir do banco de horas
-  if(ini&&fim&&!editId){
-    const dias=[];
+  // Sincroniza os dias individuais (usados pela aba Batidas e pelo cálculo do banco).
+  // Vale para CRIAR e EDITAR: regenera sempre conforme as datas atuais.
+  // 1) Monta a lista de dias úteis do período de gozo atual
+  const novosDias=[];
+  if(ini&&fim){
     for(let d=new Date(ini+'T12:00:00');d<=new Date(fim+'T12:00:00');d.setDate(d.getDate()+1)){
       const ds=d.toISOString().split('T')[0];
       const dw=d.getDay();
-      if(dw>=1&&dw<=5){ // só dias úteis
-        dias.push({ferias_id:reg.id,funcionario_id:ferCtx.funcId,cpf:ferCtx.cpf,data:ds});
-      }
+      if(dw>=1&&dw<=5) novosDias.push({ferias_id:feriasId,funcionario_id:ferCtx.funcId,cpf:ferCtx.cpf,data:ds});
     }
-    if(dias.length) await sb.from('iw_ferias_dias').insert(dias);
   }
+  // 2) Trava de segurança: confere quantos dias antigos existem para ESTA férias
+  const {data:diasAntigos}=await sb.from('iw_ferias_dias').select('id').eq('ferias_id',feriasId);
+  const qtdAntiga=(diasAntigos||[]).length;
+  if(qtdAntiga>40){
+    toast('Cancelado por segurança: este período tem '+qtdAntiga+' dias registrados (esperado ≤ ~22). Verifique antes.','err');
+    return;
+  }
+  // 3) Delete cirúrgico SÓ dos dias desta férias, depois recria
+  if(qtdAntiga>0) await sb.from('iw_ferias_dias').delete().eq('ferias_id',feriasId);
+  if(novosDias.length) await sb.from('iw_ferias_dias').insert(novosDias);
 
   toast('Férias registradas!','ok');
   closeModals();
+  await loadBase();
   renderFerias(document.getElementById('content'));
 }
 async function delFerias(id){
   if(!confirm('Excluir este período de férias?'))return;
   await sb.from('iw_ferias_dias').delete().eq('ferias_id',id);
   await sb.from('iw_ferias').delete().eq('id',id);
+  await loadBase();
   renderFerias(document.getElementById('content'));
 }
 
