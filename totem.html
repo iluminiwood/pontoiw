@@ -413,6 +413,13 @@ body{
   </div>
 </div>
 
+<!-- Câmera de registro (aparece só quando habilitada por plano) -->
+<div id="camBox" style="display:none;position:fixed;top:16px;right:16px;z-index:50;width:140px;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.35);border:2px solid rgba(255,255,255,.15)">
+  <video id="camVideo" autoplay playsinline muted style="width:100%;display:block;background:#000;transform:scaleX(-1)"></video>
+  <div style="font-size:10px;color:#fff;background:rgba(0,0,0,.55);padding:3px 6px;text-align:center;letter-spacing:.02em">Foto de registro</div>
+</div>
+<canvas id="camCanvas" style="display:none"></canvas>
+
 <!-- CONFIRMAÇÃO -->
 <div class="overlay" id="confirmOverlay">
   <div class="conf-icon" id="confIcon">
@@ -502,16 +509,73 @@ if(!TOKEN){
     pin+=k; renderDots();
     if(pin.length===4) setTimeout(confirmarPin,160);
   });
+  initTotem();
+}
+
+// ── Câmera de registro (foto opcional, só plano pago + totem) ──
+let FOTO_ON=false, camReady=false, camStream=null;
+
+async function initTotem(){
+  try{
+    const {data}=await sb.rpc('kiosk_config',{p_token:TOKEN});
+    if(data && data.foto===true){ FOTO_ON=true; await initCamera(); }
+  }catch(e){ /* qualquer erro: segue sem foto, ponto normal */ }
+}
+
+async function initCamera(){
+  try{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia) return;
+    camStream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:'user',width:{ideal:640},height:{ideal:480}}, audio:false
+    });
+    const v=document.getElementById('camVideo');
+    if(v){ v.srcObject=camStream; await v.play().catch(()=>{}); }
+    const box=document.getElementById('camBox'); if(box) box.style.display='block';
+    camReady=true;
+  }catch(e){ camReady=false; /* sem permissão/câmera: ponto segue sem foto */ }
+}
+
+function capturarFoto(){
+  try{
+    if(!camReady) return null;
+    const v=document.getElementById('camVideo');
+    const c=document.getElementById('camCanvas');
+    if(!v||!c||!v.videoWidth) return null;
+    c.width=v.videoWidth; c.height=v.videoHeight;
+    c.getContext('2d').drawImage(v,0,0,c.width,c.height);
+    return c.toDataURL('image/jpeg',0.7); // qualidade média
+  }catch(e){ return null; }
 }
 
 async function confirmarPin(){
-  const{data,error}=await sb.rpc('bater_ponto_kiosk',{p_token:TOKEN,p_pin:pin});
-  if(error||!data||data.erro){
-    animarErro();
-    pin=''; renderDots();
-    return;
-  }
+  const pinAtual=pin;
   pin=''; renderDots();
+  let data=null, tratado=false;
+
+  // Caminho COM foto (só se habilitado e câmera pronta) via Edge Function segura
+  if(FOTO_ON && camReady){
+    const foto=capturarFoto();
+    if(foto){
+      try{
+        const resp=await fetch(SB_URL+'/functions/v1/kiosk-bater-foto',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY},
+          body:JSON.stringify({p_token:TOKEN,p_pin:pinAtual,foto_base64:foto})
+        });
+        if(resp.ok){ data=await resp.json(); tratado=true; }
+      }catch(e){ /* Edge Function indisponível: cai no fallback abaixo */ }
+    }
+  }
+
+  // Fallback: sem foto, ou se o caminho da foto não respondeu → RPC direta (comportamento atual)
+  if(!tratado){
+    try{
+      const r=await sb.rpc('bater_ponto_kiosk',{p_token:TOKEN,p_pin:pinAtual});
+      data = r.error ? null : r.data;
+    }catch(e){ data=null; }
+  }
+
+  if(!data || data.erro){ animarErro(); return; }
   mostrarConfirmacao(data);
 }
 
