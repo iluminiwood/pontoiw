@@ -1614,8 +1614,12 @@ async function renderDash(c){
     // Só conta se: dia útil E sistema estava em uso nesse dia
     if(isDiaUtil(ds) && diasComUso.has(ds)){
       const presentes=cpfsPorDia[ds]||new Set();
-      // Conta funcionários ativos que não registraram
-      cpfsAtivos.forEach(cpf=>{if(!presentes.has(cpf)) faltas++;});
+      // Conta funcionários ativos que não registraram (exceto férias/folga/afastamento)
+      cpfsAtivos.forEach(cpf=>{
+        if(presentes.has(cpf))return;
+        if(diasFeriasCpf.has(cpf+'_'+ds)||diasAfastamentoCpf.has(cpf+'_'+ds)||diasFolgaCompCpf.has(cpf+'_'+ds))return;
+        faltas++;
+      });
     }
   }
 
@@ -3862,24 +3866,41 @@ async function reloadAtrasos(){
   el.innerHTML='<div class="loading">Calculando...</div>';
   const per=document.getElementById('atr-per')?.value||'mes';
   const{ini,fim}=getPeriodo(per);
-  const{data:regs}=await safeQuery(()=>sb.from('iw_registros_ponto').select('*').gte('data_local',ini).lte('data_local',fim).order('id').limit(5000));
-  const todos=regs||[];
+  // Busca paginada (o 'total geral' pode ter mais de 5000 registros — sem paginar, cortava e bagunçava a contagem)
+  let todos=[],from=0;
+  while(true){
+    const{data:lote}=await safeQuery(()=>sb.from('iw_registros_ponto').select('*').gte('data_local',ini).lte('data_local',fim).order('id').range(from,from+999));
+    if(!lote||!lote.length)break;
+    todos=todos.concat(lote);
+    if(lote.length<1000)break;
+    from+=1000;
+  }
   const porCpf={};
   todos.forEach(r=>{
     if(!porCpf[r.cpf])porCpf[r.cpf]={nome:r.funcionario_nome,dias:{}};
     if(!porCpf[r.cpf].dias[r.data_local])porCpf[r.cpf].dias[r.data_local]=[];
     porCpf[r.cpf].dias[r.data_local].push({hora:r.data_hora_local?.slice(11,16)||'00:00',tipo:r.tipo});
   });
+  // Primeira batida de cada funcionário (usada como início seguro quando não há admissão cadastrada)
+  const primeiraBatida={};
+  Object.keys(porCpf).forEach(cpf=>{
+    const ds=Object.keys(porCpf[cpf].dias).sort();
+    if(ds.length) primeiraBatida[cpf]=ds[0];
+  });
   let html='<div class="flist fgrid2">';
   funcionarios.forEach((f)=>{
     const pf=porCpf[f.cpf]||{dias:{}};
     const ocorrencias=[];
-    const admF=f.admissao||'2026-02-01';
+    // Início seguro: admissão cadastrada > primeira batida > início do período.
+    // NUNCA um default fixo (senão conta falta antes da pessoa existir na empresa).
+    const admF=f.admissao||primeiraBatida[f.cpf]||ini;
     const dIni=new Date((ini<admF?admF:ini)+'T12:00:00'),dFim=new Date(fim+'T12:00:00');
     const hoje=new Date().toISOString().split('T')[0];
     for(let dia=new Date(dIni);dia<=dFim;dia.setDate(dia.getDate()+1)){
       const ds=dia.toISOString().split('T')[0];
       if(!isDiaUtil(ds)||ds>=hoje)continue;
+      // Pula dias que NÃO são falta: férias, folga compensada e afastamento (mesma fonte das outras telas)
+      if(diasFeriasCpf.has(f.cpf+'_'+ds)||diasAfastamentoCpf.has(f.cpf+'_'+ds)||diasFolgaCompCpf.has(f.cpf+'_'+ds))continue;
       const bats=pf.dias[ds];
       if(!bats||!bats.length){ocorrencias.push({tipo:'falta',data:ds,desc:'Falta — sem registro no dia'});continue;}
       const sorted=[...bats].sort((a,b)=>a.hora.localeCompare(b.hora));
