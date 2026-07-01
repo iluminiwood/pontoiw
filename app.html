@@ -765,24 +765,25 @@ body.light .toast{background:rgba(255,255,255,.97);}
       <div style="margin-top:.35rem">
         <div style="margin-bottom:.5rem">
           <label style="display:block;padding:.5rem .65rem;border-radius:var(--r8);border:1px solid var(--b1);cursor:pointer;font-size:13px;color:var(--t1)">
-            <input type="radio" name="tipo-acerto" value="pagamento" checked onchange="acertoTipo=this.value" style="margin-right:.5rem">
+            <input type="radio" name="tipo-acerto" value="pagamento" checked onchange="acertoSetTipo(this.value)" style="margin-right:.5rem">
             Pagamento de extras ao colaborador
           </label>
         </div>
         <div style="margin-bottom:.5rem">
           <label style="display:block;padding:.5rem .65rem;border-radius:var(--r8);border:1px solid var(--b1);cursor:pointer;font-size:13px;color:var(--t1)">
-            <input type="radio" name="tipo-acerto" value="desconto" onchange="acertoTipo=this.value" style="margin-right:.5rem">
+            <input type="radio" name="tipo-acerto" value="desconto" onchange="acertoSetTipo(this.value)" style="margin-right:.5rem">
             Desconto de horas em débito na folha
           </label>
         </div>
         <div>
           <label style="display:block;padding:.5rem .65rem;border-radius:var(--r8);border:1px solid var(--b1);cursor:pointer;font-size:13px;color:var(--t1)">
-            <input type="radio" name="tipo-acerto" value="bonificacao" onchange="acertoTipo=this.value" style="margin-right:.5rem">
+            <input type="radio" name="tipo-acerto" value="bonificacao" onchange="acertoSetTipo(this.value)" style="margin-right:.5rem">
             Quitação como bonificação — sem desconto
           </label>
         </div>
       </div>
     </div>
+    <div class="field" id="acerto-adic-wrap"><label>Adicional de hora extra (%) <span style="font-size:10px;color:var(--t3);font-weight:400">incide sobre o valor · varia por sindicato</span></label><input type="number" id="acerto-adicional" step="1" min="0" value="50" oninput="recalcValorAcerto()"></div>
     <div class="field"><label>Valor de referência (R$) <span style="font-size:10px;color:var(--t3);font-weight:400">calculado automaticamente</span></label><input type="number" id="acerto-valor" step="0.01" min="0" oninput="this.dataset.manual='1'"></div>
     <div class="field"><label>Data do pagamento</label><input type="date" id="acerto-data-pag"></div>
     <div class="field"><label>Observação</label><input type="text" id="acerto-obs" placeholder="Opcional"></div>
@@ -2177,10 +2178,24 @@ function htmlBlocoValorAcerto(a, saldoTotal, fmtBRL){
       +'<span style="font-size:22px;font-weight:900;font-family:var(--mono);color:var(--r)">'+fmtBRL(vlrAbs)+'</span>'
       +'</div></div>';
   }
-  // Pagamento (padrão)
+  // Pagamento (padrão) — mostra composição se houver adicional de HE
+  const pct=Number(a.adicional_pct||0);
+  let composicao='';
+  if(pct>0){
+    // valor base = total / (1 + pct/100)
+    const base=vlrAbs/(1+pct/100);
+    const adic=vlrAbs-base;
+    composicao='<div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid rgba(61,214,140,.12)">'
+      +'<span style="font-size:12px;color:var(--t2)">Valor das horas</span>'
+      +'<span style="font-size:12px;font-weight:600;color:var(--t1);font-family:var(--mono)">'+fmtBRL(base)+'</span></div>'
+      +'<div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid rgba(61,214,140,.12)">'
+      +'<span style="font-size:12px;color:var(--t2)">Adicional de hora extra ('+pct+'%)</span>'
+      +'<span style="font-size:12px;font-weight:600;color:var(--g);font-family:var(--mono)">+ '+fmtBRL(adic)+'</span></div>';
+  }
   return '<div style="background:rgba(61,214,140,.06);border:1px solid rgba(61,214,140,.15);border-radius:var(--r8);padding:.75rem;margin-bottom:.85rem">'
     +'<div style="font-size:10px;color:var(--g);font-weight:700;text-transform:uppercase;margin-bottom:.5rem">Pagamento ao colaborador</div>'
-    +'<div style="display:flex;justify-content:space-between;align-items:center">'
+    +composicao
+    +'<div style="display:flex;justify-content:space-between;align-items:center'+(pct>0?';padding-top:.4rem':'')+'">'
     +'<span style="font-size:14px;font-weight:800;color:var(--t1)">Valor a receber</span>'
     +'<span style="font-size:22px;font-weight:900;font-family:var(--mono);color:var(--g)">'+fmtBRL(vlrAbs)+'</span>'
     +'</div></div>';
@@ -2518,14 +2533,46 @@ async function editarAcerto(id){
   document.getElementById('acerto-periodo').value=a.periodo_label||'';
   document.getElementById('acerto-inicio').value=a.periodo_inicio||'';
   document.getElementById('acerto-fim').value=a.periodo_fim||'';
-  document.getElementById('acerto-valor').value=a.valor_pago||'';
+  const valEl=document.getElementById('acerto-valor');
+  valEl.value=a.valor_pago||'';
+  valEl.dataset.manual='1'; // preserva o valor já salvo (não recalcula sozinho na edição)
   document.getElementById('acerto-data-pag').value=a.data_pagamento||'';
   document.getElementById('acerto-obs').value=a.observacao||'';
+  // Carrega o adicional salvo e mostra/esconde conforme o tipo
+  const adicEl=document.getElementById('acerto-adicional'); if(adicEl) adicEl.value=(a.adicional_pct!=null?a.adicional_pct:50);
   // Carrega tipo de encerramento
   acertoTipo=a.tipo_encerramento||'pagamento';
   document.querySelectorAll('input[name="tipo-acerto"]').forEach(r=>{r.checked=(r.value===acertoTipo);});
+  const adicWrap=document.getElementById('acerto-adic-wrap'); if(adicWrap) adicWrap.style.display=(acertoTipo==='pagamento')?'':'none';
   carregarPeriodosNoModal(a.periodos_anteriores||[]);
   document.getElementById('m-acerto').classList.add('open');
+}
+
+// Recalcula o valor do acerto: base (saldo × valor hora) + adicional %
+function recalcValorAcerto(){
+  if(!acertoCtx)return;
+  const valorEl=document.getElementById('acerto-valor');
+  if(!valorEl)return;
+  // Se o usuário editou o valor manualmente, respeita e não sobrescreve
+  if(valorEl.dataset.manual==='1')return;
+  const saldoMin=acertoCtx.saldoMin||0;
+  const vlrHora=acertoCtx.vlrHora||0;
+  const base=Math.max(0,(saldoMin/60)*vlrHora);
+  let pct=0;
+  if(acertoTipo==='pagamento'){
+    pct=parseFloat(document.getElementById('acerto-adicional')?.value)||0;
+  }
+  const total=base*(1+pct/100);
+  valorEl.value=total.toFixed(2);
+}
+// Mostra/esconde o campo de adicional conforme o tipo (só faz sentido no pagamento)
+function acertoSetTipo(v){
+  acertoTipo=v;
+  const wrap=document.getElementById('acerto-adic-wrap');
+  if(wrap) wrap.style.display = (v==='pagamento') ? '' : 'none';
+  const valorEl=document.getElementById('acerto-valor');
+  if(valorEl) valorEl.dataset.manual=''; // volta a calcular automático ao trocar de tipo
+  recalcValorAcerto();
 }
 
 function abrirAcerto(cpf,nome,funcId,saldoMin,vlrHora){
@@ -2536,13 +2583,16 @@ function abrirAcerto(cpf,nome,funcId,saldoMin,vlrHora){
   document.getElementById('acerto-inicio').value=sug.inicio;
   document.getElementById('acerto-fim').value=sug.fim;
   document.getElementById('acerto-saldo-display').value=(saldoMin>=0?'+':'')+fromMin(saldoMin)+(vlrHora?' · sugestão R$ '+(saldoMin/60*vlrHora).toLocaleString('pt-BR',{minimumFractionDigits:2}):'');
-  document.getElementById('acerto-valor').value=vlrHora?Math.max(0,(saldoMin/60*vlrHora)).toFixed(2):'';
-  document.getElementById('acerto-data-pag').value=new Date().toISOString().split('T')[0];
-  document.getElementById('acerto-obs').value='';
+  const adicEl=document.getElementById('acerto-adicional'); if(adicEl) adicEl.value=50;
+  const valEl=document.getElementById('acerto-valor'); if(valEl) valEl.dataset.manual='';
   acertoCtx.saldoMin=saldoMin;
-  acertoCtx.acertoId=null;
   acertoTipo='pagamento';
   document.querySelectorAll('input[name="tipo-acerto"]').forEach(r=>{r.checked=r.value==='pagamento';});
+  const adicWrap=document.getElementById('acerto-adic-wrap'); if(adicWrap) adicWrap.style.display='';
+  recalcValorAcerto();
+  document.getElementById('acerto-data-pag').value=new Date().toISOString().split('T')[0];
+  document.getElementById('acerto-obs').value='';
+  acertoCtx.acertoId=null;
   periodosRows=[];renderPeriodosLista();
   const titleEl=document.getElementById('m-acerto-title');if(titleEl)titleEl.textContent='Registrar acerto de horas';
   document.getElementById('m-acerto').classList.add('open');
@@ -2557,6 +2607,7 @@ async function salvarAcerto(){
   const valor_pago=parseFloat(document.getElementById('acerto-valor').value)||0;
   const data_pagamento=document.getElementById('acerto-data-pag').value;
   const observacao=document.getElementById('acerto-obs').value;
+  const adicional_pct=(acertoTipo==='pagamento')?(parseFloat(document.getElementById('acerto-adicional').value)||0):0;
 
   if(!periodo_label){toast('Informe o período.','err');return;}
   if(!data_pagamento){toast('Informe a data do pagamento.','err');return;}
@@ -2571,15 +2622,18 @@ async function salvarAcerto(){
       periodo_label,periodo_inicio:periodo_inicio||null,periodo_fim:periodo_fim||null,
       valor_pago,data_pagamento,observacao:observacao||null,
       periodos_anteriores:getPeriodosParaSalvar(),
-    tipo_encerramento:acertoTipo,
-      tipo_encerramento:acertoTipo
+      tipo_encerramento:acertoTipo,
+      adicional_pct
     }).eq('id',acertoCtx.acertoId));
   } else {
     // NOVO — insere registro
     ({error}=await sb.from('iw_acertos_horas').insert({
       funcionario_id:acertoCtx.funcId,funcionario_nome:acertoCtx.nome,cpf:acertoCtx.cpf,
       periodo_label,periodo_inicio:periodo_inicio||null,periodo_fim:periodo_fim||null,
-      saldo_min:acertoCtx.saldoMin||0,valor_pago,data_pagamento,observacao:observacao||null
+      saldo_min:acertoCtx.saldoMin||0,valor_pago,data_pagamento,observacao:observacao||null,
+      periodos_anteriores:getPeriodosParaSalvar(),
+      tipo_encerramento:acertoTipo,
+      adicional_pct
     }));
   }
 
@@ -2603,6 +2657,8 @@ async function salvarAcerto(){
     observacao:document.getElementById('acerto-obs').value,
     periodos_anteriores:getPeriodosParaSalvar(),
     vlrHora:acertoCtx.vlrHora||0,
+    adicional_pct,
+    tipo_encerramento:acertoTipo,
   };
   closeModals();
   setTimeout(()=>abrirComprovante(_comp),200);
@@ -2751,7 +2807,7 @@ async function reloadBanco(){
   }
 
   // Busca o último acerto registrado de cada funcionário
-  const{data:acertosData}=await sb.from('iw_acertos_horas').select('id,cpf,funcionario_nome,periodo_label,periodo_inicio,periodo_fim,saldo_min,valor_pago,data_pagamento,observacao,periodos_anteriores,tipo_encerramento').order('data_pagamento',{ascending:false}).limit(200);
+  const{data:acertosData}=await sb.from('iw_acertos_horas').select('id,cpf,funcionario_nome,periodo_label,periodo_inicio,periodo_fim,saldo_min,valor_pago,data_pagamento,observacao,periodos_anteriores,tipo_encerramento,adicional_pct').order('data_pagamento',{ascending:false}).limit(200);
   const ultimoAcertoPorCpf={};
   acertosPorCpf={};             // histórico completo por CPF (global)
   cortePorCpf={};               // data de corte do saldo (global)
