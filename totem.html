@@ -304,6 +304,33 @@ body{
 }
 #fs-return.show{display:flex;}
 #fs-return svg{width:14px;height:14px;stroke:currentColor;}
+
+/* ============================
+   PAINEL CÂMERA (modo foto)
+   ============================ */
+.totem-cam{position:relative;overflow:hidden;background:#0a0a0c;display:none;}
+body.foto-on .totem-left{display:none;}
+body.foto-on .totem-cam{display:block;}
+.cam-vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);background:#0a0a0c;}
+.cam-shot{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;z-index:2;}
+.cam-grad{position:absolute;inset:0;pointer-events:none;z-index:3;background:linear-gradient(to bottom,rgba(0,0,0,.6) 0%,rgba(0,0,0,.12) 26%,rgba(0,0,0,0) 50%,rgba(0,0,0,.55) 100%);}
+.cam-glow{position:absolute;inset:0;pointer-events:none;z-index:4;box-shadow:inset 0 0 0 0 transparent;transition:box-shadow .25s;}
+.cam-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .15s;z-index:6;}
+.cam-top{position:absolute;top:clamp(12px,3vh,26px);left:0;right:0;display:flex;flex-direction:column;align-items:center;pointer-events:none;text-shadow:0 2px 12px rgba(0,0,0,.7);transition:opacity .3s;z-index:5;}
+.cam-clock{color:#fff;font-family:'SF Mono',ui-monospace,Menlo,monospace;font-weight:800;letter-spacing:1px;line-height:1;font-size:clamp(34px,6vw,52px);}
+.cam-date{color:rgba(255,255,255,.7);margin-top:4px;font-size:clamp(10px,1.4vw,14px);text-transform:capitalize;}
+.cam-aviso{position:absolute;bottom:clamp(10px,2.5vh,18px);left:0;right:0;display:flex;justify-content:center;pointer-events:none;transition:opacity .3s;z-index:5;}
+.cam-aviso .pill{display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.45);border-radius:20px;padding:5px 12px;}
+.cam-aviso .pill svg{width:12px;height:12px;stroke:#f5b301;fill:none;stroke-width:2;flex-shrink:0;}
+.cam-aviso .pill span{color:#e8e8ec;font-size:clamp(9px,1.1vw,11px);line-height:1.2;}
+.cam-greet{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;opacity:0;transition:opacity .3s;text-shadow:0 2px 14px rgba(0,0,0,.85);z-index:7;padding:0 clamp(14px,3vw,28px);}
+.cam-greet svg{stroke:#fff;fill:none;stroke-width:2.5;margin-bottom:10px;width:clamp(40px,6vw,56px);height:clamp(40px,6vw,56px);}
+.cam-greet .g-txt{color:#fff;font-weight:800;text-align:center;line-height:1.15;font-size:clamp(22px,3.4vw,34px);}
+.cam-greet .g-sub{color:rgba(255,255,255,.85);margin-top:6px;font-size:clamp(12px,1.5vw,15px);text-align:center;}
+/* Portrait: câmera em cima, PIN embaixo */
+@media(orientation:portrait){
+  body.foto-on .totem-cam{grid-row:1;min-height:42vh;}
+}
 </style>
 </head>
 <body>
@@ -373,7 +400,30 @@ body{
 <!-- TELA PRINCIPAL -->
 <div id="totem-root">
   <div class="totem-layout" id="totem-main">
-    <!-- Painel esquerdo: relógio -->
+    <!-- Painel câmera (modo foto — plano pago + totem) -->
+    <div class="totem-cam" id="totemCam">
+      <video class="cam-vid" id="camVid" autoplay playsinline muted></video>
+      <canvas class="cam-shot" id="camShot" width="600" height="600"></canvas>
+      <div class="cam-grad"></div>
+      <div class="cam-flash" id="camFlash"></div>
+      <div class="cam-glow" id="camGlow"></div>
+      <div class="cam-top" id="camTop">
+        <div class="cam-clock" id="camClock">--:--</div>
+        <div class="cam-date" id="camDate">—</div>
+      </div>
+      <div class="cam-aviso" id="camAviso">
+        <div class="pill">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+          <span>Sua foto é registrada ao bater ponto</span>
+        </div>
+      </div>
+      <div class="cam-greet" id="camGreet">
+        <svg id="camGreetIcon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        <div class="g-txt" id="camGreetTxt"></div>
+        <div class="g-sub" id="camGreetSub"></div>
+      </div>
+    </div>
+    <!-- Painel esquerdo: relógio (modo sem foto) -->
     <div class="totem-left">
       <div class="brand">IW · Batidas Digital</div>
       <div class="clock-wrap">
@@ -413,13 +463,6 @@ body{
   </div>
 </div>
 
-<!-- Câmera de registro (aparece só quando habilitada por plano) -->
-<div id="camBox" style="display:none;position:fixed;top:16px;right:16px;z-index:50;width:140px;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.35);border:2px solid rgba(255,255,255,.15)">
-  <video id="camVideo" autoplay playsinline muted style="width:100%;display:block;background:#000;transform:scaleX(-1)"></video>
-  <div style="font-size:10px;color:#fff;background:rgba(0,0,0,.55);padding:3px 6px;text-align:center;letter-spacing:.02em">Foto de registro</div>
-</div>
-<canvas id="camCanvas" style="display:none"></canvas>
-
 <!-- CONFIRMAÇÃO -->
 <div class="overlay" id="confirmOverlay">
   <div class="conf-icon" id="confIcon">
@@ -443,10 +486,16 @@ const TOKEN=params.get('t');
 // ── Relógio ──────────────────────────────────────────
 function tick(){
   const n=new Date();
+  const hhmm=n.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const dt=n.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
   const c=document.getElementById('clock');
   const d=document.getElementById('dateLbl');
-  if(c) c.textContent=n.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  if(d) d.textContent=n.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
+  if(c) c.textContent=hhmm;
+  if(d) d.textContent=dt;
+  const cc=document.getElementById('camClock');
+  const cd=document.getElementById('camDate');
+  if(cc) cc.textContent=hhmm;
+  if(cd) cd.textContent=dt;
 }
 tick(); setInterval(tick,1000);
 
@@ -526,23 +575,25 @@ async function initCamera(){
   try{
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia) return;
     camStream=await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:'user',width:{ideal:640},height:{ideal:480}}, audio:false
+      video:{facingMode:'user',width:{ideal:640},height:{ideal:640}}, audio:false
     });
-    const v=document.getElementById('camVideo');
+    const v=document.getElementById('camVid');
     if(v){ v.srcObject=camStream; await v.play().catch(()=>{}); }
-    const box=document.getElementById('camBox'); if(box) box.style.display='block';
+    document.body.classList.add('foto-on'); // ativa o layout de câmera
     camReady=true;
-  }catch(e){ camReady=false; /* sem permissão/câmera: ponto segue sem foto */ }
+  }catch(e){ camReady=false; /* sem permissão/câmera: layout normal, ponto segue sem foto */ }
 }
 
 function capturarFoto(){
   try{
     if(!camReady) return null;
-    const v=document.getElementById('camVideo');
-    const c=document.getElementById('camCanvas');
+    const v=document.getElementById('camVid');
+    const c=document.getElementById('camShot');
     if(!v||!c||!v.videoWidth) return null;
-    c.width=v.videoWidth; c.height=v.videoHeight;
-    c.getContext('2d').drawImage(v,0,0,c.width,c.height);
+    const cx=c.getContext('2d');
+    cx.save(); cx.scale(-1,1); cx.translate(-c.width,0);
+    cx.drawImage(v,0,0,c.width,c.height);
+    cx.restore();
     return c.toDataURL('image/jpeg',0.7); // qualidade média
   }catch(e){ return null; }
 }
@@ -552,30 +603,23 @@ async function confirmarPin(){
   pin=''; renderDots();
   let data=null, tratado=false;
 
-  console.log('[DIAG] FOTO_ON=',FOTO_ON,'camReady=',camReady);
-
   // Caminho COM foto (só se habilitado e câmera pronta) via Edge Function segura
   if(FOTO_ON && camReady){
     const foto=capturarFoto();
-    console.log('[DIAG] capturarFoto retornou:', foto ? ('OK, '+foto.length+' chars') : 'NULL');
     if(foto){
       try{
-        console.log('[DIAG] chamando Edge Function...');
         const resp=await fetch(SB_URL+'/functions/v1/kiosk-bater-foto',{
           method:'POST',
           headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY},
           body:JSON.stringify({p_token:TOKEN,p_pin:pinAtual,foto_base64:foto})
         });
-        console.log('[DIAG] Edge Function respondeu status:', resp.status, 'ok=', resp.ok);
-        if(resp.ok){ data=await resp.json(); tratado=true; console.log('[DIAG] retorno:', JSON.stringify(data)); }
-        else { const t=await resp.text(); console.log('[DIAG] corpo do erro:', t); }
-      }catch(e){ console.log('[DIAG] EXCEÇÃO no fetch:', e.message); }
+        if(resp.ok){ data=await resp.json(); tratado=true; }
+      }catch(e){ /* Edge Function indisponível: cai no fallback abaixo */ }
     }
   }
 
   // Fallback: sem foto, ou se o caminho da foto não respondeu → RPC direta (comportamento atual)
   if(!tratado){
-    console.log('[DIAG] caiu no FALLBACK (RPC direta, sem foto)');
     try{
       const r=await sb.rpc('bater_ponto_kiosk',{p_token:TOKEN,p_pin:pinAtual});
       data = r.error ? null : r.data;
@@ -587,6 +631,12 @@ async function confirmarPin(){
 }
 
 function animarErro(){
+  if(FOTO_ON && camReady){
+    efeitoCamera(false, 'PIN incorreto', 'Tente novamente');
+    const cam=document.getElementById('totemCam');
+    if(cam) cam.animate([{transform:'translateX(0)'},{transform:'translateX(-6px)'},{transform:'translateX(6px)'},{transform:'translateX(0)'}],{duration:300});
+    return;
+  }
   const dots=document.getElementById('pinDots');
   document.querySelectorAll('.pin-dot').forEach(d=>d.classList.add('erro'));
   dots.classList.add('shake');
@@ -599,12 +649,16 @@ function animarErro(){
 }
 
 function mostrarConfirmacao(data){
-  const ov=document.getElementById('confirmOverlay');
-  if(!ov) return;
   const nome=data.nome.split(' ')[0];
   const msg=montarMsg(data.numero||1,data.tipo,nome);
-
-  // Ícone via SVG (sem emoji)
+  // Modo foto: mostra sobre a câmera (flash + brilho verde + frame congelado + saudação)
+  if(FOTO_ON && camReady){
+    efeitoCamera(true, msg.titulo, (msg.sub||'')+' · '+data.hora);
+    return;
+  }
+  // Modo sem foto: overlay padrão
+  const ov=document.getElementById('confirmOverlay');
+  if(!ov) return;
   document.getElementById('confIcon').innerHTML=`
     <svg viewBox="0 0 24 24" fill="none" stroke="#3dd68c" stroke-width="2.5" stroke-linecap="round">
       <polyline points="20 6 9 17 4 12"/>
@@ -615,6 +669,44 @@ function mostrarConfirmacao(data){
   document.getElementById('confMotiv').textContent=msg.motiv||'';
   ov.className='overlay open ok';
   setTimeout(()=>ov.classList.remove('open'),4200);
+}
+
+// Efeito sobre a câmera: flash + brilho + frame congelado + saudação (verde=ok, vermelho=erro)
+function efeitoCamera(ok, titulo, sub){
+  const flash=document.getElementById('camFlash');
+  const glow=document.getElementById('camGlow');
+  const shot=document.getElementById('camShot');
+  const top=document.getElementById('camTop');
+  const aviso=document.getElementById('camAviso');
+  const greet=document.getElementById('camGreet');
+  const gicon=document.getElementById('camGreetIcon');
+  const gtxt=document.getElementById('camGreetTxt');
+  const gsub=document.getElementById('camGreetSub');
+  // flash branco (foto sendo tirada)
+  if(flash){ flash.style.opacity='.8'; setTimeout(()=>{flash.style.opacity='0';},150); }
+  // congela o frame (só no sucesso; no erro mantém o vídeo)
+  if(ok && shot && shot.getContext) shot.style.display='block';
+  // brilho verde/vermelho
+  if(glow) glow.style.boxShadow = ok
+    ? 'inset 0 0 60px 8px rgba(16,185,129,.9)'
+    : 'inset 0 0 60px 8px rgba(248,113,113,.9)';
+  // saudação
+  if(gicon) gicon.innerHTML = ok
+    ? '<polyline points="20 6 9 17 4 12"/>'
+    : '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>';
+  if(gtxt) gtxt.textContent=titulo;
+  if(gsub) gsub.textContent=sub;
+  if(top) top.style.opacity='0';
+  if(aviso) aviso.style.opacity='0';
+  if(greet) greet.style.opacity='1';
+  // volta ao normal
+  setTimeout(()=>{
+    if(glow) glow.style.boxShadow='inset 0 0 0 0 transparent';
+    if(greet) greet.style.opacity='0';
+    if(top) top.style.opacity='1';
+    if(aviso) aviso.style.opacity='1';
+    if(shot) shot.style.display='none';
+  }, ok?3200:1800);
 }
 
 // ── Fullscreen ───────────────────────────────────────
