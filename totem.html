@@ -331,6 +331,8 @@ body.foto-on .totem-cam{display:block;}
 @media(orientation:portrait){
   body.foto-on .totem-cam{grid-row:1;min-height:42vh;}
 }
+/* Brilho de tela cheia no momento da batida */
+#glowFull{position:fixed;inset:0;pointer-events:none;z-index:40;box-shadow:inset 0 0 0 0 transparent;transition:box-shadow .25s;}
 </style>
 </head>
 <body>
@@ -462,6 +464,9 @@ body.foto-on .totem-cam{display:block;}
     </div>
   </div>
 </div>
+
+<!-- Brilho de tela cheia (verde/vermelho no momento da batida) -->
+<div id="glowFull"></div>
 
 <!-- CONFIRMAÇÃO -->
 <div class="overlay" id="confirmOverlay">
@@ -686,10 +691,11 @@ function efeitoCamera(ok, titulo, sub){
   if(flash){ flash.style.opacity='.8'; setTimeout(()=>{flash.style.opacity='0';},150); }
   // congela o frame (só no sucesso; no erro mantém o vídeo)
   if(ok && shot && shot.getContext) shot.style.display='block';
-  // brilho verde/vermelho
-  if(glow) glow.style.boxShadow = ok
-    ? 'inset 0 0 60px 8px rgba(16,185,129,.9)'
-    : 'inset 0 0 60px 8px rgba(248,113,113,.9)';
+  // brilho verde/vermelho na TELA TODA
+  const glowF=document.getElementById('glowFull');
+  if(glowF) glowF.style.boxShadow = ok
+    ? 'inset 0 0 120px 24px rgba(16,185,129,.85)'
+    : 'inset 0 0 120px 24px rgba(248,113,113,.85)';
   // saudação
   if(gicon) gicon.innerHTML = ok
     ? '<polyline points="20 6 9 17 4 12"/>'
@@ -701,6 +707,8 @@ function efeitoCamera(ok, titulo, sub){
   if(greet) greet.style.opacity='1';
   // volta ao normal
   setTimeout(()=>{
+    const glowF=document.getElementById('glowFull');
+    if(glowF) glowF.style.boxShadow='inset 0 0 0 0 transparent';
     if(glow) glow.style.boxShadow='inset 0 0 0 0 transparent';
     if(greet) greet.style.opacity='0';
     if(top) top.style.opacity='1';
