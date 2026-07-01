@@ -4130,8 +4130,26 @@ async function gerarEspelhoPonto(){
   cpfsExib.forEach(cpf=>{
     const f=fmap[cpf]; if(!f) return;
     const pf=porCpf[cpf]||{nome:f.nome,dias:{}};
-    const datas=Object.keys(pf.dias).sort();
-    if(!datas.length) return; // pula quem não tem registro no período
+
+    // Percorre TODOS os dias do período (não só os com batida), desde a admissão, sem passar de hoje.
+    // Assim férias, folgas compensadas e afastamentos aparecem etiquetados — relatório completo p/ conferência.
+    const hojeStr=new Date().toISOString().split('T')[0];
+    const admF=f.admissao||ini;
+    const iniIter=(ini<admF?admF:ini);
+    const fimIter=(fim>hojeStr?hojeStr:fim);
+    const datas=[];
+    if(iniIter<=fimIter){
+      for(let d=new Date(iniIter+'T12:00:00'); d<=new Date(fimIter+'T12:00:00'); d.setDate(d.getDate()+1)){
+        const ds=d.toISOString().split('T')[0];
+        const dow=d.getDay();
+        const temBat=pf.dias[ds]&&pf.dias[ds].length;
+        const especial=diasFeriasCpf.has(cpf+'_'+ds)||diasAfastamentoCpf.has(cpf+'_'+ds)||diasFolgaCompCpf.has(cpf+'_'+ds);
+        const diaUtil=(dow>=1&&dow<=5)&&!feriados.has(ds);
+        // inclui: dias com batida, dias especiais, e dias úteis (pra mostrar falta). Fim de semana só se teve batida.
+        if(temBat||especial||diaUtil) datas.push(ds);
+      }
+    }
+    if(!datas.length) return; // pula quem não tem nada no período
 
     if(paginou) doc.addPage();
     paginou=true; algumGerado=true;
@@ -4155,27 +4173,43 @@ async function gerarEspelhoPonto(){
     // Linhas da tabela
     let totTrab=0, totSaldo=0, totFaltas=0;
     const linhas=datas.map(data=>{
-      const bats=[...pf.dias[data]].sort((a,b)=>a.hora.localeCompare(b.hora));
-      const r=saldoDoDia(data,bats,cpf);
+      const batsRaw=pf.dias[data]||[];
+      const temBatida=batsRaw.length>0;
+      const bats=[...batsRaw].sort((a,b)=>a.hora.localeCompare(b.hora));
+      const r=saldoDoDia(data, temBatida?bats:undefined, cpf);
       const jMin=r.jornada;
       const trab=r.trab;
       const saldo=r.saldo;
       const mostraSaldo = r.classe==='excluido' ? false
                         : r.emAndamento ? false
                         : r.classe==='folga' ? r.trab>0
+                        : r.classe==='folga_comp' ? true
                         : true;
       totTrab+=trab; totSaldo+=saldo;
       const dow=new Date(data+'T12:00:00').getDay();
-      const bathtml=bats.map(b=>(b.tipo==='ENTRADA'?'E ':'S ')+b.hora).join('   ');
+      // Coluna de batidas: se tem batida mostra as horas; senão, a etiqueta do dia
+      let colBatidas;
       let falta='';
-      if(r.classe==='util' && !r.emAndamento && jMin && trab===0){ falta='Falta'; totFaltas++; }
+      if(temBatida){
+        colBatidas=bats.map(b=>(b.tipo==='ENTRADA'?'E ':'S ')+b.hora).join('   ');
+      } else if(diasFeriasCpf.has(cpf+'_'+data)){
+        colBatidas='— Férias —';
+      } else if(diasFolgaCompCpf.has(cpf+'_'+data)){
+        colBatidas='— Folga compensada —';
+      } else if(diasAfastamentoCpf.has(cpf+'_'+data)){
+        colBatidas='— Afastamento —';
+      } else if(r.classe==='util' && !r.emAndamento && jMin){
+        colBatidas='— Falta —'; falta='Falta'; totFaltas++;
+      } else {
+        colBatidas='—';
+      }
       return [
         fmtData(data),
         dowNomes[dow],
-        bathtml||'—',
+        colBatidas,
         trab?fromMin(trab):'—',
         jMin?fromMin(jMin):'—',
-        (mostraSaldo?((saldo>=0?'+':'')+fromMin(saldo)):'—')+(falta?'  ('+falta+')':'')
+        (mostraSaldo?((saldo>=0?'+':'')+fromMin(saldo)):'—')
       ];
     });
 
