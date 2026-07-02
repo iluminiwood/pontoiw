@@ -226,6 +226,13 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .filter-bar{display:flex;gap:8px;margin-bottom:.9rem;flex-wrap:wrap;}
 .filter-bar select{background:var(--s2);border:1px solid var(--b1);border-radius:var(--r8);padding:7px 10px;font-family:var(--font);font-size:12px;color:var(--t1);outline:none;cursor:pointer;flex:1;min-width:120px;}
 .filter-bar select:focus{border-color:var(--acc);}
+/* Período personalizado — campos de data harmonizados com o app */
+.filter-bar input[type="date"]{background:var(--s2);border:1px solid var(--b1);border-radius:var(--r8);padding:7px 10px;font-family:var(--font);font-size:12px;color:var(--t1);outline:none;cursor:pointer;}
+.filter-bar input[type="date"]:focus{border-color:var(--acc);}
+.filter-bar input[type="date"]::-webkit-calendar-picker-indicator{cursor:pointer;opacity:.6;filter:var(--cal-filter,none);}
+[data-theme="dark"] .filter-bar input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(.8);}
+.periodo-custom{display:none;gap:6px;align-items:center;flex-wrap:wrap;}
+.periodo-custom .sep{color:var(--t3);font-size:12px;}
 .atr-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(42,42,50,.3);}
 .atr-row:last-child{border-bottom:none;}
 
@@ -1860,10 +1867,10 @@ async function renderBatidas(c){
       <option value="tudo">Tudo</option>
       <option value="custom">Personalizado…</option>
     </select>
-    <div id="b-custom-wrap" style="display:none;gap:6px;align-items:center">
-      <input type="date" id="b-de" onchange="onPeriodoChange('b',reloadBatidas)" style="font-size:12px">
-      <span style="color:var(--t3);font-size:12px">até</span>
-      <input type="date" id="b-ate" onchange="onPeriodoChange('b',reloadBatidas)" style="font-size:12px">
+    <div id="b-custom-wrap" class="periodo-custom">
+      <input type="date" id="b-de" onchange="onPeriodoChange('b',reloadBatidas)">
+      <span class="sep">até</span>
+      <input type="date" id="b-ate" onchange="onPeriodoChange('b',reloadBatidas)">
     </div>
     <select id="b-func" onchange="reloadBatidas()">
       <option value="">Todos funcionários</option>
@@ -2859,10 +2866,10 @@ async function renderBanco(c){
       <option value="tudo">Total geral</option>
       <option value="custom">Personalizado…</option>
     </select>
-    <div id="banco-custom-wrap" style="display:none;gap:6px;align-items:center">
-      <input type="date" id="banco-de" onchange="onPeriodoChange('banco',reloadBanco)" style="font-size:12px">
-      <span style="color:var(--t3);font-size:12px">até</span>
-      <input type="date" id="banco-ate" onchange="onPeriodoChange('banco',reloadBanco)" style="font-size:12px">
+    <div id="banco-custom-wrap" class="periodo-custom">
+      <input type="date" id="banco-de" onchange="onPeriodoChange('banco',reloadBanco)">
+      <span class="sep">até</span>
+      <input type="date" id="banco-ate" onchange="onPeriodoChange('banco',reloadBanco)">
     </div>
     <button class="btn-sm" onclick="gerarRelBanco()" style="white-space:nowrap;margin-left:auto;display:flex;align-items:center;gap:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>Acertos (PDF)</button>
   </div>
@@ -3998,10 +4005,10 @@ async function renderAtrasos(c){
     <option value="30dias">Últimos 30 dias</option><option value="ano">Este ano</option>
     <option value="tudo">Total geral</option><option value="custom">Personalizado…</option>
   </select>
-  <div id="atr-custom-wrap" style="display:none;gap:6px;align-items:center">
-    <input type="date" id="atr-de" onchange="onPeriodoChange('atr',reloadAtrasos)" style="font-size:12px">
-    <span style="color:var(--t3);font-size:12px">até</span>
-    <input type="date" id="atr-ate" onchange="onPeriodoChange('atr',reloadAtrasos)" style="font-size:12px">
+  <div id="atr-custom-wrap" class="periodo-custom">
+    <input type="date" id="atr-de" onchange="onPeriodoChange('atr',reloadAtrasos)">
+    <span class="sep">até</span>
+    <input type="date" id="atr-ate" onchange="onPeriodoChange('atr',reloadAtrasos)">
   </div></div><div id="atr-body"><div class="loading">Carregando...</div></div>`;
   await reloadAtrasos();
 }
