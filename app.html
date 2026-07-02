@@ -557,6 +557,19 @@ body.light .toast{background:rgba(255,255,255,.97);}
   </div>
 </div>
 
+<!-- MODAL LINHA DO TEMPO -->
+<div class="moverlay" id="m-timeline">
+  <div class="modal" style="max-width:560px;max-height:85vh;display:flex;flex-direction:column">
+    <div class="mhandle"></div>
+    <div class="mtitle" id="m-timeline-nome" style="margin-bottom:2px">Linha do tempo</div>
+    <div class="msub" id="m-timeline-sub"></div>
+    <div id="m-timeline-body" style="overflow-y:auto;flex:1;margin-top:1rem;padding-right:4px"><div class="loading">Carregando...</div></div>
+    <div class="mactions" style="margin-top:1rem">
+      <button class="btn-sm" onclick="closeModals()">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL MARCAR DIA (folga/atestado avulso) -->
 <div class="moverlay" id="m-dia">
   <div class="modal">
@@ -3482,6 +3495,7 @@ async function renderEquipe(c){
       <div class="fstat"><div class="fstat-l">Carga semanal</div><div class="fstat-v">44h</div></div>
     </div>
     <div class="factions">
+      <button class="btn-xs" style="color:var(--pu,#7F77DD);border-color:rgba(127,119,221,.35)" onclick='abrirTimeline("${f.cpf||''}",${f.id},"${f.nome.replace(/"/g,'&quot;')}")'>Linha do tempo</button>
       <button class="btn-xs" style="color:var(--acc);border-color:rgba(16,185,129,.3)" onclick="editPin(${f.id})">PIN</button>
       <button class="btn-xs" style="color:var(--g);border-color:rgba(61,214,140,.3)" onclick="editSalario(${f.id})">Editar</button>
       <button class="btn-xs" style="color:var(--o);border-color:rgba(251,146,60,.3)" onclick='openModalAdv({id:${f.id},nome:"${f.nome}",cpf:"${f.cpf||''}"})'>+ Adv.</button>
@@ -3734,6 +3748,112 @@ async function delFerias(id){
   await sb.from('iw_ferias').delete().eq('id',id);
   await loadBase();
   renderFerias(document.getElementById('content'));
+}
+
+// ===== LINHA DO TEMPO DO FUNCIONÁRIO =====
+let timelineCtx=null;
+async function abrirTimeline(cpf,funcId,nome){
+  timelineCtx={cpf,funcId,nome};
+  const f=funcionarios.find(x=>x.cpf===cpf);
+  document.getElementById('m-timeline-nome').textContent=nome;
+  document.getElementById('m-timeline-sub').textContent=(f?.cargo||'—')+' · admissão '+(f?.admissao?fmtData(f.admissao):'—');
+  document.getElementById('m-timeline-body').innerHTML='<div class="loading">Montando linha do tempo...</div>';
+  document.getElementById('m-timeline').classList.add('open');
+  await carregarTimeline(cpf,funcId,f);
+}
+
+async function carregarTimeline(cpf,funcId,f){
+  const [adv,afast,fer,epis,acertos,regs]=await Promise.all([
+    safeQuery(()=>sb.from('iw_advertencias').select('*').eq('funcionario_id',funcId)),
+    safeQuery(()=>sb.from('iw_afastamentos').select('*').eq('cpf',cpf)),
+    safeQuery(()=>sb.from('iw_ferias').select('*').eq('cpf',cpf)),
+    safeQuery(()=>sb.from('iw_epi_entregas').select('*').eq('funcionario_id',funcId)),
+    safeQuery(()=>sb.from('iw_acertos_horas').select('*').eq('cpf',cpf)),
+    safeQuery(()=>sb.from('iw_registros_ponto').select('data_local,tipo,data_hora_local').eq('cpf',cpf))
+  ]);
+
+  const eventos=[];
+  if(f?.admissao) eventos.push({data:f.admissao,tipo:'admissao',titulo:'Admissão',desc:f.cargo||'Início na empresa'});
+  (adv.data||[]).forEach(a=>eventos.push({
+    data:(a.data||a.criado_em||'').split('T')[0], tipo:'advertencia',
+    titulo:'Advertência'+(a.tipo?' — '+a.tipo:''), desc:a.motivo||a.descricao||''
+  }));
+  (afast.data||[]).forEach(a=>eventos.push({
+    data:a.data_inicio, tipo:'afastamento',
+    titulo:(a.tipo||'Afastamento'), desc:periodoTxt(a.data_inicio,a.data_fim)+(a.observacao?' · '+a.observacao:'')
+  }));
+  (fer.data||[]).forEach(a=>{
+    const ini=a.data_inicio, fim=a.data_fim;
+    if(ini) eventos.push({data:ini,tipo:'ferias',titulo:'Férias',desc:periodoTxt(ini,fim)});
+  });
+  (epis.data||[]).forEach(a=>{
+    const itensTxt=Array.isArray(a.itens)?a.itens.map(i=>i.nome||i.ca||i).join(', '):(a.itens||'Equipamento');
+    eventos.push({
+      data:(a.criado_em||'').split('T')[0], tipo:'epi',
+      titulo:'EPI entregue', desc:itensTxt+(a.assinatura?' · assinado':'')
+    });
+  });
+  (acertos.data||[]).forEach(a=>{
+    const tipoTxt={pagamento:'Pagamento de horas',desconto:'Desconto de horas',bonificacao:'Bonificação'}[a.tipo_encerramento]||'Acerto de horas';
+    eventos.push({data:a.data_pagamento,tipo:'acerto',titulo:tipoTxt,desc:(a.periodo_label||'')+(a.valor_pago?' · R$ '+Number(a.valor_pago).toLocaleString('pt-BR',{minimumFractionDigits:2}):'')});
+  });
+
+  eventos.sort((x,y)=>(y.data||'').localeCompare(x.data||''));
+  const resumo=resumoPresenca(regs.data||[]);
+  renderTimeline(eventos,resumo,f);
+}
+
+function periodoTxt(ini,fim){
+  if(ini&&fim&&ini!==fim) return fmtData(ini)+' → '+fmtData(fim);
+  return ini?fmtData(ini):'';
+}
+
+function resumoPresenca(regs){
+  const dias=new Set();
+  let atrasos=0;
+  regs.forEach(r=>{
+    if(!r.data_local)return;
+    dias.add(r.data_local);
+    if(r.tipo==='ENTRADA'){
+      const h=r.data_hora_local?.slice(11,16)||'00:00';
+      if(toMin(h)<=toMin('10:00')&&toMin(h)-toMin(ENTRADA_PAD)>TOL) atrasos++;
+    }
+  });
+  return {diasTrabalhados:dias.size, atrasos, totalBatidas:regs.length};
+}
+
+function renderTimeline(eventos,resumo,f){
+  const cores={admissao:'#10b981',advertencia:'#f87171',afastamento:'#378ADD',ferias:'#7F77DD',epi:'#f59e0b',acerto:'#1D9E75'};
+  const icones={admissao:'★',advertencia:'!',afastamento:'+',ferias:'☼',epi:'▲',acerto:'$'};
+  const resumoHtml=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:1.25rem">
+    <div style="background:var(--s2);border-radius:var(--r8);padding:.7rem;text-align:center">
+      <div style="font-size:20px;font-weight:800;color:var(--t1);font-family:var(--mono)">${resumo.diasTrabalhados}</div>
+      <div style="font-size:10px;color:var(--t3);text-transform:uppercase">Dias trabalhados</div></div>
+    <div style="background:var(--s2);border-radius:var(--r8);padding:.7rem;text-align:center">
+      <div style="font-size:20px;font-weight:800;color:${resumo.atrasos?'var(--o)':'var(--t1)'};font-family:var(--mono)">${resumo.atrasos}</div>
+      <div style="font-size:10px;color:var(--t3);text-transform:uppercase">Atrasos</div></div>
+    <div style="background:var(--s2);border-radius:var(--r8);padding:.7rem;text-align:center">
+      <div style="font-size:20px;font-weight:800;color:var(--t1);font-family:var(--mono)">${resumo.totalBatidas}</div>
+      <div style="font-size:10px;color:var(--t3);text-transform:uppercase">Batidas</div></div>
+  </div>`;
+  let timelineHtml;
+  if(!eventos.length){
+    timelineHtml='<div class="empty" style="padding:2rem;text-align:center;color:var(--t3)">Nenhum evento marcante registrado ainda.</div>';
+  } else {
+    timelineHtml='<div style="position:relative;padding-left:24px">'
+      +'<div style="position:absolute;left:7px;top:6px;bottom:6px;width:2px;background:var(--b1)"></div>'
+      +eventos.map(e=>{
+        const cor=cores[e.tipo]||'#888';
+        return `<div style="position:relative;margin-bottom:1.1rem">
+          <div style="position:absolute;left:-24px;top:2px;width:16px;height:16px;border-radius:50%;background:${cor};display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:800;border:2px solid var(--s1)">${icones[e.tipo]||'•'}</div>
+          <div style="font-size:11px;color:var(--t3);font-family:var(--mono)">${e.data?fmtData(e.data):'—'}</div>
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">${e.titulo}</div>
+          ${e.desc?`<div style="font-size:12px;color:var(--t2);margin-top:1px">${e.desc}</div>`:''}
+        </div>`;
+      }).join('')
+      +'</div>';
+  }
+  document.getElementById('m-timeline-body').innerHTML=resumoHtml+timelineHtml;
 }
 
 // ===== EPIs =====
