@@ -1156,7 +1156,40 @@ function getPeriodo(p){
     const mf=new Date(hoje.getFullYear(),hoje.getMonth(),0);
     return{ini:ma.toISOString().split('T')[0],fim:mf.toISOString().split('T')[0]};
   }
+  if(p==='30dias'){
+    const d=new Date(hoje); d.setDate(d.getDate()-29);
+    return{ini:d.toISOString().split('T')[0],fim:hs};
+  }
+  if(p==='ano'){
+    return{ini:hoje.getFullYear()+'-01-01',fim:hs};
+  }
+  if(p==='custom'){
+    // Lê os campos de calendário da aba ativa (prefixo passado via periodoCustomPrefixo)
+    const pre=periodoCustomPrefixo||'';
+    const di=document.getElementById(pre+'-de')?.value;
+    const df=document.getElementById(pre+'-ate')?.value;
+    if(di&&df) return{ini:di<=df?di:df, fim:di<=df?df:di};
+    if(di) return{ini:di,fim:hs};
+    // sem datas ainda → cai no padrão (mês atual) pra não quebrar
+    const m=hoje.toISOString().slice(0,7);return{ini:m+'-01',fim:hs};
+  }
   return{ini:'2026-02-01',fim:hs};
+}
+let periodoCustomPrefixo='';
+// Mostra/esconde os campos de calendário quando "Personalizado" é escolhido, e recarrega
+function onPeriodoChange(prefixo, reloadFn){
+  periodoCustomPrefixo=prefixo;
+  const wrap=document.getElementById(prefixo+'-custom-wrap');
+  const sel=document.getElementById(prefixo+'-per');
+  if(wrap) wrap.style.display = (sel && sel.value==='custom') ? 'flex' : 'none';
+  // Só recarrega no custom se as duas datas estiverem preenchidas (senão espera o usuário escolher)
+  if(sel && sel.value==='custom'){
+    const di=document.getElementById(prefixo+'-de')?.value;
+    const df=document.getElementById(prefixo+'-ate')?.value;
+    if(di&&df) reloadFn();
+  } else {
+    reloadFn();
+  }
 }
 
 // ===== AUTH =====
@@ -1818,12 +1851,20 @@ async function renderBatidas(c){
   if(batidasAutoRefresh) clearInterval(batidasAutoRefresh);
   c.innerHTML=`
   <div class="filter-bar" style="align-items:center">
-    <select id="b-periodo" onchange="reloadBatidas()">
+    <select id="b-per" onchange="onPeriodoChange('b',reloadBatidas)">
       <option value="mes">Mês atual</option>
       <option value="mes-ant">Mês anterior</option>
       <option value="semana">Esta semana</option>
+      <option value="30dias">Últimos 30 dias</option>
+      <option value="ano">Este ano</option>
       <option value="tudo">Tudo</option>
+      <option value="custom">Personalizado…</option>
     </select>
+    <div id="b-custom-wrap" style="display:none;gap:6px;align-items:center">
+      <input type="date" id="b-de" onchange="onPeriodoChange('b',reloadBatidas)" style="font-size:12px">
+      <span style="color:var(--t3);font-size:12px">até</span>
+      <input type="date" id="b-ate" onchange="onPeriodoChange('b',reloadBatidas)" style="font-size:12px">
+    </div>
     <select id="b-func" onchange="reloadBatidas()">
       <option value="">Todos funcionários</option>
       ${funcionarios.map(f=>`<option value="${f.cpf}">${f.nome.split(' ')[0]}</option>`).join('')}
@@ -1855,7 +1896,8 @@ async function reloadBatidas(){
       <button class="btn-sm accent" onclick="goTab('equipe')">Ir para Equipe</button>
     </div>`;return;}
   el.innerHTML='<div class="loading">Carregando...</div>';
-  const per=document.getElementById('b-periodo')?.value||'mes';
+  periodoCustomPrefixo='b';
+  const per=document.getElementById('b-per')?.value||'mes';
   const cpfF=document.getElementById('b-func')?.value||'';
   const{ini,fim}=getPeriodo(per);
   // Busca em lotes para garantir todos os registros (Supabase limita a 1000 por vez)
@@ -2808,12 +2850,20 @@ async function renderBanco(c){
   c.innerHTML=`
   ${bannerHtml}
   <div class="filter-bar">
-    <select id="banco-per" onchange="reloadBanco()">
+    <select id="banco-per" onchange="onPeriodoChange('banco',reloadBanco)">
       <option value="mes">Mês atual</option>
       <option value="semana">Esta semana</option>
       <option value="mes-ant">Mês anterior</option>
+      <option value="30dias">Últimos 30 dias</option>
+      <option value="ano">Este ano</option>
       <option value="tudo">Total geral</option>
+      <option value="custom">Personalizado…</option>
     </select>
+    <div id="banco-custom-wrap" style="display:none;gap:6px;align-items:center">
+      <input type="date" id="banco-de" onchange="onPeriodoChange('banco',reloadBanco)" style="font-size:12px">
+      <span style="color:var(--t3);font-size:12px">até</span>
+      <input type="date" id="banco-ate" onchange="onPeriodoChange('banco',reloadBanco)" style="font-size:12px">
+    </div>
     <button class="btn-sm" onclick="gerarRelBanco()" style="white-space:nowrap;margin-left:auto;display:flex;align-items:center;gap:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>Acertos (PDF)</button>
   </div>
   <div id="banco-body"><div class="loading">Carregando...</div></div>`;
@@ -2829,6 +2879,7 @@ async function reloadBanco(){
       <button class="btn-sm accent" onclick="goTab('equipe')">Ir para Equipe</button>
     </div>`;return;}
   el.innerHTML='<div class="loading">Calculando...</div>';
+  periodoCustomPrefixo='banco';
   const per=document.getElementById('banco-per')?.value||'mes';
   const{ini,fim}=getPeriodo(per);
 
@@ -3941,10 +3992,17 @@ async function saveFunc(){
 
 async function renderAtrasos(c){
   if(!temAcesso('atrasos')){c.innerHTML=cardUpgrade('atrasos','essencial');return;}
-  c.innerHTML=`<div class="filter-bar"><select id="atr-per" onchange="reloadAtrasos()">
+  c.innerHTML=`<div class="filter-bar"><select id="atr-per" onchange="onPeriodoChange('atr',reloadAtrasos)">
     <option value="mes">Mês atual</option><option value="semana">Esta semana</option>
-    <option value="mes-ant">Mês anterior</option><option value="tudo">Total geral</option>
-  </select></div><div id="atr-body"><div class="loading">Carregando...</div></div>`;
+    <option value="mes-ant">Mês anterior</option>
+    <option value="30dias">Últimos 30 dias</option><option value="ano">Este ano</option>
+    <option value="tudo">Total geral</option><option value="custom">Personalizado…</option>
+  </select>
+  <div id="atr-custom-wrap" style="display:none;gap:6px;align-items:center">
+    <input type="date" id="atr-de" onchange="onPeriodoChange('atr',reloadAtrasos)" style="font-size:12px">
+    <span style="color:var(--t3);font-size:12px">até</span>
+    <input type="date" id="atr-ate" onchange="onPeriodoChange('atr',reloadAtrasos)" style="font-size:12px">
+  </div></div><div id="atr-body"><div class="loading">Carregando...</div></div>`;
   await reloadAtrasos();
 }
 async function reloadAtrasos(){
@@ -3956,6 +4014,7 @@ async function reloadAtrasos(){
       <button class="btn-sm accent" onclick="goTab('equipe')">Ir para Equipe</button>
     </div>`;return;}
   el.innerHTML='<div class="loading">Calculando...</div>';
+  periodoCustomPrefixo='atr';
   const per=document.getElementById('atr-per')?.value||'mes';
   const{ini,fim}=getPeriodo(per);
   // Busca paginada (o 'total geral' pode ter mais de 5000 registros — sem paginar, cortava e bagunçava a contagem)
@@ -4204,7 +4263,8 @@ async function gerarEspelhoPonto(){
     setTimeout(()=>abrirAssinarPlano&&abrirAssinarPlano(),400);
     return;
   }
-  const per=document.getElementById('b-periodo')?.value||'mes';
+  periodoCustomPrefixo='b';
+  const per=document.getElementById('b-per')?.value||'mes';
   const cpfF=document.getElementById('b-func')?.value||'';
   const{ini,fim}=getPeriodo(per);
   const lblPer={mes:'Mês atual','mes-ant':'Mês anterior',semana:'Esta semana',tudo:'Período completo'}[per]||per;
