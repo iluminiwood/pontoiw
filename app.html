@@ -518,6 +518,38 @@ body.light .toast{background:rgba(255,255,255,.97);}
   </div>
 </div>
 
+<!-- MODAL DIA INTEIRO (lançar as 4 batidas de uma vez) -->
+<div class="moverlay" id="m-diaint">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div class="mtitle">Lançar dia inteiro</div>
+    <div class="msub" id="m-diaint-sub"></div>
+    <div style="font-size:12px;color:var(--t2);margin:-.3rem 0 .9rem;line-height:1.5">Horários pré-preenchidos com o padrão da empresa. Ajuste se necessário e salve — as 4 batidas são lançadas de uma vez.</div>
+    <div style="display:flex;gap:8px">
+      <div class="field" style="flex:1"><label>Entrada</label><input type="time" id="di-ent"></div>
+      <div class="field" style="flex:1"><label>Saída almoço</label><input type="time" id="di-alm-sai"></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <div class="field" style="flex:1"><label>Volta almoço</label><input type="time" id="di-alm-volta"></div>
+      <div class="field" style="flex:1"><label>Saída</label><input type="time" id="di-sai"></div>
+    </div>
+    <div class="field"><label>Motivo</label>
+      <select id="di-motivo" onchange="document.getElementById('di-motivo-outro').style.display=this.value==='Outro'?'':'none'">
+        <option value="">Selecione...</option>
+        <option value="Esqueceu de bater">Esqueceu de bater</option>
+        <option value="Problema no relógio/totem">Problema no relógio/totem</option>
+        <option value="Erro de sistema">Erro de sistema</option>
+        <option value="Outro">Outro</option>
+      </select>
+    </div>
+    <div class="field" id="di-motivo-outro" style="display:none"><label>Detalhe</label><input type="text" id="di-motivo-texto" placeholder="Descreva o motivo"></div>
+    <div class="mactions">
+      <button class="btn-sm" onclick="closeModals()">Cancelar</button>
+      <button class="btn" onclick="confirmarDiaInteiro()">Lançar dia inteiro</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL MARCAR DIA (folga/atestado avulso) -->
 <div class="moverlay" id="m-dia">
   <div class="modal">
@@ -3119,6 +3151,7 @@ function abrirAfastamento(cpf,nome,funcId){
 // ===== MARCAÇÃO DE DIA AVULSO (botão na aba Batidas) =====
 // Grava UM dia especial na MESMA estrutura dos afastamentos (sem duplicar sistema).
 let diaCtx=null;
+let diaIntCtx=null;
 async function registrarDiaEspecial(cpf, nome, funcId, data, tipo){
   const id=Date.now();
   const {error:e1}=await sb.from('iw_afastamentos').insert({
@@ -3146,11 +3179,70 @@ function abrirMenuDia(data, cpf, nome, statusAtual){
     // dia em branco (falta) → oferecer marcações
     body.innerHTML=`<div style="font-size:13px;color:var(--t2);margin-bottom:1rem">O que foi este dia?</div>
       <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn-sm" style="width:100%;text-align:left" onclick="lancarDiaInteiro()">✅ Trabalhou o dia todo <span style="color:var(--t3);font-size:11px">lança as 4 batidas de uma vez</span></button>
+        <button class="btn-sm" style="width:100%;text-align:left" onclick="lancarBatidaDia()">🕐 Lançar batida avulsa <span style="color:var(--t3);font-size:11px">uma batida por vez</span></button>
         <button class="btn-sm" style="width:100%;text-align:left" onclick="marcarDia('Folga compensatória')">🌙 Folga compensada <span style="color:var(--t3);font-size:11px">(debita banco de horas)</span></button>
         <button class="btn-sm" style="width:100%;text-align:left" onclick="marcarDia('Atestado médico')">📄 Atestado / abono <span style="color:var(--t3);font-size:11px">(não conta falta)</span></button>
       </div>`;
   }
   document.getElementById('m-dia').classList.add('open');
+}
+// Do menu do dia → abre o formulário de adicionar batida avulsa naquele dia
+function lancarBatidaDia(){
+  if(!diaCtx)return;
+  const {data,cpf,nome}=diaCtx;
+  closeModals();
+  abrirAdd(data,cpf,nome);
+}
+// Do menu do dia → abre o formulário do dia inteiro (4 batidas pré-preenchidas)
+function lancarDiaInteiro(){
+  if(!diaCtx)return;
+  diaIntCtx={...diaCtx};
+  const {nome,data}=diaCtx;
+  closeModals();
+  document.getElementById('m-diaint-sub').textContent=`${nome.split(' ')[0]} · ${fmtData(data)}`;
+  // Pré-preenche com o padrão da empresa. Sexta usa a saída de sexta.
+  const dow=new Date(data+'T12:00:00').getDay();
+  const saidaPad=(dow===5)?SAIDA_SEX:SAIDA_SEMANA;
+  document.getElementById('di-ent').value=ENTRADA_PAD;
+  document.getElementById('di-alm-sai').value=ALMOCO_INI;
+  document.getElementById('di-alm-volta').value=ALMOCO_FIM;
+  document.getElementById('di-sai').value=saidaPad;
+  document.getElementById('di-motivo').value='';
+  document.getElementById('di-motivo-texto').value='';
+  document.getElementById('di-motivo-outro').style.display='none';
+  document.getElementById('m-diaint').classList.add('open');
+}
+async function confirmarDiaInteiro(){
+  if(!diaIntCtx)return;
+  if(!temAcesso('edicao_manual')){toast('Inserção manual disponível no plano Essencial.','info');closeModals();return;}
+  const ent=document.getElementById('di-ent').value;
+  const almSai=document.getElementById('di-alm-sai').value;
+  const almVolta=document.getElementById('di-alm-volta').value;
+  const sai=document.getElementById('di-sai').value;
+  const horarios=[ent,almSai,almVolta,sai].filter(h=>h); // ignora vazios
+  if(horarios.length<2){toast('Informe ao menos entrada e saída.','err');return;}
+  const motivo=pegarMotivo('di');
+  if(!motivo){toast('Selecione o motivo.','err');return;}
+  const {data,cpf,nome}=diaIntCtx;
+  // Monta as batidas com tipo alternado (ENTRADA/SAIDA na ordem dos horários)
+  const registros=horarios.sort().map((h,i)=>({
+    id:Date.now()+i, nsr:null, funcionario_id:null,
+    funcionario_nome:nome, cpf,
+    data_hora:new Date().toISOString(),
+    data_hora_local:data+'T'+h,
+    data_local:data,
+    tipo:(i%2===0)?'ENTRADA':'SAIDA',
+    origem:'MANUAL', motivo,
+    sincronizado_em:new Date().toISOString()
+  }));
+  const {error}=await sb.from('iw_registros_ponto').insert(registros);
+  if(error){toast('Erro ao lançar: '+error.message,'err');return;}
+  await recalcularTiposDia(cpf,data);
+  toast('Dia inteiro lançado ('+registros.length+' batidas)!','ok');
+  closeModals();
+  await loadBase();
+  await reloadBatidas();
 }
 async function marcarDia(tipo){
   if(!diaCtx)return;
