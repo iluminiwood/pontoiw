@@ -4472,7 +4472,24 @@ async function gerarEspelhoPonto(){
 
     // Linhas da tabela
     let totTrab=0, totSaldo=0, totFaltas=0, totExtras=0, totNeg=0;
-    const linhas=datas.map(data=>{
+    const linhas=[];
+    const semanaMeta=[]; // marca quais linhas são cabeçalho/subtotal de semana
+    let semanaAtual=null, semSaldo=0, semTrab=0;
+    const flushSubtotal=()=>{
+      if(semanaAtual!==null){
+        linhas.push(['','Subtotal da semana','', semTrab?fromMin(semTrab):'—','', (semSaldo>=0?'+':'')+fromMin(semSaldo)]);
+        semanaMeta[linhas.length-1]='subtotal';
+      }
+    };
+    datas.forEach(data=>{
+      const sem=getSemana(data);
+      if(sem!==semanaAtual){
+        flushSubtotal();
+        const fimSem=new Date(sem+'T12:00:00'); fimSem.setDate(fimSem.getDate()+6);
+        linhas.push(['Semana '+fmtData(sem)+' a '+fmtData(fimSem.toISOString().split('T')[0]),'','','','','']);
+        semanaMeta[linhas.length-1]='cabecalho';
+        semanaAtual=sem; semSaldo=0; semTrab=0;
+      }
       const batsRaw=pf.dias[data]||[];
       const temBatida=batsRaw.length>0;
       const bats=[...batsRaw].sort((a,b)=>a.hora.localeCompare(b.hora));
@@ -4486,11 +4503,10 @@ async function gerarEspelhoPonto(){
                         : r.classe==='folga_comp' ? true
                         : true;
       totTrab+=trab; totSaldo+=saldo;
-      if(mostraSaldo){ if(saldo>0) totExtras+=saldo; else if(saldo<0) totNeg+=saldo; }
+      if(mostraSaldo){ if(saldo>0) totExtras+=saldo; else if(saldo<0) totNeg+=saldo; semSaldo+=saldo; }
+      semTrab+=trab;
       const dow=new Date(data+'T12:00:00').getDay();
-      // Coluna de batidas: se tem batida mostra as horas; senão, a etiqueta do dia
       let colBatidas;
-      let falta='';
       if(temBatida){
         colBatidas=bats.map(b=>(b.tipo==='ENTRADA'?'E ':'S ')+b.hora).join('   ');
       } else if(diasFeriasCpf.has(cpf+'_'+data)){
@@ -4500,19 +4516,17 @@ async function gerarEspelhoPonto(){
       } else if(diasAfastamentoCpf.has(cpf+'_'+data)){
         colBatidas='— Afastamento —';
       } else if(r.classe==='util' && !r.emAndamento && jMin){
-        colBatidas='— Falta —'; falta='Falta'; totFaltas++;
+        colBatidas='— Falta —'; totFaltas++;
       } else {
         colBatidas='—';
       }
-      return [
-        fmtData(data),
-        dowNomes[dow],
-        colBatidas,
-        trab?fromMin(trab):'—',
-        jMin?fromMin(jMin):'—',
+      linhas.push([
+        fmtData(data), dowNomes[dow], colBatidas,
+        trab?fromMin(trab):'—', jMin?fromMin(jMin):'—',
         (mostraSaldo?((saldo>=0?'+':'')+fromMin(saldo)):'—')
-      ];
+      ]);
     });
+    flushSubtotal();
 
     doc.autoTable({
       startY:48,
@@ -4522,7 +4536,20 @@ async function gerarEspelhoPonto(){
       headStyles:{fillColor:[30,30,40],textColor:255,fontSize:8},
       alternateRowStyles:{fillColor:[245,245,247]},
       columnStyles:{0:{cellWidth:24},1:{cellWidth:14},3:{cellWidth:18,halign:'right'},4:{cellWidth:18,halign:'right'},5:{cellWidth:30,halign:'right'}},
-      margin:{left:14,right:14}
+      margin:{left:14,right:14},
+      didParseCell:function(d){
+        if(d.section!=='body')return;
+        const meta=semanaMeta[d.row.index];
+        if(meta==='cabecalho'){
+          d.cell.styles.fillColor=[16,185,129];
+          d.cell.styles.textColor=255;
+          d.cell.styles.fontStyle='bold';
+        } else if(meta==='subtotal'){
+          d.cell.styles.fillColor=[225,240,234];
+          d.cell.styles.textColor=[20,80,60];
+          d.cell.styles.fontStyle='bold';
+        }
+      }
     });
 
     let y=doc.lastAutoTable.finalY+6;
