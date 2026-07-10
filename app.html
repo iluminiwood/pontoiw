@@ -460,6 +460,7 @@ body.light .toast{background:rgba(255,255,255,.97);}
     <div class="tab" onclick="goTab('atrasos')" id="t-atrasos">Atrasos</div>
     <div class="tab" onclick="goTab('equipe')" id="t-equipe">Equipe</div>
     <div class="tab" onclick="goTab('ferias')" id="t-ferias">Férias</div>
+    <div class="tab" onclick="goTab('calendario')" id="t-calendario">Calendário</div>
     <div class="tab" onclick="goTab('afastamentos')" id="t-afastamentos">Atestados</div>
     <div class="tab" onclick="goTab('epis')" id="t-epis">EPIs</div>
     <div class="tab" onclick="goTab('adv')" id="t-adv">Advertências</div>
@@ -553,6 +554,27 @@ body.light .toast{background:rgba(255,255,255,.97);}
     <div class="mactions">
       <button class="btn-sm" onclick="closeModals()">Cancelar</button>
       <button class="btn" onclick="confirmarDiaInteiro()">Lançar dia inteiro</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL FERIADO -->
+<div class="moverlay" id="m-feriado">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div class="mtitle">Novo feriado</div>
+    <div class="msub">Feriados não contam falta para nenhum funcionário</div>
+    <div class="field"><label>Data</label><input type="date" id="cal-data"></div>
+    <div class="field"><label>Nome do feriado</label><input type="text" id="cal-desc" placeholder="Ex: Aniversário da cidade"></div>
+    <div class="field">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="cal-anual" style="width:auto">
+        <span>Repetir todo ano <span style="font-size:11px;color:var(--t3)">(feriados fixos, ex: aniversário da cidade)</span></span>
+      </label>
+    </div>
+    <div class="mactions">
+      <button class="btn-sm" onclick="closeModals()">Cancelar</button>
+      <button class="btn" onclick="calSalvarFeriado()">Salvar feriado</button>
     </div>
   </div>
 </div>
@@ -1595,7 +1617,7 @@ function goTab(tab){
   document.getElementById('t-'+tab+'-e')?.classList.add('on');
   const c=document.getElementById('content');
   c.innerHTML='<div class="loading">Carregando...</div>';c.scrollTop=0;
-  ({dash:renderDash,batidas:renderBatidas,banco:renderBanco,atrasos:renderAtrasos,equipe:renderEquipe,ferias:renderFerias,afastamentos:renderAfastamentos,epis:renderEpis,adv:renderAdv}[tab]||((c)=>c.innerHTML=''))(c);
+  ({dash:renderDash,batidas:renderBatidas,banco:renderBanco,atrasos:renderAtrasos,equipe:renderEquipe,ferias:renderFerias,calendario:renderCalendario,afastamentos:renderAfastamentos,epis:renderEpis,adv:renderAdv}[tab]||((c)=>c.innerHTML=''))(c);
 }
 
 // ===== DASHBOARD =====
@@ -3124,6 +3146,182 @@ async function carregarLinkTotem(){
 }
 function copiarLinkTotem(link){
   navigator.clipboard.writeText(link).then(()=>toast('Link copiado!','ok')).catch(()=>toast('Não foi possível copiar.','err'));
+}
+
+// ===== CALENDÁRIO / FERIADOS =====
+let calMesAtual=null; // {ano, mes} sendo exibido
+let calFeriados=[];   // lista completa de feriados carregados
+
+async function renderCalendario(c){
+  if(!temAcesso('ferias')){c.innerHTML=cardUpgrade('calendário','essencial');return;}
+  if(!calMesAtual){
+    const h=new Date();
+    calMesAtual={ano:h.getFullYear(), mes:h.getMonth()}; // mes 0-11
+  }
+  c.innerHTML='<div class="loading">Carregando calendário...</div>';
+  const {data:fer}=await safeQuery(()=>sb.from('iw_feriados').select('*').limit(2000));
+  calFeriados=fer||[];
+  desenharCalendario(c);
+}
+
+function calMudarMes(delta){
+  calMesAtual.mes+=delta;
+  if(calMesAtual.mes<0){calMesAtual.mes=11;calMesAtual.ano--;}
+  if(calMesAtual.mes>11){calMesAtual.mes=0;calMesAtual.ano++;}
+  desenharCalendario(document.getElementById('content'));
+}
+
+function desenharCalendario(c){
+  const {ano,mes}=calMesAtual;
+  const meses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const feriMap={}; // 'YYYY-MM-DD' -> feriado
+  calFeriados.forEach(f=>{ if(f.data) feriMap[f.data]=f; });
+
+  const primeiroDia=new Date(ano,mes,1).getDay(); // 0=dom
+  const diasNoMes=new Date(ano,mes+1,0).getDate();
+  const hojeStr=new Date().toISOString().split('T')[0];
+
+  const dowLabels=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  let celulas='';
+  // Espaços vazios antes do dia 1
+  for(let i=0;i<primeiroDia;i++) celulas+='<div></div>';
+  for(let d=1;d<=diasNoMes;d++){
+    const ds=`${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dow=new Date(ano,mes,d).getDay();
+    const ehFimSemana=(dow===0||dow===6);
+    const feri=feriMap[ds];
+    const ehHoje=(ds===hojeStr);
+    let style='aspect-ratio:1;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:13px;cursor:pointer;position:relative;';
+    let numCor, bg, extra='';
+    if(feri){
+      bg='background:rgba(245,158,11,.18);border:1.5px solid var(--o);';
+      numCor='color:var(--o);font-weight:700;';
+      extra=`<span style="font-size:7px;line-height:1;position:absolute;bottom:4px;color:var(--o);max-width:90%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${feri.descricao||'feriado'}</span>`;
+    } else if(ehFimSemana){
+      bg='background:var(--s1);'; numCor='color:var(--t3);';
+    } else {
+      bg='background:var(--s2);'; numCor='color:var(--t1);';
+    }
+    if(ehHoje) bg+='box-shadow:inset 0 0 0 1.5px var(--acc);';
+    celulas+=`<div style="${style}${bg}${numCor}" onclick="calClicarDia('${ds}')" title="${feri?feri.descricao:'Clique para marcar feriado'}"><span>${d}</span>${extra}</div>`;
+  }
+
+  // Lista de feriados do mês exibido
+  const feriadosDoMes=calFeriados.filter(f=>{
+    if(!f.data)return false;
+    const [y,m]=f.data.split('-');
+    return parseInt(y)===ano && parseInt(m)===(mes+1);
+  }).sort((a,b)=>a.data.localeCompare(b.data));
+
+  let listaHtml='';
+  if(feriadosDoMes.length){
+    listaHtml=feriadosDoMes.map(f=>{
+      const dia=f.data.split('-')[2];
+      const anual=(f.descricao||'').includes('[anual]');
+      const desc=(f.descricao||'').replace(' [anual]','').replace('[anual]','');
+      return `<div style="display:flex;align-items:center;justify-content:space-between;background:var(--s2);border-radius:8px;padding:.6rem .8rem;margin-bottom:6px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--o)"></div>
+          <div>
+            <div style="font-size:13px;color:var(--t1)">${desc||'Feriado'}</div>
+            <div style="font-size:11px;color:var(--t2)">${fmtData(f.data)}${anual?' · repete todo ano':''}</div>
+          </div>
+        </div>
+        <button class="btn-xs" style="color:var(--r);border-color:rgba(248,113,113,.3)" onclick="calExcluirFeriado(${f.id},'${(desc||'').replace(/'/g,"\\'")}')">✕</button>
+      </div>`;
+    }).join('');
+  } else {
+    listaHtml='<div style="font-size:12px;color:var(--t3);padding:.5rem 0">Nenhum feriado neste mês.</div>';
+  }
+
+  c.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="btn-sm" onclick="calMudarMes(-1)" style="padding:6px 12px">‹</button>
+        <div style="font-size:17px;font-weight:800;min-width:150px;text-align:center">${meses[mes]} ${ano}</div>
+        <button class="btn-sm" onclick="calMudarMes(1)" style="padding:6px 12px">›</button>
+      </div>
+      <button class="btn" onclick="calAbrirNovo()" style="white-space:nowrap">+ Feriado</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:6px">
+      ${dowLabels.map(l=>`<div style="text-align:center;font-size:10px;color:var(--t3);text-transform:uppercase;padding:4px">${l}</div>`).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">${celulas}</div>
+    <div style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--b1)">
+      <div style="font-size:11px;color:var(--t2);text-transform:uppercase;margin-bottom:8px">Feriados de ${meses[mes]}</div>
+      ${listaHtml}
+    </div>`;
+}
+
+// Clicar num dia do calendário → abre o cadastro já com a data preenchida
+function calClicarDia(ds){
+  const feri=calFeriados.find(f=>f.data===ds);
+  if(feri){
+    // já é feriado → pergunta se quer remover
+    const desc=(feri.descricao||'').replace(' [anual]','').replace('[anual]','');
+    if(confirm(`${fmtData(ds)} já está marcado como "${desc}".\n\nDeseja remover?`)) calExcluirFeriado(feri.id,desc);
+    return;
+  }
+  calAbrirNovo(ds);
+}
+
+function calAbrirNovo(dataPre){
+  document.getElementById('cal-data').value=dataPre||'';
+  document.getElementById('cal-desc').value='';
+  document.getElementById('cal-anual').checked=false;
+  document.getElementById('m-feriado').classList.add('open');
+}
+
+async function calSalvarFeriado(){
+  const data=document.getElementById('cal-data').value;
+  const desc=document.getElementById('cal-desc').value.trim();
+  const anual=document.getElementById('cal-anual').checked;
+  if(!data){toast('Escolha a data.','err');return;}
+  if(!desc){toast('Dê um nome ao feriado.','err');return;}
+
+  const descFinal=desc+(anual?' [anual]':'');
+  const empresaId=empresaAtual||1;
+
+  // Monta os registros. Se anual, gera para este ano + próximos 5 anos.
+  const [y,m,d]=data.split('-');
+  const registros=[];
+  const anosGerar=anual? [0,1,2,3,4,5] : [0];
+  anosGerar.forEach(off=>{
+    const ano=parseInt(y)+off;
+    registros.push({
+      id:Date.now()+off,
+      data:`${ano}-${m}-${d}`,
+      descricao:descFinal,
+      empresa_id:empresaId
+    });
+  });
+
+  // Anti-duplicata: não insere se já existir feriado nessa data para a empresa
+  let inseridos=0;
+  for(const reg of registros){
+    const existe=calFeriados.find(f=>f.data===reg.data);
+    if(existe) continue;
+    const {error}=await sb.from('iw_feriados').insert(reg);
+    if(!error) inseridos++;
+  }
+
+  if(inseridos>0){
+    toast(anual?`Feriado anual salvo (${inseridos} anos)!`:'Feriado salvo!','ok');
+  } else {
+    toast('Esse feriado já estava cadastrado.','info');
+  }
+  closeModals();
+  await loadBase(); // recarrega o Set global de feriados (usado no cálculo)
+  await renderCalendario(document.getElementById('content'));
+}
+
+async function calExcluirFeriado(id,desc){
+  if(!confirm(`Remover o feriado "${desc}"?\n\n(Se for anual, remove só esta data. Os outros anos continuam.)`)) return;
+  const {error}=await sb.from('iw_feriados').delete().eq('id',id);
+  if(error){toast('Erro ao remover: '+error.message,'err');return;}
+  toast('Feriado removido.','ok');
+  await loadBase();
+  await renderCalendario(document.getElementById('content'));
 }
 
 // ===== ATESTADOS E AFASTAMENTOS =====
