@@ -3603,25 +3603,47 @@ async function renderFerias(c){
 
     if(periodos.length){
       html+=`<div style="border-top:1px solid var(--b1);margin-top:.5rem;padding-top:.5rem">`;
-      periodos.sort((a,b)=>a.periodo_inicio.localeCompare(b.periodo_inicio)).forEach(p=>{
-        const restantes=diasRestantes(p);
-        html+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(42,42,50,.3);flex-wrap:wrap">
-          <div style="flex:1;min-width:200px">
-            <div style="font-size:12px;font-weight:600">Período ${fmtDate(p.periodo_inicio)} → ${fmtDate(p.periodo_fim)}</div>
-            <div style="font-size:11px;color:var(--t2);margin-top:2px">
-              ${p.data_inicio?`Gozo: ${fmtDate(p.data_inicio)}${p.data_fim?' → '+fmtDate(p.data_fim):'...'}`:''} 
-              ${p.observacao?'· '+p.observacao:''}
+      // Agrupa os gozos pelo período aquisitivo (mesma admissão→data) para somar frações
+      const grupos={};
+      periodos.forEach(p=>{
+        const chave=(p.periodo_inicio||'')+'|'+(p.periodo_fim||'');
+        if(!grupos[chave]) grupos[chave]={periodo_inicio:p.periodo_inicio,periodo_fim:p.periodo_fim,dias_direito:p.dias_direito||30,gozos:[]};
+        grupos[chave].gozos.push(p);
+      });
+      Object.values(grupos).sort((a,b)=>(a.periodo_inicio||'').localeCompare(b.periodo_inicio||'')).forEach(g=>{
+        const gozadosTotal=g.gozos.reduce((s,p)=>s+(p.dias_gozados||0),0);
+        const restantes=g.dias_direito-gozadosTotal;
+        const vencG={periodo_fim:g.periodo_fim};
+        // Cabeçalho do período aquisitivo
+        html+=`<div style="padding:6px 0;border-bottom:1px solid rgba(42,42,50,.3)">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <div style="flex:1;min-width:180px">
+              <div style="font-size:12px;font-weight:600">Período ${fmtDate(g.periodo_inicio)} → ${fmtDate(g.periodo_fim)}</div>
             </div>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-            ${statusChip(p)}
-            ${alertaVencimento(p)}
-            <span style="font-family:var(--mono);font-size:12px;color:var(--t2)">${p.dias_gozados||0}/${p.dias_direito||30}d</span>
-            ${restantes>0?`<span class="chip o">${restantes} a gozar</span>`:''}
-            <button class="btn-xs" style="color:var(--acc);border-color:rgba(16,185,129,.3)" onclick="editFerias(${p.id})">Editar</button>
-            <button class="btn-xs" style="color:var(--r);border-color:rgba(248,113,113,.3)" onclick="delFerias(${p.id})">✕</button>
-          </div>
-        </div>`;
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              ${alertaVencimento(vencG)}
+              <span style="font-family:var(--mono);font-size:12px;color:var(--t2)">${gozadosTotal}/${g.dias_direito}d</span>
+              ${restantes>0?`<span class="chip o">${restantes} a gozar</span>`:'<span class="chip g">Concluído</span>'}
+              ${restantes>0?`<button class="btn-xs" style="color:var(--pu,#7F77DD);border-color:rgba(127,119,221,.35)" onclick='fracionarFerias("${f.cpf}","${f.nome.replace(/'/g,"\\'").replace(/"/g,'&quot;')}",${f.id},"${f.admissao||''}","${g.periodo_inicio}","${g.periodo_fim}",${g.dias_direito},${restantes})'>+ Fracionar</button>`:''}
+            </div>
+          </div>`;
+        // Lista cada gozo (fração) do período
+        g.gozos.forEach(p=>{
+          html+=`<div style="display:flex;align-items:center;gap:8px;padding:4px 0 4px 12px;flex-wrap:wrap">
+            <div style="flex:1;min-width:180px">
+              <div style="font-size:11px;color:var(--t2)">
+                ${p.data_inicio?`Gozo: ${fmtDate(p.data_inicio)}${p.data_fim?' → '+fmtDate(p.data_fim):'...'} (${p.dias_gozados||0}d)`:'Sem gozo definido'}
+                ${p.observacao?'· '+p.observacao:''}
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              ${statusChip(p)}
+              <button class="btn-xs" style="color:var(--acc);border-color:rgba(16,185,129,.3)" onclick="editFerias(${p.id})">Editar</button>
+              <button class="btn-xs" style="color:var(--r);border-color:rgba(248,113,113,.3)" onclick="delFerias(${p.id})">✕</button>
+            </div>
+          </div>`;
+        });
+        html+=`</div>`;
       });
       html+=`</div>`;
     } else {
@@ -3641,6 +3663,22 @@ async function renderFerias(c){
 }
 
 let ferCtx=null;
+// Fracionar: abre o modal já com o período aquisitivo preenchido, para lançar um NOVO gozo
+function fracionarFerias(cpf,nome,funcId,admissao,perIni,perFim,direito,restantes){
+  ferCtx={cpf,nome,funcId};
+  document.getElementById('m-ferias-title').textContent='Fracionar férias — '+nome.split(' ')[0];
+  document.getElementById('m-ferias-sub').textContent=`Restam ${restantes} dias neste período. Lance o novo gozo.`;
+  document.getElementById('fer-admissao').value=admissao||'';
+  document.getElementById('fer-per-ini').value=perIni||'';
+  document.getElementById('fer-per-fim').value=perFim||'';
+  document.getElementById('fer-ini').value='';
+  document.getElementById('fer-fim').value='';
+  document.getElementById('fer-obs').value='';
+  document.getElementById('fer-direito').value=direito||30;
+  document.getElementById('m-ferias').dataset.editId=''; // novo registro (nova fração)
+  document.getElementById('m-ferias').dataset.fracionar='1';
+  document.getElementById('m-ferias').classList.add('open');
+}
 function abrirModalFerias(cpf,nome,funcId,admissao){
   ferCtx={cpf,nome,funcId};
   document.getElementById('m-ferias-title').textContent='Férias — '+nome.split(' ')[0];
@@ -3653,6 +3691,7 @@ function abrirModalFerias(cpf,nome,funcId,admissao){
   document.getElementById('fer-obs').value='';
   document.getElementById('fer-direito').value='30';
   document.getElementById('m-ferias').dataset.editId='';
+  document.getElementById('m-ferias').dataset.fracionar='';
   document.getElementById('m-ferias').classList.add('open');
 }
 async function editFerias(id){
@@ -3682,7 +3721,7 @@ async function saveFerias(){
   const direito=parseInt(document.getElementById('fer-direito').value)||30;
   if(!admissao||!perIni||!perFim){toast('Preencha admissão e período aquisitivo.','err');return;}
   
-  // Calcula dias gozados
+  // Calcula dias gozados deste gozo
   let gozados=0;
   if(ini&&fim){
     const d1=new Date(ini+'T12:00:00'),d2=new Date(fim+'T12:00:00');
@@ -3690,6 +3729,37 @@ async function saveFerias(){
   }
 
   const editId=document.getElementById('m-ferias').dataset.editId;
+
+  // ===== AVISOS LEGAIS (CLT) — não bloqueiam, apenas alertam =====
+  if(ini&&fim&&perIni&&perFim){
+    try{
+      // Busca os outros gozos do MESMO período aquisitivo (para somar frações)
+      const {data:outrosGozos}=await sb.from('iw_ferias').select('id,dias_gozados,data_inicio,data_fim')
+        .eq('cpf',ferCtx.cpf).eq('periodo_inicio',perIni).eq('periodo_fim',perFim);
+      const outros=(outrosGozos||[]).filter(g=>String(g.id)!==String(editId));
+      const jaGozados=outros.reduce((s,g)=>s+(g.dias_gozados||0),0);
+      const totalComEste=jaGozados+gozados;
+
+      // Aviso 1: passar de 30 dias (ou do direito) no período
+      if(totalComEste>direito){
+        const ok=confirm(`⚠️ Atenção: este período aquisitivo terá ${totalComEste} dias gozados, mas o direito é ${direito} dias.\n\nJá gozados: ${jaGozados}d · Este gozo: ${gozados}d\n\nDeseja salvar mesmo assim?`);
+        if(!ok) return;
+      }
+
+      // Aviso 2: regra dos 14 dias (CLT art. 134 §1º) — se fracionado, um pedaço deve ter ≥14 dias
+      const todosGozos=[...outros.map(g=>g.dias_gozados||0), gozados].filter(d=>d>0);
+      if(todosGozos.length>1){ // está fracionado
+        const temPeriodoMaior=todosGozos.some(d=>d>=14);
+        const temFracaoCurta=todosGozos.some(d=>d<5);
+        if(!temPeriodoMaior || temFracaoCurta){
+          const detalhe=todosGozos.join('d + ')+'d';
+          const ok=confirm(`⚠️ Atenção — regra de fracionamento (CLT):\nAo dividir as férias, um dos períodos deve ter no mínimo 14 dias, e os demais no mínimo 5 dias cada.\n\nFrações atuais: ${detalhe}\n\nIsso pode não atender à regra. Confirme com seu contador. Deseja salvar mesmo assim?`);
+          if(!ok) return;
+        }
+      }
+    }catch(e){ /* se a validação falhar, não bloqueia o salvamento */ }
+  }
+
   const reg={
     funcionario_id:ferCtx.funcId,
     funcionario_nome:ferCtx.nome,
