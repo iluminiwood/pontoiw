@@ -558,6 +558,25 @@ body.light .toast{background:rgba(255,255,255,.97);}
   </div>
 </div>
 
+<!-- MODAL ACESSO DO COLABORADOR -->
+<div class="moverlay" id="m-acesso">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div class="mtitle">Acesso ao portal</div>
+    <div class="msub" id="m-acesso-sub"></div>
+    <div id="acesso-status" style="font-size:13px;color:var(--t2);margin:.5rem 0 1rem;line-height:1.5"></div>
+    <div id="acesso-senha-box" style="display:none;background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.25);border-radius:var(--r8);padding:1rem;margin-bottom:1rem;text-align:center">
+      <div style="font-size:11px;color:var(--t2);text-transform:uppercase;margin-bottom:6px">Senha provisória</div>
+      <div id="acesso-senha" style="font-family:var(--mono);font-size:24px;font-weight:800;color:#38BDF8;letter-spacing:2px">——————</div>
+      <div style="font-size:11px;color:var(--t3);margin-top:8px">Anote e entregue ao colaborador. Ele troca no 1º acesso.</div>
+    </div>
+    <div class="mactions">
+      <button class="btn-sm" onclick="closeModals()">Fechar</button>
+      <button class="btn" id="acesso-btn" onclick="criarAcessoColab()">Criar acesso</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL FERIADO -->
 <div class="moverlay" id="m-feriado">
   <div class="modal">
@@ -3694,6 +3713,7 @@ async function renderEquipe(c){
     </div>
     <div class="factions">
       <button class="btn-xs" style="color:var(--pu,#7F77DD);border-color:rgba(127,119,221,.35)" onclick='abrirTimeline("${f.cpf||''}",${f.id},"${f.nome.replace(/"/g,'&quot;')}")'>Linha do tempo</button>
+      <button class="btn-xs" style="color:#38BDF8;border-color:rgba(56,189,248,.3)" onclick='abrirAcessoColab(${f.id},"${(f.cpf||'').replace(/"/g,'')}","${f.nome.replace(/"/g,'&quot;')}")'>Acesso</button>
       <button class="btn-xs" style="color:var(--acc);border-color:rgba(16,185,129,.3)" onclick="editPin(${f.id})">PIN</button>
       <button class="btn-xs" style="color:var(--g);border-color:rgba(61,214,140,.3)" onclick="editSalario(${f.id})">Editar</button>
       <button class="btn-xs" style="color:var(--o);border-color:rgba(251,146,60,.3)" onclick='openModalAdv({id:${f.id},nome:"${f.nome}",cpf:"${f.cpf||''}"})'>+ Adv.</button>
@@ -3858,6 +3878,57 @@ async function renderFerias(c){
 
   html+='</div>';
   c.innerHTML=html||'<div class="empty">Nenhum funcionário</div>';
+}
+
+let acessoCtx=null;
+async function abrirAcessoColab(funcId,cpf,nome){
+  if(!cpf){toast('Este funcionário não tem CPF cadastrado. Adicione o CPF primeiro.','err');return;}
+  acessoCtx={funcId,cpf,nome};
+  document.getElementById('m-acesso-sub').textContent=nome.split(' ')[0]+' · CPF '+cpf;
+  document.getElementById('acesso-senha-box').style.display='none';
+  const btn=document.getElementById('acesso-btn');
+  const status=document.getElementById('acesso-status');
+  status.textContent='Verificando...';
+  document.getElementById('m-acesso').classList.add('open');
+  // Verifica se já existe acesso
+  const {data}=await sb.from('iw_colaborador_acesso').select('cpf,ativo,ultimo_acesso,precisa_trocar').eq('cpf',cpf).maybeSingle();
+  if(data){
+    status.innerHTML=`Este colaborador <b style="color:var(--g)">já tem acesso</b>.<br>${data.ultimo_acesso?'Último acesso: '+fmtData(data.ultimo_acesso.split('T')[0]):'Ainda não acessou.'}${data.precisa_trocar?'<br><span style="color:var(--o)">Ainda usa a senha provisória.</span>':''}`;
+    btn.textContent='Resetar senha';
+  } else {
+    status.textContent='Este colaborador ainda não tem acesso ao portal. Crie um para ele consultar as próprias batidas e saldo.';
+    btn.textContent='Criar acesso';
+  }
+}
+function gerarSenhaProvisoria(){
+  const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sem I,O,0,1 (confusão)
+  let s='IW-';
+  for(let i=0;i<4;i++) s+=chars[Math.floor(Math.random()*chars.length)];
+  return s;
+}
+async function criarAcessoColab(){
+  if(!acessoCtx)return;
+  const senha=gerarSenhaProvisoria();
+  const btn=document.getElementById('acesso-btn');
+  btn.disabled=true; btn.textContent='Criando...';
+  const {data,error}=await sb.rpc('criar_acesso_colaborador',{
+    p_funcionario_id:acessoCtx.funcId,
+    p_empresa_id:empresaAtual||1,
+    p_cpf:acessoCtx.cpf,
+    p_senha_inicial:senha
+  });
+  btn.disabled=false;
+  if(error||!data?.ok){
+    toast('Erro ao criar acesso: '+(error?.message||data?.erro||'desconhecido'),'err');
+    btn.textContent='Tentar de novo';
+    return;
+  }
+  // Mostra a senha provisória pra copiar
+  document.getElementById('acesso-senha').textContent=senha;
+  document.getElementById('acesso-senha-box').style.display='block';
+  document.getElementById('acesso-status').innerHTML=`<b style="color:var(--g)">Acesso ${data.acao==='resetado'?'resetado':'criado'}!</b> Entregue a senha abaixo ao colaborador.`;
+  btn.textContent='Resetar de novo';
+  toast('Acesso '+(data.acao==='resetado'?'resetado':'criado')+'!','ok');
 }
 
 let ferCtx=null;

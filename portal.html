@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>IW Ponto · Portal do Colaborador</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  :root{
+    --bg:#0c0e12; --s1:#12141a; --s2:#1c1f27; --b1:#23282a;
+    --t1:#e8e8ec; --t2:#8a8a9a; --t3:#6a6a7a;
+    --acc:#10b981; --g:#3dd68c; --r:#f87171; --o:#f59e0b;
+    --mono:'SF Mono',ui-monospace,Menlo,monospace;
+  }
+  body{background:var(--bg);color:var(--t1);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh}
+  .wrap{max-width:440px;margin:0 auto;padding:1.25rem}
+  .hidden{display:none!important}
+
+  /* Login */
+  .login-box{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:2rem 1.5rem;max-width:400px;margin:0 auto}
+  .brand{text-align:center;margin-bottom:2rem}
+  .brand-logo{font-size:22px;font-weight:800;color:var(--acc);letter-spacing:1px}
+  .brand-sub{font-size:12px;color:var(--t2);margin-top:4px}
+  label{font-size:11px;color:var(--t2);display:block;margin-bottom:6px}
+  input{width:100%;background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:12px;font-size:15px;color:var(--t1);font-family:inherit;margin-bottom:14px;outline:none}
+  input:focus{border-color:var(--acc)}
+  input.mono{font-family:var(--mono);letter-spacing:1px}
+  .btn{width:100%;background:var(--acc);color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+  .btn:active{opacity:.85}
+  .btn:disabled{opacity:.5}
+  .err{font-size:12px;color:var(--r);text-align:center;margin-bottom:12px;min-height:16px}
+  .hint{font-size:11px;color:var(--t3);text-align:center;margin-top:16px;line-height:1.5}
+
+  /* Portal */
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--b1)}
+  .topbar .u{display:flex;align-items:center;gap:10px}
+  .avatar{width:38px;height:38px;border-radius:50%;background:rgba(16,185,129,.15);color:var(--acc);display:flex;align-items:center;justify-content:center;font-weight:800}
+  .uname{font-size:15px;font-weight:800}
+  .usub{font-size:11px;color:var(--t2)}
+  .logout{font-size:12px;color:var(--r);background:none;border:1px solid rgba(248,113,113,.3);border-radius:8px;padding:6px 12px;cursor:pointer}
+
+  .saldo-card{background:linear-gradient(135deg,#0d2a1e,#0a1f17);border:1px solid #14503f;border-radius:14px;padding:1.25rem;margin-bottom:1rem;text-align:center}
+  .saldo-lbl{font-size:11px;color:var(--t2);text-transform:uppercase}
+  .saldo-val{font-size:34px;font-weight:900;font-family:var(--mono);margin-top:4px}
+  .saldo-per{font-size:11px;color:var(--t3);margin-top:4px}
+
+  .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:1rem}
+  .stat{background:var(--s2);border-radius:10px;padding:.7rem;text-align:center}
+  .stat-v{font-size:18px;font-weight:800;font-family:var(--mono)}
+  .stat-l{font-size:10px;color:var(--t3);margin-top:2px}
+
+  .sec-title{font-size:11px;color:var(--t2);text-transform:uppercase;margin:1.25rem 0 8px}
+  .dia{background:var(--s2);border-radius:10px;padding:.6rem .8rem;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .dia-data{font-size:12px;color:var(--t1);white-space:nowrap}
+  .dia-bat{font-size:11px;color:var(--t2);font-family:var(--mono);text-align:right;flex:1}
+  .dia-saldo{font-size:12px;font-family:var(--mono);white-space:nowrap;min-width:52px;text-align:right}
+  .etq{font-size:11px;padding:2px 8px;border-radius:6px}
+  .etq.falta{background:rgba(248,113,113,.12);color:var(--r)}
+  .etq.ferias{background:rgba(127,119,221,.15);color:#a99df5}
+  .etq.folga{background:rgba(56,189,248,.12);color:#7dd3fc}
+
+  .adv{background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:10px;padding:.7rem .8rem;margin-bottom:6px}
+  .adv-top{font-size:13px;color:var(--t1);font-weight:600}
+  .adv-sub{font-size:11px;color:var(--t2);margin-top:2px}
+  .adv-ok{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:10px;padding:.7rem .8rem;display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--t1)}
+  .loading{text-align:center;color:var(--t3);padding:2rem;font-size:13px}
+  .per-sel{display:flex;gap:6px;margin-bottom:1rem;flex-wrap:wrap}
+  .per-btn{flex:1;background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:8px;font-size:12px;color:var(--t2);cursor:pointer;text-align:center}
+  .per-btn.on{background:rgba(16,185,129,.15);border-color:var(--acc);color:var(--acc)}
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN ===== -->
+<div id="tela-login" class="login-box">
+  <div class="brand">
+    <div class="brand-logo">IW · PONTO</div>
+    <div class="brand-sub">Portal do colaborador</div>
+  </div>
+  <label>CPF</label>
+  <input type="tel" id="l-cpf" class="mono" placeholder="Só números" maxlength="11" inputmode="numeric">
+  <label>Senha</label>
+  <input type="password" id="l-senha" placeholder="Sua senha" onkeydown="if(event.key==='Enter')fazerLogin()">
+  <div class="err" id="l-err"></div>
+  <button class="btn" id="l-btn" onclick="fazerLogin()">Entrar</button>
+  <div class="hint">Primeiro acesso? Use a senha provisória que a empresa te entregou.</div>
+</div>
+
+<!-- ===== TROCA DE SENHA (1º acesso) ===== -->
+<div id="tela-troca" class="login-box hidden">
+  <div class="brand">
+    <div class="brand-logo">Criar sua senha</div>
+    <div class="brand-sub">No primeiro acesso, escolha uma senha só sua</div>
+  </div>
+  <label>Nova senha (mín. 4 caracteres)</label>
+  <input type="password" id="t-nova" placeholder="Escolha uma senha">
+  <label>Repita a nova senha</label>
+  <input type="password" id="t-nova2" placeholder="Digite de novo" onkeydown="if(event.key==='Enter')trocarSenha()">
+  <div class="err" id="t-err"></div>
+  <button class="btn" id="t-btn" onclick="trocarSenha()">Salvar e entrar</button>
+</div>
+
+<!-- ===== PORTAL ===== -->
+<div id="tela-portal" class="hidden">
+  <div class="topbar">
+    <div class="u">
+      <div class="avatar" id="p-inicial">?</div>
+      <div>
+        <div class="uname" id="p-nome">—</div>
+        <div class="usub" id="p-periodo">—</div>
+      </div>
+    </div>
+    <button class="logout" onclick="sair()">Sair</button>
+  </div>
+  <div class="wrap">
+    <div class="per-sel">
+      <div class="per-btn on" data-per="mes" onclick="mudarPeriodo('mes')">Este mês</div>
+      <div class="per-btn" data-per="mes-ant" onclick="mudarPeriodo('mes-ant')">Mês passado</div>
+      <div class="per-btn" data-per="30dias" onclick="mudarPeriodo('30dias')">30 dias</div>
+    </div>
+    <div id="p-conteudo"><div class="loading">Carregando seus dados...</div></div>
+  </div>
+</div>
+
+<script>
+const SB_URL='https://mcoemytfdrfrtbfbpvqr.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jb2VteXRmZHJmcnRiZmJwdnFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3OTgyODcsImV4cCI6MjA5NTM3NDI4N30.uJZKW5oUlexLo_XENDCohlchGKlG54Pwt0gvqpuy-i8';
+const sb=supabase.createClient(SB_URL,SB_KEY);
+
+let colab=null; // {cpf, nome, funcionario_id}
+let periodoAtual='mes';
+
+// Sets de dias especiais (preenchidos do servidor)
+let diasFeriasCpf=new Set();
+let diasFolgaCompCpf=new Set();
+let diasAfastamentoCpf=new Set();
+let feriados=new Set();
+
+// Jornada da empresa (preenchida do servidor)
+let JORNADA={1:540,2:540,3:540,4:540,5:480,0:0,6:0};
+let TOL=5, ENTRADA_PAD='07:00', SAIDA_SEMANA='17:30', SAIDA_SEX='16:30';
+
+// ===== Funções de cálculo (mesmas do app, pra o saldo bater) =====
+function toMin(hhmm){if(!hhmm)return 0;const[h,m]=hhmm.split(':').map(Number);return h*60+m;}
+function fromMin(min){const neg=min<0,abs=Math.abs(min);const h=Math.floor(abs/60),m=abs%60;return (neg?'-':'+')+h+'h'+(m?(m<10?'0':'')+m+'min':'');}
+function fmtData(ds){const d=new Date(ds+'T12:00:00');return ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d.getDay()]+' '+d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});}
+function isFeriado(ds){return feriados.has(ds);}
+function isDiaUtil(ds){const dw=new Date(ds+'T12:00:00').getDay();return dw>=1&&dw<=5&&!isFeriado(ds);}
+function jornadaMin(ds){return JORNADA[new Date(ds+'T12:00:00').getDay()]||0;}
+function isDiaCompleto(ds){const hoje=new Date().toISOString().split('T')[0];return ds<hoje;}
+function calcTrab(bats){
+  const s=[...bats].sort((a,b)=>a.hora.localeCompare(b.hora));
+  let t=0;
+  for(let i=0;i<s.length-1;i++){
+    if(s[i].tipo==='ENTRADA'&&s[i+1].tipo==='SAIDA'){t+=toMin(s[i+1].hora)-toMin(s[i].hora);i++;}
+  }
+  return t;
+}
+function saldoDoDia(ds, bats, cpf){
+  const trab=(bats&&bats.length)?calcTrab(bats):0;
+  if(cpf&&diasFolgaCompCpf.has(cpf+'_'+ds)){const j=jornadaMin(ds);return {classe:'folga_comp',saldo:-j,trab:0,jornada:j,conta:j>0};}
+  if(cpf&&(diasFeriasCpf.has(cpf+'_'+ds)||diasAfastamentoCpf.has(cpf+'_'+ds))){return {classe:'excluido',saldo:0,trab,jornada:0,conta:false};}
+  if(isDiaUtil(ds)){
+    const j=jornadaMin(ds);
+    const hojeStr=new Date().toISOString().split('T')[0];
+    if(!bats||!bats.length)return {classe:'util',saldo:0,trab:0,jornada:j,conta:false,semBatida:true};
+    if(!isDiaCompleto(ds)){
+      if(ds>=hojeStr)return {classe:'util',saldo:0,trab,jornada:j,conta:false,emAndamento:true};
+      return {classe:'util',saldo:trab-j,trab,jornada:j,conta:false,incompleto:true};
+    }
+    return {classe:'util',saldo:trab-j,trab,jornada:j,conta:true};
+  }
+  if(trab>0)return {classe:'folga',saldo:trab,trab,jornada:0,conta:true};
+  return {classe:'folga',saldo:0,trab:0,jornada:0,conta:false,semBatida:true};
+}
+function getPeriodo(p){
+  const hoje=new Date(),hs=hoje.toISOString().split('T')[0];
+  if(p==='mes'){const m=hoje.toISOString().slice(0,7);return{ini:m+'-01',fim:hs};}
+  if(p==='mes-ant'){
+    const ma=new Date(hoje.getFullYear(),hoje.getMonth()-1,1);
+    const mf=new Date(hoje.getFullYear(),hoje.getMonth(),0);
+    return{ini:ma.toISOString().split('T')[0],fim:mf.toISOString().split('T')[0]};
+  }
+  if(p==='30dias'){const d=new Date(hoje);d.setDate(d.getDate()-29);return{ini:d.toISOString().split('T')[0],fim:hs};}
+  const m=hoje.toISOString().slice(0,7);return{ini:m+'-01',fim:hs};
+}
+
+// ===== Login =====
+async function fazerLogin(){
+  const cpf=document.getElementById('l-cpf').value.replace(/\D/g,'');
+  const senha=document.getElementById('l-senha').value;
+  const err=document.getElementById('l-err');
+  const btn=document.getElementById('l-btn');
+  err.textContent='';
+  if(cpf.length!==11){err.textContent='Digite os 11 números do CPF.';return;}
+  if(!senha){err.textContent='Digite a senha.';return;}
+  btn.disabled=true;btn.textContent='Entrando...';
+  const {data,error}=await sb.rpc('login_colaborador',{p_cpf:cpf,p_senha:senha});
+  btn.disabled=false;btn.textContent='Entrar';
+  if(error||!data?.ok){err.textContent=data?.erro||'Erro ao entrar. Tente de novo.';return;}
+  colab={cpf,nome:data.nome||'Colaborador',funcionario_id:data.funcionario_id};
+  if(data.precisa_trocar){
+    document.getElementById('tela-login').classList.add('hidden');
+    document.getElementById('tela-troca').classList.remove('hidden');
+    return;
+  }
+  entrarPortal();
+}
+
+// ===== Troca de senha =====
+async function trocarSenha(){
+  const nova=document.getElementById('t-nova').value;
+  const nova2=document.getElementById('t-nova2').value;
+  const err=document.getElementById('t-err');
+  const btn=document.getElementById('t-btn');
+  err.textContent='';
+  if(nova.length<4){err.textContent='A senha deve ter ao menos 4 caracteres.';return;}
+  if(nova!==nova2){err.textContent='As senhas não são iguais.';return;}
+  btn.disabled=true;btn.textContent='Salvando...';
+  const senhaAtual=document.getElementById('l-senha').value;
+  const {data,error}=await sb.rpc('trocar_senha_colaborador',{p_cpf:colab.cpf,p_senha_atual:senhaAtual,p_senha_nova:nova});
+  btn.disabled=false;btn.textContent='Salvar e entrar';
+  if(error||!data?.ok){err.textContent=data?.erro||'Erro ao trocar senha.';return;}
+  document.getElementById('tela-troca').classList.add('hidden');
+  entrarPortal();
+}
+
+// ===== Entrar no portal =====
+async function entrarPortal(){
+  document.getElementById('tela-login').classList.add('hidden');
+  document.getElementById('tela-troca').classList.add('hidden');
+  document.getElementById('tela-portal').classList.remove('hidden');
+  document.getElementById('p-nome').textContent='Olá, '+colab.nome.split(' ')[0];
+  document.getElementById('p-inicial').textContent=colab.nome[0].toUpperCase();
+  await carregarConfig();
+  await carregarDados();
+}
+
+async function carregarConfig(){
+  // Config da empresa (jornada + feriados) e dias especiais — pro cálculo bater
+  const {data:cfg}=await sb.rpc('portal_config_empresa',{p_cpf:colab.cpf});
+  if(cfg?.ok){
+    const e=cfg.empresa||{};
+    ENTRADA_PAD=e.jornada_entrada||ENTRADA_PAD;
+    SAIDA_SEMANA=e.jornada_saida||SAIDA_SEMANA;
+    SAIDA_SEX=e.jornada_saida_sexta||SAIDA_SEX;
+    if(e.tolerancia_min!=null)TOL=e.tolerancia_min;
+    // Monta a jornada em minutos por dia da semana
+    const jSemana=diffMin(e.jornada_entrada||'07:00',e.jornada_almoco_ini||'12:00')+diffMin(e.jornada_almoco_fim||'13:30',e.jornada_saida||'17:30');
+    const jSexta=diffMin(e.jornada_entrada||'07:00',e.jornada_almoco_ini||'12:00')+diffMin(e.jornada_almoco_fim||'13:30',e.jornada_saida_sexta||'16:30');
+    JORNADA={1:jSemana,2:jSemana,3:jSemana,4:jSemana,5:jSexta,0:0,6:0};
+    feriados=new Set((cfg.feriados||[]));
+  }
+  const {data:esp}=await sb.rpc('portal_meus_dias_especiais',{p_cpf:colab.cpf});
+  if(esp?.ok){
+    diasFeriasCpf=new Set((esp.ferias_dias||[]).map(d=>colab.cpf+'_'+d.data));
+    diasAfastamentoCpf=new Set((esp.afastamentos_dias||[]).map(d=>colab.cpf+'_'+d.data));
+  }
+}
+function diffMin(h1,h2){return toMin(h2)-toMin(h1);}
+
+async function carregarDados(){
+  const cont=document.getElementById('p-conteudo');
+  cont.innerHTML='<div class="loading">Carregando seus dados...</div>';
+  const {ini,fim}=getPeriodo(periodoAtual);
+  document.getElementById('p-periodo').textContent=fmtData(ini).split(' ')[1]+' a '+fmtData(fim).split(' ')[1];
+
+  // Batidas do período
+  const {data:bd}=await sb.rpc('portal_minhas_batidas',{p_cpf:colab.cpf,p_ini:ini,p_fim:fim});
+  const batidas=(bd?.ok?bd.batidas:[])||[];
+  // Advertências
+  const {data:ad}=await sb.rpc('portal_minhas_advertencias',{p_cpf:colab.cpf});
+  const advs=(ad?.ok?ad.advertencias:[])||[];
+
+  // Agrupa batidas por dia
+  const porDia={};
+  batidas.forEach(b=>{
+    if(!porDia[b.data_local])porDia[b.data_local]=[];
+    porDia[b.data_local].push({hora:b.data_hora_local?.slice(11,16)||'00:00',tipo:b.tipo});
+  });
+
+  // Percorre os dias do período, calcula saldo, faltas, atrasos
+  let saldoTotal=0, faltas=0, atrasos=0, diasTrab=0;
+  const linhas=[];
+  const hoje=new Date().toISOString().split('T')[0];
+  for(let d=new Date(ini+'T12:00:00');d<=new Date(fim+'T12:00:00');d.setDate(d.getDate()+1)){
+    const ds=d.toISOString().split('T')[0];
+    const bats=porDia[ds];
+    const r=saldoDoDia(ds,bats,colab.cpf);
+    let etq='';
+    if(bats&&bats.length){
+      diasTrab++;
+      // Atraso: entrada depois da tolerância
+      const ent=bats.filter(b=>b.tipo==='ENTRADA').sort((a,b)=>a.hora.localeCompare(b.hora))[0];
+      if(ent&&toMin(ent.hora)<=toMin('10:00')&&toMin(ent.hora)-toMin(ENTRADA_PAD)>TOL)atrasos++;
+    } else if(diasFeriasCpf.has(colab.cpf+'_'+ds)){
+      etq='<span class="etq ferias">Férias</span>';
+    } else if(diasFolgaCompCpf.has(colab.cpf+'_'+ds)){
+      etq='<span class="etq folga">Folga</span>';
+    } else if(diasAfastamentoCpf.has(colab.cpf+'_'+ds)){
+      etq='<span class="etq folga">Atestado</span>';
+    } else if(isDiaUtil(ds)&&ds<hoje){
+      etq='<span class="etq falta">Falta</span>';faltas++;
+    } else {
+      continue; // fim de semana/feriado sem batida: pula
+    }
+    if(r.conta)saldoTotal+=r.saldo;
+    // Monta a linha
+    const batStr=bats&&bats.length?bats.sort((a,b)=>a.hora.localeCompare(b.hora)).map(b=>b.hora).join(' · '):etq;
+    const mostraSaldo=r.conta||(r.classe==='folga_comp');
+    linhas.push(`<div class="dia">
+      <span class="dia-data">${fmtData(ds)}</span>
+      <span class="dia-bat">${batStr}</span>
+      <span class="dia-saldo" style="color:${!mostraSaldo?'var(--t3)':r.saldo>=0?'var(--g)':'var(--r)'}">${mostraSaldo?fromMin(r.saldo):'—'}</span>
+    </div>`);
+  }
+
+  linhas.reverse(); // mais recente no topo
+
+  // Advertências
+  let advHtml;
+  if(advs.length){
+    advHtml=advs.map(a=>{
+      const dt=(a.data||a.criado_em||'').split('T')[0];
+      return `<div class="adv"><div class="adv-top">${a.tipo||'Advertência'}</div><div class="adv-sub">${dt?fmtData(dt):''}${a.motivo||a.descricao?' · '+(a.motivo||a.descricao):''}</div></div>`;
+    }).join('');
+  } else {
+    advHtml='<div class="adv-ok"><span>Nenhuma advertência</span><span style="color:var(--g)">✓</span></div>';
+  }
+
+  cont.innerHTML=`
+    <div class="saldo-card">
+      <div class="saldo-lbl">Saldo do banco de horas</div>
+      <div class="saldo-val" style="color:${saldoTotal>=0?'var(--g)':'var(--r)'}">${fromMin(saldoTotal)}</div>
+      <div class="saldo-per">no período selecionado</div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="stat-v">${diasTrab}</div><div class="stat-l">Dias trab.</div></div>
+      <div class="stat"><div class="stat-v" style="color:${atrasos?'var(--o)':'var(--t1)'}">${atrasos}</div><div class="stat-l">Atrasos</div></div>
+      <div class="stat"><div class="stat-v" style="color:${faltas?'var(--r)':'var(--t1)'}">${faltas}</div><div class="stat-l">Faltas</div></div>
+    </div>
+    <div class="sec-title">Minhas batidas</div>
+    ${linhas.join('')||'<div class="loading">Sem registros no período.</div>'}
+    <div class="sec-title">Advertências</div>
+    ${advHtml}`;
+}
+
+function mudarPeriodo(p){
+  periodoAtual=p;
+  document.querySelectorAll('.per-btn').forEach(b=>b.classList.toggle('on',b.dataset.per===p));
+  carregarDados();
+}
+
+function sair(){
+  colab=null;
+  document.getElementById('tela-portal').classList.add('hidden');
+  document.getElementById('tela-login').classList.remove('hidden');
+  document.getElementById('l-cpf').value='';
+  document.getElementById('l-senha').value='';
+  document.getElementById('l-err').textContent='';
+}
+</script>
+</body>
+</html>
