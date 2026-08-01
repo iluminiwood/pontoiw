@@ -2049,17 +2049,13 @@ async function reloadBatidas(){
       if(data>hojeStr) break;
       const bats=pf.dias[data];
       if(bats&&bats.length){ addDiaSem(data,bats); continue; }
-      const dw=d.getDay();
-      const chave=cpf+'_'+data;
-      // dias especiais sem batida (folga compensada, férias, afastamento)
-      if(diasFolgaCompCpf.has(chave)||diasFeriasCpf.has(chave)||diasAfastamentoCpf.has(chave)){ addDiaSem(data,null); continue; }
-      // falta: dia útil, não feriado, no passado
-      if(dw>=1&&dw<=5 && !feriados.has(data) && data<hojeStr){ addDiaSem(data,null); continue; }
-      // senão (fim de semana vazio, feriado vazio, hoje sem batida) → não mostra
+      // Sem batida: mostra TODOS os dias (fim de semana, feriado, especiais, faltas)
+      addDiaSem(data,null);
     }
 
     let saldoTotal=0,semHtml='';
-    Object.entries(semanas).sort((a,b)=>b[0].localeCompare(a[0])).forEach(([semIni,dias])=>{
+    // Semanas em ordem CRESCENTE (mais antiga no topo)
+    Object.entries(semanas).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([semIni,dias])=>{
       let saldoSem=0,diasHtml='';
       dias.sort((a,b)=>a.data.localeCompare(b.data)).forEach(({data,bats})=>{
         const temBatida=bats&&bats.length;
@@ -2068,17 +2064,22 @@ async function reloadBatidas(){
         const saldo=r.saldo;
         // etiqueta para dias sem batida
         let et=null;
+        const dw=new Date(data+'T12:00:00').getDay();
         if(!temBatida){
           const ET={
             folga:{t:'Folga compensada',c:'#D08700',b:'rgba(208,135,0,.13)'},
             ferias:{t:'Férias',c:'#7F77DD',b:'rgba(127,119,221,.13)'},
             afast:{t:'Afastamento',c:'#378ADD',b:'rgba(55,138,221,.13)'},
-            falta:{t:'Falta',c:'#E24B4A',b:'rgba(226,75,74,.13)'}
+            falta:{t:'Falta',c:'#E24B4A',b:'rgba(226,75,74,.13)'},
+            fds:{t:'Fim de semana',c:'#8a8a9a',b:'rgba(138,138,154,.10)'},
+            feriado:{t:'Feriado',c:'#D08700',b:'rgba(245,158,11,.12)'}
           };
           let k='falta';
           if(r.classe==='folga_comp')k='folga';
           else if(diasFeriasCpf.has(cpf+'_'+data))k='ferias';
           else if(diasAfastamentoCpf.has(cpf+'_'+data))k='afast';
+          else if(feriados.has(data))k='feriado';
+          else if(dw===0||dw===6)k='fds';
           et=ET[k];
         }
         const mostraSaldo = !temBatida
@@ -2091,8 +2092,14 @@ async function reloadBatidas(){
         if(temBatida){
           batsArea=montarSlotsBatida(data,bats,cpf,f.nome)+addBtn;
         } else {
-          const stKey = r.classe==='folga_comp' ? 'folga' : (diasAfastamentoCpf.has(cpf+'_'+data)?'afast':(diasFeriasCpf.has(cpf+'_'+data)?'ferias':'falta'));
-          const clicavel = (stKey!=='ferias'); // férias gerencia na aba própria
+          let stKey='falta';
+          if(r.classe==='folga_comp')stKey='folga';
+          else if(diasAfastamentoCpf.has(cpf+'_'+data))stKey='afast';
+          else if(diasFeriasCpf.has(cpf+'_'+data))stKey='ferias';
+          else if(feriados.has(data))stKey='feriado';
+          else if(dw===0||dw===6)stKey='fds';
+          // Só é clicável (abre menu) se for dia útil normal — não férias/feriado/fim de semana
+          const clicavel = (stKey==='falta'||stKey==='folga'||stKey==='afast');
           const onclk = clicavel ? `onclick="abrirMenuDia('${data}','${cpf}','${f.nome.replace(/'/g,"\\'")}','${stKey}')" style="cursor:pointer"` : '';
           batsArea=`<span ${onclk} title="${clicavel?'Clique para marcar/alterar este dia':''}" style="font-size:11px;color:${et.c};background:${et.b};padding:2px 10px;border-radius:20px;font-weight:600;${clicavel?'cursor:pointer':''}">${et.t}${clicavel?' <span style="opacity:.6">▾</span>':''}</span>`;
         }
@@ -3257,11 +3264,11 @@ async function renderExFuncionarios(c){
     return;
   }
   const cards=exFuncionarios.map(f=>{
-    const desl=f.desligado_em?fmtDate(String(f.desligado_em).split('T')[0]):'—';
-    const adm=f.admissao?fmtDate(String(f.admissao).split('T')[0]):'—';
+    const desl=f.desligado_em?fmtData(String(f.desligado_em).split('T')[0]):'—';
+    const adm=f.admissao?fmtData(String(f.admissao).split('T')[0]):'—';
     return `<div class="fcard" style="opacity:.92">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:.6rem">
-        <div class="favatar" style="background:rgba(138,138,154,.15);color:var(--t2)">${(f.nome||'?')[0]}</div>
+        <div style="width:38px;height:38px;border-radius:50%;background:rgba(138,138,154,.15);color:var(--t2);display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0">${(f.nome||'?')[0]}</div>
         <div style="flex:1">
           <div style="font-weight:700">${f.nome}</div>
           <div style="font-size:11px;color:var(--t3)">${f.cargo||'—'}</div>
@@ -3282,7 +3289,7 @@ async function renderExFuncionarios(c){
   }).join('');
   c.innerHTML=`<div class="thead-row" style="margin-bottom:1rem"><span class="thead-title">Ex-funcionários (${exFuncionarios.length})</span></div>
     <div style="font-size:12px;color:var(--t2);margin-bottom:1rem">Histórico arquivado para consulta e defesa trabalhista. O dossiê completo de cada um fica preservado.</div>
-    <div class="fgrid">${cards}</div>`;
+    <div class="fgrid2">${cards}</div>`;
 }
 
 // ===== CALENDÁRIO / FERIADOS =====
