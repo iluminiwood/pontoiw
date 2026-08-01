@@ -459,6 +459,7 @@ body.light .toast{background:rgba(255,255,255,.97);}
     <div class="tab" onclick="goTab('banco')" id="t-banco">Banco de Horas</div>
     <div class="tab" onclick="goTab('atrasos')" id="t-atrasos">Atrasos</div>
     <div class="tab" onclick="goTab('equipe')" id="t-equipe">Equipe</div>
+    <div class="tab" onclick="goTab('exfunc')" id="t-exfunc">Ex-func.</div>
     <div class="tab" onclick="goTab('ferias')" id="t-ferias">Férias</div>
     <div class="tab" onclick="goTab('calendario')" id="t-calendario">Calendário</div>
     <div class="tab" onclick="goTab('afastamentos')" id="t-afastamentos">Atestados</div>
@@ -554,6 +555,33 @@ body.light .toast{background:rgba(255,255,255,.97);}
     <div class="mactions">
       <button class="btn-sm" onclick="closeModals()">Cancelar</button>
       <button class="btn" onclick="confirmarDiaInteiro()">Lançar dia inteiro</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DESLIGAMENTO -->
+<div class="moverlay" id="m-deslig">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div class="mtitle">Desligar colaborador</div>
+    <div class="msub" id="m-deslig-sub"></div>
+    <div style="font-size:12px;color:var(--t2);margin:.3rem 0 1rem;line-height:1.5">O colaborador sai da equipe ativa e vai para "Ex-funcionários". As faltas param na data do desligamento. Todo o histórico fica arquivado.</div>
+    <div class="field"><label>Data do desligamento</label><input type="date" id="deslig-data"></div>
+    <div class="field"><label>Motivo</label>
+      <select id="deslig-motivo">
+        <option value="">Selecione...</option>
+        <option value="Pediu demissão">Pediu demissão (pediu as contas)</option>
+        <option value="Dispensa sem justa causa">Dispensa sem justa causa</option>
+        <option value="Dispensa por justa causa">Dispensa por justa causa</option>
+        <option value="Término de contrato">Término de contrato (experiência/prazo)</option>
+        <option value="Acordo">Acordo entre as partes</option>
+        <option value="Outro">Outro</option>
+      </select>
+    </div>
+    <div class="field"><label>Observações (opcional)</label><textarea id="deslig-obs" rows="2" placeholder="Detalhes que queira registrar" style="width:100%;background:var(--s2);border:1px solid var(--b1);border-radius:var(--r8);padding:10px;color:var(--t1);font-family:inherit;resize:vertical"></textarea></div>
+    <div class="mactions">
+      <button class="btn-sm" onclick="closeModals()">Cancelar</button>
+      <button class="btn" style="background:var(--r)" onclick="confirmarDesligamento()">Confirmar desligamento</button>
     </div>
   </div>
 </div>
@@ -1117,7 +1145,7 @@ function aplicarConfigEmpresa(cfg){
   JORNADA={1:minSemana,2:minSemana,3:minSemana,4:minSemana,5:minSexta};
 }
 
-let funcionarios=[],advertencias=[],currentTab='dash',sbOk=false;
+let funcionarios=[],exFuncionarios=[],advertencias=[],currentTab='dash',sbOk=false;
 let salariosVisiveis=false;
 let loginAttempts=0,loginBlocked=false,currentAdvFunc=null,sessionTimer=null;
 let editCtx=null, addCtx=null;
@@ -1125,6 +1153,7 @@ let feriados=new Set();
 let diasFeriasCpf=new Set();
 let diasAfastamentoCpf=new Set();
 let diasFolgaCompCpf=new Set(); // dias de folga compensatória (debitam jornada do banco)
+let desligamentoCpf={}; // cpf -> data de desligamento (YYYY-MM-DD); depois dela não conta falta
 let perfilUsuario='admin'; let empresaAtual=null; // 'admin' ou 'encarregado' // Set de strings "YYYY-MM-DD"
 
 function isFeriado(ds){return feriados.has(ds);}
@@ -1183,6 +1212,11 @@ function calcTrab(bats){
 //  - Folga (fim de semana ou feriado) trabalhada: credita TUDO como positivo.
 function saldoDoDia(ds, bats, cpf){
   const trab = (bats && bats.length) ? calcTrab(bats) : 0;
+  // Desligamento: dias APÓS a data de desligamento não contam (nem falta nem saldo).
+  // O dia do desligamento e anteriores contam normal (trabalhou até lá).
+  if(cpf && desligamentoCpf[cpf] && ds > desligamentoCpf[cpf]){
+    return {classe:'excluido', saldo:0, trab:0, jornada:0, conta:false, posDesligamento:true};
+  }
   // Folga compensatória: debita a jornada do dia do banco e NÃO conta falta
   if(cpf && diasFolgaCompCpf.has(cpf+'_'+ds)){
     const j = jornadaMin(ds);
@@ -1601,14 +1635,18 @@ async function initApp(){
 async function loadBase(){
   // Busca tudo em paralelo em vez de sequencial — bem mais rápido
   const[{data:f},{data:a},{data:fer},{data:ferDias},{data:afastDias},{data:afastTipos}]=await Promise.all([
-    sb.from('iw_funcionarios').select('*').eq('ativo',true).order('nome'),
+    sb.from('iw_funcionarios').select('*').order('nome'),
     sb.from('iw_advertencias').select('*').order('criado_em',{ascending:false}),
     sb.from('iw_feriados').select('data'),
     sb.from('iw_ferias_dias').select('cpf,data').limit(2000),
     sb.from('iw_afastamentos_dias').select('cpf,data,afastamento_id').limit(2000),
     sb.from('iw_afastamentos').select('id,tipo').limit(1000)
   ]);
-  funcionarios=(f||[]).map((x,i)=>({...x,color:COLORS[i%COLORS.length],admissao:x.admissao||'2026-02-01',salario:x.salario||0,aniversario:x.aniversario||null}));
+  const _todos=(f||[]).map((x,i)=>({...x,color:COLORS[i%COLORS.length],admissao:x.admissao||'2026-02-01',salario:x.salario||0,aniversario:x.aniversario||null}));
+  funcionarios=_todos.filter(x=>x.ativo!==false);
+  exFuncionarios=_todos.filter(x=>x.ativo===false);
+  desligamentoCpf={};
+  _todos.forEach(x=>{ if(x.cpf && x.desligado_em) desligamentoCpf[x.cpf]=String(x.desligado_em).split('T')[0]; });
   advertencias=a||[];
   feriados=new Set((fer||[]).map(x=>x.data));
   diasFeriasCpf=new Set((ferDias||[]).map(x=>x.cpf+'_'+x.data));
@@ -1636,7 +1674,7 @@ function goTab(tab){
   document.getElementById('t-'+tab+'-e')?.classList.add('on');
   const c=document.getElementById('content');
   c.innerHTML='<div class="loading">Carregando...</div>';c.scrollTop=0;
-  ({dash:renderDash,batidas:renderBatidas,banco:renderBanco,atrasos:renderAtrasos,equipe:renderEquipe,ferias:renderFerias,calendario:renderCalendario,afastamentos:renderAfastamentos,epis:renderEpis,adv:renderAdv}[tab]||((c)=>c.innerHTML=''))(c);
+  ({dash:renderDash,batidas:renderBatidas,banco:renderBanco,atrasos:renderAtrasos,equipe:renderEquipe,ferias:renderFerias,calendario:renderCalendario,exfunc:renderExFuncionarios,afastamentos:renderAfastamentos,epis:renderEpis,adv:renderAdv}[tab]||((c)=>c.innerHTML=''))(c);
 }
 
 // ===== DASHBOARD =====
@@ -1791,8 +1829,15 @@ async function renderDash(c){
       const dentro=ult?.tipo==='ENTRADA';
       const hora=ent?.hora||'—';
       const at=ent?Math.max(0,toMin(ent.hora)-toMin(ENTRADA_PAD)):0;
-      const stChip=bats.length===0?'<span class="chip r">Ausente</span>':at<=TOL?'<span class="chip g">Pontual</span>':`<span class="chip o">+${at}min</span>`;
-      const sitChip=bats.length===0?'<span class="chip r">Ausente</span>':dentro?'<span class="chip g">No trabalho</span>':'<span class="chip a">Saiu</span>';
+      let motivoAusencia=null;
+      if(bats.length===0){
+        if(diasFeriasCpf.has(f.cpf+'_'+hoje)) motivoAusencia='<span class="chip" style="background:rgba(127,119,221,.15);color:#a99df5">Férias</span>';
+        else if(diasFolgaCompCpf.has(f.cpf+'_'+hoje)) motivoAusencia='<span class="chip" style="background:rgba(56,189,248,.12);color:#7dd3fc">Folga</span>';
+        else if(diasAfastamentoCpf.has(f.cpf+'_'+hoje)) motivoAusencia='<span class="chip" style="background:rgba(56,189,248,.12);color:#7dd3fc">Atestado</span>';
+        else if(isFeriado(hoje)) motivoAusencia='<span class="chip" style="background:rgba(245,158,11,.15);color:var(--o)">Feriado</span>';
+      }
+      const stChip=bats.length===0?(motivoAusencia||'<span class="chip r">Ausente</span>'):at<=TOL?'<span class="chip g">Pontual</span>':`<span class="chip o">+${at}min</span>`;
+      const sitChip=bats.length===0?(motivoAusencia||'<span class="chip r">Ausente</span>'):dentro?'<span class="chip g">No trabalho</span>':'<span class="chip a">Saiu</span>';
       return`<tr><td style="font-weight:700">${f.nome.split(' ')[0]}</td><td style="font-family:var(--mono)">${hora}</td><td>${stChip}</td><td>${sitChip}</td></tr>`;
     }).join('')}</tbody></table>
   </div>
@@ -3167,6 +3212,79 @@ function copiarLinkTotem(link){
   navigator.clipboard.writeText(link).then(()=>toast('Link copiado!','ok')).catch(()=>toast('Não foi possível copiar.','err'));
 }
 
+// ===== DESLIGAMENTO / EX-FUNCIONÁRIOS =====
+let desligCtx=null;
+function abrirDesligamento(funcId,nome){
+  desligCtx={funcId,nome};
+  document.getElementById('m-deslig-sub').textContent=nome;
+  document.getElementById('deslig-data').value=new Date().toISOString().split('T')[0];
+  document.getElementById('deslig-motivo').value='';
+  document.getElementById('deslig-obs').value='';
+  document.getElementById('m-deslig').classList.add('open');
+}
+async function confirmarDesligamento(){
+  if(!desligCtx)return;
+  const data=document.getElementById('deslig-data').value;
+  const motivo=document.getElementById('deslig-motivo').value;
+  const obs=document.getElementById('deslig-obs').value.trim();
+  if(!data){toast('Informe a data do desligamento.','err');return;}
+  if(!motivo){toast('Selecione o motivo.','err');return;}
+  const {error}=await sb.from('iw_funcionarios').update({
+    ativo:false, desligado_em:data, motivo_desligamento:motivo, obs_desligamento:obs||null
+  }).eq('id',desligCtx.funcId);
+  if(error){toast('Erro ao desligar: '+error.message,'err');return;}
+  toast(desligCtx.nome.split(' ')[0]+' foi desligado. Histórico arquivado.','ok');
+  closeModals();
+  await loadBase();
+  renderEquipe(document.getElementById('content'));
+}
+// Reverter (readmitir) — caso tenha desligado por engano
+async function readmitir(funcId,nome){
+  if(!confirm(`Reativar ${nome}? Ele volta para a equipe ativa e as faltas voltam a contar normalmente.`))return;
+  const {error}=await sb.from('iw_funcionarios').update({
+    ativo:true, desligado_em:null, motivo_desligamento:null, obs_desligamento:null
+  }).eq('id',funcId);
+  if(error){toast('Erro: '+error.message,'err');return;}
+  toast(nome.split(' ')[0]+' reativado.','ok');
+  await loadBase();
+  renderExFuncionarios(document.getElementById('content'));
+}
+
+async function renderExFuncionarios(c){
+  if(!exFuncionarios.length){
+    c.innerHTML=`<div class="tcard"><div class="thead-row"><span class="thead-title">Ex-funcionários</span></div>
+      <div style="padding:2rem;text-align:center;color:var(--t3)">Nenhum funcionário desligado.<br><span style="font-size:12px">Quando você desligar alguém, o histórico dele fica arquivado aqui.</span></div></div>`;
+    return;
+  }
+  const cards=exFuncionarios.map(f=>{
+    const desl=f.desligado_em?fmtDate(String(f.desligado_em).split('T')[0]):'—';
+    const adm=f.admissao?fmtDate(String(f.admissao).split('T')[0]):'—';
+    return `<div class="fcard" style="opacity:.92">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:.6rem">
+        <div class="favatar" style="background:rgba(138,138,154,.15);color:var(--t2)">${(f.nome||'?')[0]}</div>
+        <div style="flex:1">
+          <div style="font-weight:700">${f.nome}</div>
+          <div style="font-size:11px;color:var(--t3)">${f.cargo||'—'}</div>
+        </div>
+        <span class="chip" style="background:rgba(138,138,154,.15);color:var(--t2)">Desligado</span>
+      </div>
+      <div style="font-size:12px;color:var(--t2);line-height:1.7;border-top:1px solid var(--b1);padding-top:.5rem">
+        <div>Admissão: <b style="color:var(--t1)">${adm}</b></div>
+        <div>Desligamento: <b style="color:var(--r)">${desl}</b></div>
+        <div>Motivo: <b style="color:var(--t1)">${f.motivo_desligamento||'—'}</b></div>
+        ${f.obs_desligamento?`<div style="color:var(--t3);margin-top:2px">"${f.obs_desligamento}"</div>`:''}
+      </div>
+      <div class="factions" style="margin-top:.6rem">
+        <button class="btn-xs" style="color:var(--pu,#7F77DD);border-color:rgba(127,119,221,.35)" onclick='abrirTimeline("${f.cpf||''}",${f.id},"${(f.nome||'').replace(/"/g,'&quot;')}")'>Ver dossiê completo</button>
+        <button class="btn-xs" style="color:var(--acc);border-color:rgba(16,185,129,.3)" onclick='readmitir(${f.id},"${(f.nome||'').replace(/"/g,'&quot;')}")'>Readmitir</button>
+      </div>
+    </div>`;
+  }).join('');
+  c.innerHTML=`<div class="thead-row" style="margin-bottom:1rem"><span class="thead-title">Ex-funcionários (${exFuncionarios.length})</span></div>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:1rem">Histórico arquivado para consulta e defesa trabalhista. O dossiê completo de cada um fica preservado.</div>
+    <div class="fgrid">${cards}</div>`;
+}
+
 // ===== CALENDÁRIO / FERIADOS =====
 let calMesAtual=null; // {ano, mes} sendo exibido
 let calFeriados=[];   // lista completa de feriados carregados
@@ -3717,6 +3835,7 @@ async function renderEquipe(c){
       <button class="btn-xs" style="color:var(--acc);border-color:rgba(16,185,129,.3)" onclick="editPin(${f.id})">PIN</button>
       <button class="btn-xs" style="color:var(--g);border-color:rgba(61,214,140,.3)" onclick="editSalario(${f.id})">Editar</button>
       <button class="btn-xs" style="color:var(--o);border-color:rgba(251,146,60,.3)" onclick='openModalAdv({id:${f.id},nome:"${f.nome}",cpf:"${f.cpf||''}"})'>+ Adv.</button>
+      <button class="btn-xs" style="color:var(--r);border-color:rgba(248,113,113,.3)" onclick='abrirDesligamento(${f.id},"${f.nome.replace(/"/g,'&quot;')}")'>Desligar</button>
     </div>`;
     g.appendChild(d);
   });
@@ -4518,6 +4637,7 @@ async function reloadAtrasos(){
       if(!isDiaUtil(ds)||ds>=hoje)continue;
       // Pula dias que NÃO são falta: férias, folga compensada e afastamento (mesma fonte das outras telas)
       if(diasFeriasCpf.has(f.cpf+'_'+ds)||diasAfastamentoCpf.has(f.cpf+'_'+ds)||diasFolgaCompCpf.has(f.cpf+'_'+ds))continue;
+      if(desligamentoCpf[f.cpf] && ds>desligamentoCpf[f.cpf])continue; // não conta falta após desligamento
       const bats=pf.dias[ds];
       if(!bats||!bats.length){ocorrencias.push({tipo:'falta',data:ds,desc:'Falta — sem registro no dia'});continue;}
       const sorted=[...bats].sort((a,b)=>a.hora.localeCompare(b.hora));
