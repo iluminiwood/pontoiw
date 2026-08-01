@@ -77,6 +77,9 @@
   .loading{text-align:center;color:var(--t3);padding:2rem;font-size:13px}
   .per-sel{display:flex;gap:6px;margin-bottom:1rem;flex-wrap:wrap}
   .per-btn{flex:1;background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:8px;font-size:12px;color:var(--t2);cursor:pointer;text-align:center}
+  .ano-sep{font-size:15px;font-weight:700;color:var(--t1);margin:1.25rem 0 .6rem;padding-left:2px;letter-spacing:-.2px}
+  .ano-sep:first-child{margin-top:.25rem}
+  .fim-lista{text-align:center;font-size:12px;color:var(--t3);padding:1.25rem 0 .5rem;font-family:var(--mono)}
   .felic-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:100;padding:1.5rem;backdrop-filter:blur(4px)}
   .felic-overlay.open{display:flex;animation:felicFade .3s ease}
   @keyframes felicFade{from{opacity:0}to{opacity:1}}
@@ -342,6 +345,8 @@ async function carregarConfig(){
     const jSexta=diffMin(e.jornada_entrada||'07:00',e.jornada_almoco_ini||'12:00')+diffMin(e.jornada_almoco_fim||'13:30',e.jornada_saida_sexta||'16:30');
     JORNADA={1:jSemana,2:jSemana,3:jSemana,4:jSemana,5:jSexta,0:0,6:0};
     feriados=new Set((cfg.feriados||[]));
+    // Garante a admissão (mesmo que o login não tenha trazido)
+    if(cfg.admissao && !colab.admissao) colab.admissao=String(cfg.admissao).split('T')[0];
   }
   const {data:esp}=await sb.rpc('portal_meus_dias_especiais',{p_cpf:colab.cpf});
   if(esp?.ok){
@@ -452,7 +457,7 @@ async function carregarDados(){
     const marcaAtraso=ehAtraso?`<span class="etq atraso">atraso +${minAtraso}min</span>`:'';
     const saldoTxt=mostraSaldo?fromMin(r.saldo):'—';
     const saldoCor=!mostraSaldo?'var(--t3)':r.saldo>=0?'var(--g)':'var(--r)';
-    linhas.push(`<div class="dia-row">
+    linhas.push({ds, html:`<div class="dia-row">
       <div class="dia-top">
         <span class="dia-data">${fmtData(ds)}</span>
         <span class="dia-saldo" style="color:${saldoCor}">${saldoTxt}</span>
@@ -461,11 +466,29 @@ async function carregarDados(){
         <span class="dia-bat">${batStr}</span>
         ${marcaAtraso}
       </div>
-    </div>`);
+    </div>`});
   }
   const faltas=diasFalta.length, atrasos=diasAtraso.length;
 
   linhas.reverse(); // mais recente no topo
+
+  // Agrupa por ANO com cabeçalho (evita lista infinita corrida)
+  let listaDiasHtml='';
+  if(linhas.length){
+    let anoAtual=null;
+    linhas.forEach(l=>{
+      const ano=l.ds.split('-')[0];
+      if(ano!==anoAtual){
+        anoAtual=ano;
+        listaDiasHtml+=`<div class="ano-sep">${ano}</div>`;
+      }
+      listaDiasHtml+=l.html;
+    });
+    // Mensagem de fim da lista
+    listaDiasHtml+='<div class="fim-lista">— fim do histórico —</div>';
+  } else {
+    listaDiasHtml='<div class="loading">Nenhum dia neste período.</div>';
+  }
 
   // Advertências — o app grava: tipo, descricao, data_registro, criado_em
   let advHtml;
@@ -506,7 +529,7 @@ async function carregarDados(){
       </div>
     </div>
     <div class="sec-title">${tituloLista}${limparBtn}</div>
-    ${linhas.join('')||'<div class="loading">Nenhum dia neste filtro.</div>'}
+    ${listaDiasHtml}
     <div class="sec-title">Advertências</div>
     ${advHtml}`;
 }
