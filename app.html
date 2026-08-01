@@ -3420,31 +3420,41 @@ async function calSalvarFeriado(){
   const empresaId=empresaAtual||1;
 
   // Monta os registros. Se anual, gera para este ano + próximos 5 anos.
+  // NÃO passamos 'id' — a tabela gera sozinha (nextval do sequence).
   const [y,m,d]=data.split('-');
   const registros=[];
   const anosGerar=anual? [0,1,2,3,4,5] : [0];
   anosGerar.forEach(off=>{
     const ano=parseInt(y)+off;
     registros.push({
-      id:Date.now()+off,
       data:`${ano}-${m}-${d}`,
       descricao:descFinal,
       empresa_id:empresaId
     });
   });
 
-  // Anti-duplicata: não insere se já existir feriado nessa data para a empresa
-  let inseridos=0;
+  // Insere. A coluna 'data' é única no banco, então pulamos as que já existem.
+  let inseridos=0, jaExistiam=0, erroReal=null;
   for(const reg of registros){
-    const existe=calFeriados.find(f=>f.data===reg.data);
-    if(existe) continue;
+    // pula se já está carregado na tela (evita erro de duplicata previsível)
+    if(calFeriados.find(f=>f.data===reg.data)){ jaExistiam++; continue; }
     const {error}=await sb.from('iw_feriados').insert(reg);
-    if(!error) inseridos++;
+    if(error){
+      // se for duplicata (data única), conta como já existente; senão, guarda o erro real
+      if(error.code==='23505'||/duplicate|unique/i.test(error.message||'')){ jaExistiam++; }
+      else { erroReal=error.message; }
+    } else {
+      inseridos++;
+    }
   }
 
+  if(erroReal){
+    toast('Erro ao salvar feriado: '+erroReal,'err');
+    return; // não fecha o modal, pra você ver que deu erro
+  }
   if(inseridos>0){
-    toast(anual?`Feriado anual salvo (${inseridos} anos)!`:'Feriado salvo!','ok');
-  } else {
+    toast(anual?`Feriado anual salvo (${inseridos} ${inseridos>1?'anos':'ano'})!`:'Feriado salvo!','ok');
+  } else if(jaExistiam>0){
     toast('Esse feriado já estava cadastrado.','info');
   }
   closeModals();
