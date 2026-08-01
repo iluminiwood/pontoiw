@@ -57,6 +57,12 @@
   .dia{background:var(--s2);border-radius:12px;padding:.7rem .9rem;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px}
   .dia-data{font-size:12px;color:var(--t1);white-space:nowrap}
   .dia-bat{font-size:11px;color:var(--t2);font-family:var(--mono);text-align:right;flex:1}
+  .dia-row{background:var(--s2);border-radius:12px;padding:.7rem .9rem;margin-bottom:6px}
+  .dia-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+  .dia-top .dia-data{font-size:13px;color:var(--t1);font-weight:600}
+  .dia-top .dia-saldo{font-size:13px;font-family:var(--mono);font-weight:600}
+  .dia-bot{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .dia-bot .dia-bat{font-size:12px;color:var(--t2);font-family:var(--mono);text-align:left;flex:none}
   .dia-saldo{font-size:12px;font-family:var(--mono);white-space:nowrap;min-width:52px;text-align:right}
   .etq{font-size:11px;padding:2px 8px;border-radius:6px}
   .etq.falta{background:rgba(248,113,113,.12);color:var(--r)}
@@ -345,6 +351,31 @@ async function carregarConfig(){
 }
 function diffMin(h1,h2){return toMin(h2)-toMin(h1);}
 
+// Card de período de experiência (motivacional)
+function cardExperiencia(){
+  if(!colab.admissao) return '';
+  const adm=new Date(colab.admissao+'T12:00:00');
+  if(isNaN(adm)) return '';
+  const hoje=new Date();
+  const fimExp=new Date(adm); fimExp.setDate(fimExp.getDate()+90);
+  const diasRest=Math.ceil((fimExp-hoje)/(1000*60*60*24));
+  if(diasRest<=0) return ''; // já efetivado, não mostra
+  const fimStr=fimExp.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  return `<div style="background:linear-gradient(135deg,#1a2440,#141c30);border:.5px solid #2a3a5c;border-radius:18px;padding:1.25rem;margin-bottom:1rem">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <span style="font-size:18px">🌱</span>
+      <span style="font-size:13px;font-weight:700;color:#7db3f5">Período de experiência</span>
+    </div>
+    <div style="font-size:15px;color:var(--t1);line-height:1.5;margin-bottom:6px">
+      Faltam <b style="color:#7db3f5">${diasRest} ${diasRest>1?'dias':'dia'}</b> para o fim da sua experiência.
+    </div>
+    <div style="font-size:12.5px;color:var(--t2);line-height:1.5">
+      Aproveite este período para se desenvolver, mostrar seu trabalho e se integrar à equipe. Conte com a gente! 💪
+    </div>
+    <div style="font-size:11px;color:var(--t3);margin-top:8px">Efetivação prevista para ${fimStr}</div>
+  </div>`;
+}
+
 async function carregarDados(){
   const cont=document.getElementById('p-conteudo');
   cont.innerHTML='<div class="loading">Carregando seus dados...</div>';
@@ -357,6 +388,20 @@ async function carregarDados(){
   // Advertências
   const {data:ad}=await sb.rpc('portal_minhas_advertencias',{p_cpf:colab.cpf});
   const advs=(ad?.ok?ad.advertencias:[])||[];
+  // Acertos (pagamentos de horas) — para não somar horas já pagas
+  const {data:ac}=await sb.rpc('portal_meus_acertos',{p_cpf:colab.cpf});
+  const acertos=(ac?.ok?ac.acertos:[])||[];
+  // Corte: o saldo só conta a partir do dia SEGUINTE ao último período pago
+  let corteSaldo=null, ultimoAcertoFim=null;
+  acertos.forEach(a=>{
+    if(a.periodo_fim && (!ultimoAcertoFim || a.periodo_fim>ultimoAcertoFim)){
+      ultimoAcertoFim=a.periodo_fim;
+    }
+  });
+  if(ultimoAcertoFim){
+    const d=new Date(ultimoAcertoFim+'T12:00:00'); d.setDate(d.getDate()+1);
+    corteSaldo=d.toISOString().split('T')[0];
+  }
 
   // Agrupa batidas por dia
   const porDia={};
@@ -372,6 +417,8 @@ async function carregarDados(){
   const hoje=new Date().toISOString().split('T')[0];
   for(let d=new Date(ini+'T12:00:00');d<=new Date(fim+'T12:00:00');d.setDate(d.getDate()+1)){
     const ds=d.toISOString().split('T')[0];
+    // Não conta nada antes da admissão do colaborador (ele não trabalhava aqui ainda)
+    if(colab.admissao && ds < colab.admissao) continue;
     const bats=porDia[ds];
     const r=saldoDoDia(ds,bats,colab.cpf);
     let etq='', ehFalta=false, ehAtraso=false, minAtraso=0;
@@ -393,7 +440,8 @@ async function carregarDados(){
     } else {
       continue; // fim de semana/feriado sem batida: pula
     }
-    if(r.conta)saldoTotal+=r.saldo;
+    // Saldo: só conta a partir do dia seguinte ao último acerto (horas pagas não somam)
+    if(r.conta && (!corteSaldo || ds>=corteSaldo)) saldoTotal+=r.saldo;
 
     // Aplica o filtro (se o usuário clicou em faltas ou atrasos)
     if(filtroDias==='falta'&&!ehFalta) continue;
@@ -401,11 +449,18 @@ async function carregarDados(){
 
     const batStr=bats&&bats.length?bats.sort((a,b)=>a.hora.localeCompare(b.hora)).map(b=>b.hora).join(' · '):etq;
     const mostraSaldo=r.conta||(r.classe==='folga_comp');
-    const marcaAtraso=ehAtraso?` <span class="etq atraso">+${minAtraso}min</span>`:'';
-    linhas.push(`<div class="dia">
-      <span class="dia-data">${fmtData(ds)}</span>
-      <span class="dia-bat">${batStr}${marcaAtraso}</span>
-      <span class="dia-saldo" style="color:${!mostraSaldo?'var(--t3)':r.saldo>=0?'var(--g)':'var(--r)'}">${mostraSaldo?fromMin(r.saldo):'—'}</span>
+    const marcaAtraso=ehAtraso?`<span class="etq atraso">atraso +${minAtraso}min</span>`:'';
+    const saldoTxt=mostraSaldo?fromMin(r.saldo):'—';
+    const saldoCor=!mostraSaldo?'var(--t3)':r.saldo>=0?'var(--g)':'var(--r)';
+    linhas.push(`<div class="dia-row">
+      <div class="dia-top">
+        <span class="dia-data">${fmtData(ds)}</span>
+        <span class="dia-saldo" style="color:${saldoCor}">${saldoTxt}</span>
+      </div>
+      <div class="dia-bot">
+        <span class="dia-bat">${batStr}</span>
+        ${marcaAtraso}
+      </div>
     </div>`);
   }
   const faltas=diasFalta.length, atrasos=diasAtraso.length;
@@ -415,18 +470,12 @@ async function carregarDados(){
   // Advertências — o app grava: tipo, descricao, data_registro, criado_em
   let advHtml;
   if(advs.length){
-    advHtml=advs.map(a=>{
-      // Data: usa data_registro (DD/MM/YYYY) se houver, senão criado_em (ISO)
-      let dt='';
-      if(a.data_registro) dt=a.data_registro;
-      else if(a.data) dt=fmtData(String(a.data).split('T')[0]);
-      else if(a.criado_em) dt=fmtData(String(a.criado_em).split('T')[0]);
-      const texto=a.descricao||a.motivo||'';
-      return `<div class="adv">
-        <div class="adv-top">${a.tipo||'Advertência'}</div>
-        <div class="adv-sub">${dt}${texto?' · '+texto:''}</div>
-      </div>`;
-    }).join('');
+    const plural=advs.length>1?'advertências':'advertência';
+    advHtml=`<div class="adv" style="display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:14px;color:var(--t1)">Você tem <b style="color:var(--r)">${advs.length}</b> ${plural} registrada${advs.length>1?'s':''}</span>
+      <span style="font-size:22px;font-weight:800;color:var(--r);font-family:var(--mono)">${advs.length}</span>
+    </div>
+    <div style="font-size:11px;color:var(--t3);margin-top:6px;padding:0 2px">Procure o RH ou seu encarregado para mais detalhes.</div>`;
   } else {
     advHtml='<div class="adv-ok"><span>Nenhuma advertência</span><span style="color:var(--g)">✓</span></div>';
   }
@@ -438,10 +487,12 @@ async function carregarDados(){
   if(filtroDias==='atraso'){ tituloLista='Meus dias com atraso'; limparBtn='<span onclick="limparFiltro()" style="color:var(--acc);cursor:pointer;text-transform:none;font-size:11px"> · ver tudo</span>'; }
 
   cont.innerHTML=`
+    ${cardExperiencia()}
     <div class="saldo-card">
       <div class="saldo-lbl">Saldo do banco de horas</div>
       <div class="saldo-val" style="color:${saldoTotal>=0?'var(--g)':'var(--r)'}">${fromMin(saldoTotal)}</div>
       <div class="saldo-per">no período selecionado</div>
+      ${(ultimoAcertoFim && corteSaldo && ini<corteSaldo)?`<div style="margin-top:.75rem;padding-top:.75rem;border-top:.5px solid rgba(255,255,255,.08);font-size:11.5px;color:#8fd9b8;line-height:1.5">✓ As horas até ${fmtData(ultimoAcertoFim)} já foram acertadas. O saldo acima conta a partir daí.</div>`:''}
     </div>
     <div class="stats">
       <div class="stat"><div class="stat-v">${diasTrab}</div><div class="stat-l">Dias trab.</div></div>
