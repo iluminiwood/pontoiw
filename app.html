@@ -115,15 +115,15 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .chip.b{background:var(--bld);color:var(--bl);}
 .chip.pu{background:var(--pud);color:var(--pu);}
 .flist{display:flex;flex-direction:column;gap:8px;margin-bottom:1rem;}
-.fcard{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r12);padding:.9rem 1rem;}
-.frow{display:flex;align-items:center;gap:10px;margin-bottom:.6rem;}
-.fav{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0;}
-.fname{font-size:14px;font-weight:700;}
-.fcargo{font-size:11px;color:var(--t2);}
+.fcard{background:var(--s1);border:none;border-radius:18px;padding:1.15rem 1.25rem;}
+.frow{display:flex;align-items:center;gap:13px;margin-bottom:.85rem;}
+.fav{width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:600;flex-shrink:0;color:#fff;}
+.fname{font-size:16px;font-weight:600;letter-spacing:-.2px;}
+.fcargo{font-size:12.5px;color:var(--t2);margin-top:1px;}
 .fstats{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:.6rem;}
-.fstat{background:var(--s2);border-radius:var(--r8);padding:5px 7px;}
-.fstat-l{font-size:9px;color:var(--t3);}
-.fstat-v{font-family:var(--mono);font-size:12px;font-weight:500;margin-top:1px;}
+.fstat{background:var(--s2);border-radius:12px;padding:8px 11px;}
+.fstat-l{font-size:9.5px;color:var(--t3);text-transform:uppercase;letter-spacing:.3px;}
+.fstat-v{font-family:var(--mono);font-size:12.5px;font-weight:500;margin-top:2px;}
 .factions{display:flex;gap:5px;}
 .btn-xs{padding:5px 9px;font-size:11px;font-weight:600;border-radius:var(--r8);border:1px solid var(--b1);background:var(--s2);color:var(--t2);cursor:pointer;font-family:var(--font);}
 .bfunc{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r12);padding:.9rem 1rem;margin-bottom:.9rem;}
@@ -3911,7 +3911,7 @@ async function renderEquipe(c){
       </div>
     </div>`:'';
     d.innerHTML=`<div class="frow">
-      <div class="fav" style="background:${f.color}22;color:${f.color}">${f.nome[0]}</div>
+      <div class="fav" style="background:linear-gradient(135deg,${f.color},${f.color}bb)">${f.nome[0]}</div>
       <div style="flex:1"><div class="fname">${f.nome.split(' ')[0]}${exp?STAR_SVG:''}</div>
         <div class="fcargo">${f.cargo||'—'} · CPF <span style="font-family:var(--mono)">${f.cpf||'—'}</span></div></div>
     </div>
