@@ -33,25 +33,28 @@
   .hint{font-size:11px;color:var(--t3);text-align:center;margin-top:16px;line-height:1.5}
 
   /* Portal */
-  .topbar{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--b1)}
-  .topbar .u{display:flex;align-items:center;gap:10px}
-  .avatar{width:38px;height:38px;border-radius:50%;background:rgba(16,185,129,.15);color:var(--acc);display:flex;align-items:center;justify-content:center;font-weight:800}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:1.15rem 1.25rem;border-bottom:.5px solid var(--b1)}
+  .topbar .u{display:flex;align-items:center;gap:13px}
+  .avatar{width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,#30d158,#248a3d);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:20px}
   .uname{font-size:15px;font-weight:800}
   .usub{font-size:11px;color:var(--t2)}
   .logout{font-size:12px;color:var(--r);background:none;border:1px solid rgba(248,113,113,.3);border-radius:8px;padding:6px 12px;cursor:pointer}
 
-  .saldo-card{background:linear-gradient(135deg,#0d2a1e,#0a1f17);border:1px solid #14503f;border-radius:14px;padding:1.25rem;margin-bottom:1rem;text-align:center}
+  .saldo-card{background:linear-gradient(135deg,#0d2a1e,#0a1f17);border:.5px solid #14503f;border-radius:18px;padding:1.5rem;margin-bottom:1rem;text-align:center}
   .saldo-lbl{font-size:11px;color:var(--t2);text-transform:uppercase}
   .saldo-val{font-size:34px;font-weight:900;font-family:var(--mono);margin-top:4px}
   .saldo-per{font-size:11px;color:var(--t3);margin-top:4px}
 
   .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:1rem}
-  .stat{background:var(--s2);border-radius:10px;padding:.7rem;text-align:center}
+  .stat{background:var(--s2);border-radius:14px;padding:.85rem;text-align:center;border:1px solid transparent}
+  .stat.clicavel{cursor:pointer}
+  .stat.clicavel:active{opacity:.7}
+  .stat.ativo{border-color:var(--acc);background:rgba(16,185,129,.1)}
   .stat-v{font-size:18px;font-weight:800;font-family:var(--mono)}
   .stat-l{font-size:10px;color:var(--t3);margin-top:2px}
 
   .sec-title{font-size:11px;color:var(--t2);text-transform:uppercase;margin:1.25rem 0 8px}
-  .dia{background:var(--s2);border-radius:10px;padding:.6rem .8rem;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .dia{background:var(--s2);border-radius:12px;padding:.7rem .9rem;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px}
   .dia-data{font-size:12px;color:var(--t1);white-space:nowrap}
   .dia-bat{font-size:11px;color:var(--t2);font-family:var(--mono);text-align:right;flex:1}
   .dia-saldo{font-size:12px;font-family:var(--mono);white-space:nowrap;min-width:52px;text-align:right}
@@ -59,6 +62,7 @@
   .etq.falta{background:rgba(248,113,113,.12);color:var(--r)}
   .etq.ferias{background:rgba(127,119,221,.15);color:#a99df5}
   .etq.folga{background:rgba(56,189,248,.12);color:#7dd3fc}
+  .etq.atraso{background:rgba(245,158,11,.15);color:var(--o);font-size:10px}
 
   .adv{background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:10px;padding:.7rem .8rem;margin-bottom:6px}
   .adv-top{font-size:13px;color:var(--t1);font-weight:600}
@@ -67,6 +71,16 @@
   .loading{text-align:center;color:var(--t3);padding:2rem;font-size:13px}
   .per-sel{display:flex;gap:6px;margin-bottom:1rem;flex-wrap:wrap}
   .per-btn{flex:1;background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:8px;font-size:12px;color:var(--t2);cursor:pointer;text-align:center}
+  .felic-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:100;padding:1.5rem;backdrop-filter:blur(4px)}
+  .felic-overlay.open{display:flex;animation:felicFade .3s ease}
+  @keyframes felicFade{from{opacity:0}to{opacity:1}}
+  .felic-card{background:var(--s1);border-radius:24px;padding:2.5rem 1.75rem 2rem;text-align:center;max-width:340px;width:100%;animation:felicPop .4s cubic-bezier(.2,.9,.3,1.3)}
+  @keyframes felicPop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+  .felic-emoji{font-size:56px;margin-bottom:1rem;line-height:1}
+  .felic-titulo{font-size:21px;font-weight:700;letter-spacing:-.3px;margin-bottom:.6rem}
+  .felic-texto{font-size:14px;color:var(--t2);line-height:1.6;margin-bottom:1.75rem}
+  .felic-btn{width:100%;background:var(--acc);color:#fff;border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit}
+  .felic-btn:active{transform:scale(.97)}
   .per-btn.on{background:rgba(16,185,129,.15);border-color:var(--acc);color:var(--acc)}
 </style>
 </head>
@@ -117,7 +131,12 @@
     <div class="per-sel">
       <div class="per-btn on" data-per="mes" onclick="mudarPeriodo('mes')">Este mês</div>
       <div class="per-btn" data-per="mes-ant" onclick="mudarPeriodo('mes-ant')">Mês passado</div>
-      <div class="per-btn" data-per="30dias" onclick="mudarPeriodo('30dias')">30 dias</div>
+      <div class="per-btn" data-per="custom" onclick="mudarPeriodo('custom')">Escolher datas</div>
+    </div>
+    <div id="per-custom" class="hidden" style="display:flex;gap:8px;align-items:center;margin-bottom:1rem">
+      <input type="date" id="per-de" onchange="aplicarPeriodoCustom()" style="margin-bottom:0;flex:1;padding:9px;font-size:13px">
+      <span style="font-size:12px;color:var(--t3)">até</span>
+      <input type="date" id="per-ate" onchange="aplicarPeriodoCustom()" style="margin-bottom:0;flex:1;padding:9px;font-size:13px">
     </div>
     <div id="p-conteudo"><div class="loading">Carregando seus dados...</div></div>
   </div>
@@ -130,6 +149,7 @@ const sb=supabase.createClient(SB_URL,SB_KEY);
 
 let colab=null; // {cpf, nome, funcionario_id}
 let periodoAtual='mes';
+let filtroDias=null; // null | 'falta' | 'atraso' — filtra a lista de dias
 
 // Sets de dias especiais (preenchidos do servidor)
 let diasFeriasCpf=new Set();
@@ -182,7 +202,13 @@ function getPeriodo(p){
     const mf=new Date(hoje.getFullYear(),hoje.getMonth(),0);
     return{ini:ma.toISOString().split('T')[0],fim:mf.toISOString().split('T')[0]};
   }
-  if(p==='30dias'){const d=new Date(hoje);d.setDate(d.getDate()-29);return{ini:d.toISOString().split('T')[0],fim:hs};}
+  if(p==='custom'){
+    const de=document.getElementById('per-de')?.value;
+    const ate=document.getElementById('per-ate')?.value;
+    if(de&&ate) return{ini:de<=ate?de:ate, fim:de<=ate?ate:de};
+    if(de) return{ini:de,fim:hs};
+    const m=hoje.toISOString().slice(0,7);return{ini:m+'-01',fim:hs};
+  }
   const m=hoje.toISOString().slice(0,7);return{ini:m+'-01',fim:hs};
 }
 
@@ -199,7 +225,7 @@ async function fazerLogin(){
   const {data,error}=await sb.rpc('login_colaborador',{p_cpf:cpf,p_senha:senha});
   btn.disabled=false;btn.textContent='Entrar';
   if(error||!data?.ok){err.textContent=data?.erro||'Erro ao entrar. Tente de novo.';return;}
-  colab={cpf,nome:data.nome||'Colaborador',funcionario_id:data.funcionario_id};
+  colab={cpf,nome:data.nome||'Colaborador',funcionario_id:data.funcionario_id,admissao:data.admissao,aniversario:data.aniversario};
   if(data.precisa_trocar){
     document.getElementById('tela-login').classList.add('hidden');
     document.getElementById('tela-troca').classList.remove('hidden');
@@ -235,6 +261,65 @@ async function entrarPortal(){
   document.getElementById('p-inicial').textContent=colab.nome[0].toUpperCase();
   await carregarConfig();
   await carregarDados();
+  checarFelicitacoes();
+}
+
+// ===== FELICITAÇÕES (pop-up ao entrar) =====
+function checarFelicitacoes(){
+  const hoje=new Date();
+  const hojeStr=hoje.toISOString().split('T')[0];
+  const primeiroNome=colab.nome.split(' ')[0];
+  let msg=null, chaveVista=null;
+
+  // 1) Aniversário — só no dia exato
+  if(colab.aniversario){
+    // aniversario pode vir 'YYYY-MM-DD' ou 'MM-DD' ou 'DD/MM'
+    const a=String(colab.aniversario);
+    let mm=null, dd=null;
+    if(/^\d{4}-\d{2}-\d{2}$/.test(a)){ [,mm,dd]=a.split('-'); }
+    else if(/^\d{2}-\d{2}$/.test(a)){ [mm,dd]=a.split('-'); }
+    else if(/^\d{2}\/\d{2}$/.test(a)){ [dd,mm]=a.split('/'); }
+    if(mm&&dd){
+      const hojeMM=String(hoje.getMonth()+1).padStart(2,'0');
+      const hojeDD=String(hoje.getDate()).padStart(2,'0');
+      if(mm===hojeMM && dd===hojeDD){
+        msg={emoji:'🎉', titulo:'Feliz aniversário, '+primeiroNome+'!',
+             texto:'A equipe toda deseja um dia incrível pra você. Aproveite muito! 🎂'};
+        chaveVista='aniv_'+hojeStr;
+      }
+    }
+  }
+
+  // 2) Efetivação — nos 7 dias após completar 90 dias de experiência (uma vez)
+  if(!msg && colab.admissao){
+    const adm=new Date(colab.admissao+'T12:00:00');
+    if(!isNaN(adm)){
+      const fim=new Date(adm); fim.setDate(fim.getDate()+90); // fim da experiência
+      const diasDesde=Math.floor((hoje-fim)/(1000*60*60*24));
+      if(diasDesde>=0 && diasDesde<=7){
+        msg={emoji:'🎊', titulo:'Parabéns, '+primeiroNome+'!',
+             texto:'Você concluiu seu período de experiência e agora é parte efetiva da equipe. Que venham muitas conquistas! 💪'};
+        chaveVista='efetiv_'+colab.cpf;
+      }
+    }
+  }
+
+  if(!msg) return;
+  // Mostra só uma vez (guarda no navegador que já viu)
+  try{ if(localStorage.getItem('felic_'+chaveVista)) return; }catch(e){}
+  try{ localStorage.setItem('felic_'+chaveVista,'1'); }catch(e){}
+  mostrarFelicitacao(msg);
+}
+
+function mostrarFelicitacao(msg){
+  const ov=document.getElementById('felic-overlay');
+  document.getElementById('felic-emoji').textContent=msg.emoji;
+  document.getElementById('felic-titulo').textContent=msg.titulo;
+  document.getElementById('felic-texto').textContent=msg.texto;
+  ov.classList.add('open');
+}
+function fecharFelicitacao(){
+  document.getElementById('felic-overlay').classList.remove('open');
 }
 
 async function carregarConfig(){
@@ -281,19 +366,22 @@ async function carregarDados(){
   });
 
   // Percorre os dias do período, calcula saldo, faltas, atrasos
-  let saldoTotal=0, faltas=0, atrasos=0, diasTrab=0;
+  let saldoTotal=0, diasTrab=0;
+  const diasFalta=[], diasAtraso=[];
   const linhas=[];
   const hoje=new Date().toISOString().split('T')[0];
   for(let d=new Date(ini+'T12:00:00');d<=new Date(fim+'T12:00:00');d.setDate(d.getDate()+1)){
     const ds=d.toISOString().split('T')[0];
     const bats=porDia[ds];
     const r=saldoDoDia(ds,bats,colab.cpf);
-    let etq='';
+    let etq='', ehFalta=false, ehAtraso=false, minAtraso=0;
     if(bats&&bats.length){
       diasTrab++;
-      // Atraso: entrada depois da tolerância
       const ent=bats.filter(b=>b.tipo==='ENTRADA').sort((a,b)=>a.hora.localeCompare(b.hora))[0];
-      if(ent&&toMin(ent.hora)<=toMin('10:00')&&toMin(ent.hora)-toMin(ENTRADA_PAD)>TOL)atrasos++;
+      if(ent&&toMin(ent.hora)<=toMin('10:00')&&toMin(ent.hora)-toMin(ENTRADA_PAD)>TOL){
+        ehAtraso=true; minAtraso=toMin(ent.hora)-toMin(ENTRADA_PAD);
+        diasAtraso.push(ds);
+      }
     } else if(diasFeriasCpf.has(colab.cpf+'_'+ds)){
       etq='<span class="etq ferias">Férias</span>';
     } else if(diasFolgaCompCpf.has(colab.cpf+'_'+ds)){
@@ -301,33 +389,53 @@ async function carregarDados(){
     } else if(diasAfastamentoCpf.has(colab.cpf+'_'+ds)){
       etq='<span class="etq folga">Atestado</span>';
     } else if(isDiaUtil(ds)&&ds<hoje){
-      etq='<span class="etq falta">Falta</span>';faltas++;
+      etq='<span class="etq falta">Falta</span>'; ehFalta=true; diasFalta.push(ds);
     } else {
       continue; // fim de semana/feriado sem batida: pula
     }
     if(r.conta)saldoTotal+=r.saldo;
-    // Monta a linha
+
+    // Aplica o filtro (se o usuário clicou em faltas ou atrasos)
+    if(filtroDias==='falta'&&!ehFalta) continue;
+    if(filtroDias==='atraso'&&!ehAtraso) continue;
+
     const batStr=bats&&bats.length?bats.sort((a,b)=>a.hora.localeCompare(b.hora)).map(b=>b.hora).join(' · '):etq;
     const mostraSaldo=r.conta||(r.classe==='folga_comp');
+    const marcaAtraso=ehAtraso?` <span class="etq atraso">+${minAtraso}min</span>`:'';
     linhas.push(`<div class="dia">
       <span class="dia-data">${fmtData(ds)}</span>
-      <span class="dia-bat">${batStr}</span>
+      <span class="dia-bat">${batStr}${marcaAtraso}</span>
       <span class="dia-saldo" style="color:${!mostraSaldo?'var(--t3)':r.saldo>=0?'var(--g)':'var(--r)'}">${mostraSaldo?fromMin(r.saldo):'—'}</span>
     </div>`);
   }
+  const faltas=diasFalta.length, atrasos=diasAtraso.length;
 
   linhas.reverse(); // mais recente no topo
 
-  // Advertências
+  // Advertências — o app grava: tipo, descricao, data_registro, criado_em
   let advHtml;
   if(advs.length){
     advHtml=advs.map(a=>{
-      const dt=(a.data||a.criado_em||'').split('T')[0];
-      return `<div class="adv"><div class="adv-top">${a.tipo||'Advertência'}</div><div class="adv-sub">${dt?fmtData(dt):''}${a.motivo||a.descricao?' · '+(a.motivo||a.descricao):''}</div></div>`;
+      // Data: usa data_registro (DD/MM/YYYY) se houver, senão criado_em (ISO)
+      let dt='';
+      if(a.data_registro) dt=a.data_registro;
+      else if(a.data) dt=fmtData(String(a.data).split('T')[0]);
+      else if(a.criado_em) dt=fmtData(String(a.criado_em).split('T')[0]);
+      const texto=a.descricao||a.motivo||'';
+      return `<div class="adv">
+        <div class="adv-top">${a.tipo||'Advertência'}</div>
+        <div class="adv-sub">${dt}${texto?' · '+texto:''}</div>
+      </div>`;
     }).join('');
   } else {
     advHtml='<div class="adv-ok"><span>Nenhuma advertência</span><span style="color:var(--g)">✓</span></div>';
   }
+
+  // Cabeçalho da lista: mostra se está filtrado
+  let tituloLista='Minhas batidas';
+  let limparBtn='';
+  if(filtroDias==='falta'){ tituloLista='Meus dias de falta'; limparBtn='<span onclick="limparFiltro()" style="color:var(--acc);cursor:pointer;text-transform:none;font-size:11px"> · ver tudo</span>'; }
+  if(filtroDias==='atraso'){ tituloLista='Meus dias com atraso'; limparBtn='<span onclick="limparFiltro()" style="color:var(--acc);cursor:pointer;text-transform:none;font-size:11px"> · ver tudo</span>'; }
 
   cont.innerHTML=`
     <div class="saldo-card">
@@ -337,19 +445,54 @@ async function carregarDados(){
     </div>
     <div class="stats">
       <div class="stat"><div class="stat-v">${diasTrab}</div><div class="stat-l">Dias trab.</div></div>
-      <div class="stat"><div class="stat-v" style="color:${atrasos?'var(--o)':'var(--t1)'}">${atrasos}</div><div class="stat-l">Atrasos</div></div>
-      <div class="stat"><div class="stat-v" style="color:${faltas?'var(--r)':'var(--t1)'}">${faltas}</div><div class="stat-l">Faltas</div></div>
+      <div class="stat ${atrasos?'clicavel':''} ${filtroDias==='atraso'?'ativo':''}" ${atrasos?'onclick="filtrarPor(\'atraso\')"':''}>
+        <div class="stat-v" style="color:${atrasos?'var(--o)':'var(--t1)'}">${atrasos}</div>
+        <div class="stat-l">Atrasos${atrasos?' ›':''}</div>
+      </div>
+      <div class="stat ${faltas?'clicavel':''} ${filtroDias==='falta'?'ativo':''}" ${faltas?'onclick="filtrarPor(\'falta\')"':''}>
+        <div class="stat-v" style="color:${faltas?'var(--r)':'var(--t1)'}">${faltas}</div>
+        <div class="stat-l">Faltas${faltas?' ›':''}</div>
+      </div>
     </div>
-    <div class="sec-title">Minhas batidas</div>
-    ${linhas.join('')||'<div class="loading">Sem registros no período.</div>'}
+    <div class="sec-title">${tituloLista}${limparBtn}</div>
+    ${linhas.join('')||'<div class="loading">Nenhum dia neste filtro.</div>'}
     <div class="sec-title">Advertências</div>
     ${advHtml}`;
 }
 
+function filtrarPor(tipo){
+  filtroDias = (filtroDias===tipo) ? null : tipo; // clicar de novo limpa
+  carregarDados();
+}
+function limparFiltro(){
+  filtroDias=null;
+  carregarDados();
+}
+
 function mudarPeriodo(p){
   periodoAtual=p;
+  filtroDias=null; // limpa filtro de faltas/atrasos ao trocar período
   document.querySelectorAll('.per-btn').forEach(b=>b.classList.toggle('on',b.dataset.per===p));
-  carregarDados();
+  const box=document.getElementById('per-custom');
+  if(p==='custom'){
+    box.classList.remove('hidden');
+    // Pré-preenche com o mês atual se ainda estiver vazio
+    const de=document.getElementById('per-de'), ate=document.getElementById('per-ate');
+    if(!de.value){
+      const h=new Date();
+      de.value=h.toISOString().slice(0,7)+'-01';
+      ate.value=h.toISOString().split('T')[0];
+    }
+    carregarDados();
+  } else {
+    box.classList.add('hidden');
+    carregarDados();
+  }
+}
+function aplicarPeriodoCustom(){
+  const de=document.getElementById('per-de').value;
+  const ate=document.getElementById('per-ate').value;
+  if(de&&ate){ filtroDias=null; carregarDados(); }
 }
 
 function sair(){
@@ -361,5 +504,15 @@ function sair(){
   document.getElementById('l-err').textContent='';
 }
 </script>
+<!-- POP-UP DE FELICITAÇÃO -->
+<div id="felic-overlay" class="felic-overlay">
+  <div class="felic-card">
+    <div class="felic-emoji" id="felic-emoji">🎉</div>
+    <div class="felic-titulo" id="felic-titulo"></div>
+    <div class="felic-texto" id="felic-texto"></div>
+    <button class="felic-btn" onclick="fecharFelicitacao()">Obrigado!</button>
+  </div>
+</div>
+
 </body>
 </html>
