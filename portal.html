@@ -171,6 +171,18 @@ let JORNADA={1:540,2:540,3:540,4:540,5:480,0:0,6:0};
 let TOL=5, ENTRADA_PAD='07:00', SAIDA_SEMANA='17:30', SAIDA_SEX='16:30';
 
 // ===== Funções de cálculo (mesmas do app, pra o saldo bater) =====
+function normalizarData(v){
+  // Converte qualquer formato de data para 'YYYY-MM-DD' (ou null se inválido)
+  if(!v) return null;
+  const s=String(v).trim();
+  // já ISO: 2026-05-22 ou 2026-05-22T00:00:00
+  let m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return `${m[1]}-${m[2]}-${m[3]}`;
+  // brasileiro: 22/05/2026
+  m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if(m) return `${m[3]}-${m[2]}-${m[1]}`;
+  return null;
+}
 function toMin(hhmm){if(!hhmm)return 0;const[h,m]=hhmm.split(':').map(Number);return h*60+m;}
 function fromMin(min){const neg=min<0,abs=Math.abs(min);const h=Math.floor(abs/60),m=abs%60;return (neg?'-':'+')+h+'h'+(m?(m<10?'0':'')+m+'min':'');}
 function fmtData(ds){const d=new Date(ds+'T12:00:00');return ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d.getDay()]+' '+d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});}
@@ -234,7 +246,7 @@ async function fazerLogin(){
   const {data,error}=await sb.rpc('login_colaborador',{p_cpf:cpf,p_senha:senha});
   btn.disabled=false;btn.textContent='Entrar';
   if(error||!data?.ok){err.textContent=data?.erro||'Erro ao entrar. Tente de novo.';return;}
-  colab={cpf,nome:data.nome||'Colaborador',funcionario_id:data.funcionario_id,admissao:data.admissao,aniversario:data.aniversario};
+  colab={cpf,nome:data.nome||'Colaborador',funcionario_id:data.funcionario_id,admissao:normalizarData(data.admissao),aniversario:data.aniversario};
   if(data.precisa_trocar){
     document.getElementById('tela-login').classList.add('hidden');
     document.getElementById('tela-troca').classList.remove('hidden');
@@ -346,7 +358,7 @@ async function carregarConfig(){
     JORNADA={1:jSemana,2:jSemana,3:jSemana,4:jSemana,5:jSexta,0:0,6:0};
     feriados=new Set((cfg.feriados||[]));
     // Garante a admissão (mesmo que o login não tenha trazido)
-    if(cfg.admissao && !colab.admissao) colab.admissao=String(cfg.admissao).split('T')[0];
+    if(cfg.admissao){ const a=normalizarData(cfg.admissao); if(a) colab.admissao=a; }
   }
   const {data:esp}=await sb.rpc('portal_meus_dias_especiais',{p_cpf:colab.cpf});
   if(esp?.ok){
