@@ -1681,12 +1681,12 @@ async function loadBase(){
   _todos.forEach(x=>{ if(x.cpf && x.desligado_em) desligamentoCpf[x.cpf]=String(x.desligado_em).split('T')[0]; });
   advertencias=a||[];
   feriados=new Set((fer||[]).map(x=>x.data));
-  diasFeriasCpf=new Set((ferDias||[]).map(x=>x.cpf+'_'+x.data));
+  diasFeriasCpf=new Set((ferDias||[]).map(x=>x.cpf+'_'+String(x.data).split('T')[0]));
   // Separa dias de folga compensatória (debitam banco) dos demais afastamentos (ignoram o dia)
   const _tipoAfast={}; (afastTipos||[]).forEach(x=>{_tipoAfast[x.id]=x.tipo;});
   const _diasAfast=[], _diasFolga=[];
   (afastDias||[]).forEach(x=>{
-    const chave=x.cpf+'_'+x.data;
+    const chave=x.cpf+'_'+String(x.data).split('T')[0];
     if(_tipoAfast[x.afastamento_id]==='Folga compensatória') _diasFolga.push(chave);
     else _diasAfast.push(chave);
   });
