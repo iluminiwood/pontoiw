@@ -432,10 +432,15 @@ async function carregarDados(){
   const diasFalta=[], diasAtraso=[];
   const linhas=[];
   const hoje=new Date().toISOString().split('T')[0];
+  // Piso de visualização: o portal só mostra a partir de 01/01 do ano atual.
+  // Se a pessoa foi admitida depois disso, o piso é a admissão (o mais recente entre os dois).
+  const pisoAno=new Date().getFullYear()+'-01-01';
+  let pisoVisao=pisoAno;
+  if(colab.admissao && colab.admissao>pisoVisao) pisoVisao=colab.admissao;
   for(let d=new Date(ini+'T12:00:00');d<=new Date(fim+'T12:00:00');d.setDate(d.getDate()+1)){
     const ds=d.toISOString().split('T')[0];
-    // Não conta nada antes da admissão do colaborador (ele não trabalhava aqui ainda)
-    if(colab.admissao && ds < colab.admissao) continue;
+    // Não mostra nada antes do piso (nem antes do ano atual, nem antes da admissão)
+    if(ds < pisoVisao) continue;
     const bats=porDia[ds];
     const r=saldoDoDia(ds,bats,colab.cpf);
     let etq='', ehFalta=false, ehAtraso=false, minAtraso=0;
