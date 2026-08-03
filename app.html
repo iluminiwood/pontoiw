@@ -5067,11 +5067,6 @@ async function gerarEspelhoPonto(cpfDireto, perDireto, simples){
       }
       const batsRaw=pf.dias[data]||[];
       const temBatida=batsRaw.length>0;
-      // DEBUG TEMPORÁRIO — férias do Lucas
-      if(data>='2026-03-02'&&data<='2026-03-11'){
-        console.log('DEBUG dia',data,'| cpf usado:',JSON.stringify(cpf),'| chave buscada:',cpf+'_'+data,'| tem no Set?',diasFeriasCpf.has(cpf+'_'+data),'| Set tem',diasFeriasCpf.size,'itens');
-        if(data==='2026-03-02'){ console.log('DEBUG amostra do Set:',[...diasFeriasCpf].filter(k=>k.includes('2026-03')).slice(0,10)); }
-      }
       const bats=[...batsRaw].sort((a,b)=>a.hora.localeCompare(b.hora));
       const r=saldoDoDia(data, temBatida?bats:undefined, cpf);
       const jMin=r.jornada;
