@@ -1299,6 +1299,7 @@ function getPeriodo(p){
     // sem datas ainda → cai no padrão (mês atual) pra não quebrar
     const m=hoje.toISOString().slice(0,7);return{ini:m+'-01',fim:hs};
   }
+  if(p==='tudo') return{ini:'2020-01-01',fim:hs}; // histórico completo (pega qualquer batida)
   return{ini:'2026-02-01',fim:hs};
 }
 let periodoCustomPrefixo='';
@@ -3372,7 +3373,7 @@ async function renderExFuncionarios(c){
       </div>
       <div class="factions" style="margin-top:.6rem">
         <button class="btn-xs" style="color:var(--pu,#7F77DD);border-color:rgba(127,119,221,.35)" onclick='abrirTimeline("${f.cpf||''}",${f.id},"${(f.nome||'').replace(/"/g,'&quot;')}")'>Ver dossiê completo</button>
-        <button class="btn-xs" style="color:#38BDF8;border-color:rgba(56,189,248,.3)" onclick='gerarEspelhoPonto("${f.cpf||''}","tudo")'>Espelho de ponto (PDF)</button>
+        <button class="btn-xs" style="color:#38BDF8;border-color:rgba(56,189,248,.3)" onclick='gerarEspelhoPonto("${f.cpf||''}","tudo",true)'>Espelho de ponto (PDF)</button>
         <button class="btn-xs" style="color:var(--acc);border-color:rgba(16,185,129,.3)" onclick='readmitir(${f.id},"${(f.nome||'').replace(/"/g,'&quot;')}")'>Readmitir</button>
       </div>
     </div>`;
@@ -4947,7 +4948,7 @@ function carregarJsPDF(){
   return _jspdfPronto;
 }
 
-async function gerarEspelhoPonto(cpfDireto, perDireto){
+async function gerarEspelhoPonto(cpfDireto, perDireto, simples){
   if(!temAcesso('relatorios')){
     toast('Relatórios em PDF estão disponíveis nos planos pagos. Faça upgrade para liberar.','err');
     setTimeout(()=>abrirAssinarPlano&&abrirAssinarPlano(),400);
@@ -5093,14 +5094,15 @@ async function gerarEspelhoPonto(cpfDireto, perDireto){
 
     doc.autoTable({
       startY:48,
-      head:[['Data','Dia','Batidas (E=entrada S=saída)','Trab.','Jornada','Saldo']],
-      body:linhas,
+      head:[ simples ? ['Data','Dia','Batidas (E=entrada S=saída)'] : ['Data','Dia','Batidas (E=entrada S=saída)','Trab.','Jornada','Saldo'] ],
+      body: simples ? linhas.filter((_,i)=>semanaMeta[i]!=='subtotal'&&semanaMeta[i]!=='cabecalho').map(l=>[l[0],l[1],l[2]]) : linhas,
       styles:{fontSize:8,cellPadding:1.8},
       headStyles:{fillColor:[30,30,40],textColor:255,fontSize:8},
       alternateRowStyles:{fillColor:[245,245,247]},
-      columnStyles:{0:{cellWidth:24},1:{cellWidth:14},3:{cellWidth:18,halign:'right'},4:{cellWidth:18,halign:'right'},5:{cellWidth:30,halign:'right'}},
+      columnStyles: simples ? {0:{cellWidth:26},1:{cellWidth:16}} : {0:{cellWidth:24},1:{cellWidth:14},3:{cellWidth:18,halign:'right'},4:{cellWidth:18,halign:'right'},5:{cellWidth:30,halign:'right'}},
       margin:{left:14,right:14},
       didParseCell:function(d){
+        if(simples) return; // no modo simples, sem destaque de semana
         if(d.section!=='body')return;
         const meta=semanaMeta[d.row.index];
         if(meta==='cabecalho'){
@@ -5116,6 +5118,7 @@ async function gerarEspelhoPonto(cpfDireto, perDireto){
     });
 
     let y=doc.lastAutoTable.finalY+6;
+    if(!simples){
     // Resumo
     doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(40,40,50);
     doc.text('Resumo do período',14,y); y+=5;
@@ -5130,6 +5133,7 @@ async function gerarEspelhoPonto(cpfDireto, perDireto){
     doc.text('Saldo do período: '+(totSaldo>=0?'+':'')+fromMin(totSaldo),140,y);
     doc.setFont('helvetica','normal');
     y+=16;
+    } else { y+=10; }
 
     // Assinaturas
     if(y>250){ doc.addPage(); y=30; }
