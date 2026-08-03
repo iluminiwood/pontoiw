@@ -5000,7 +5000,15 @@ async function gerarEspelhoPonto(cpfDireto, perDireto, simples){
     const hojeStr=new Date().toISOString().split('T')[0];
     const admF=f.admissao||ini;
     const iniIter=(ini<admF?admF:ini);
-    const fimIter=(fim>hojeStr?hojeStr:fim);
+    let fimIter=(fim>hojeStr?hojeStr:fim);
+    // No modo simples (ex-funcionário): parar na última batida, não mostrar falta depois que a pessoa saiu
+    if(simples){
+      const diasComBatida=Object.keys(pf.dias||{}).filter(d=>pf.dias[d]&&pf.dias[d].length).sort();
+      if(diasComBatida.length){
+        const ultimaBatida=diasComBatida[diasComBatida.length-1];
+        if(ultimaBatida<fimIter) fimIter=ultimaBatida;
+      }
+    }
     const datas=[];
     if(iniIter<=fimIter){
       for(let d=new Date(iniIter+'T12:00:00'); d<=new Date(fimIter+'T12:00:00'); d.setDate(d.getDate()+1)){
