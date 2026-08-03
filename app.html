@@ -4999,13 +4999,16 @@ async function gerarEspelhoPonto(cpfDireto, perDireto, simples){
     // Assim férias, folgas compensadas e afastamentos aparecem etiquetados — relatório completo p/ conferência.
     const hojeStr=new Date().toISOString().split('T')[0];
     const admF=f.admissao||ini;
-    const iniIter=(ini<admF?admF:ini);
+    let iniIter=(ini<admF?admF:ini);
     let fimIter=(fim>hojeStr?hojeStr:fim);
-    // No modo simples (ex-funcionário): parar na última batida, não mostrar falta depois que a pessoa saiu
+    // No modo simples (ex-funcionário): mostra só da PRIMEIRA à ÚLTIMA batida real,
+    // sem falta antes de começar nem depois de sair.
     if(simples){
       const diasComBatida=Object.keys(pf.dias||{}).filter(d=>pf.dias[d]&&pf.dias[d].length).sort();
       if(diasComBatida.length){
+        const primeiraBatida=diasComBatida[0];
         const ultimaBatida=diasComBatida[diasComBatida.length-1];
+        if(primeiraBatida>iniIter) iniIter=primeiraBatida;
         if(ultimaBatida<fimIter) fimIter=ultimaBatida;
       }
     }
