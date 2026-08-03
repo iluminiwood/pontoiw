@@ -3372,6 +3372,7 @@ async function renderExFuncionarios(c){
       </div>
       <div class="factions" style="margin-top:.6rem">
         <button class="btn-xs" style="color:var(--pu,#7F77DD);border-color:rgba(127,119,221,.35)" onclick='abrirTimeline("${f.cpf||''}",${f.id},"${(f.nome||'').replace(/"/g,'&quot;')}")'>Ver dossiê completo</button>
+        <button class="btn-xs" style="color:#38BDF8;border-color:rgba(56,189,248,.3)" onclick='gerarEspelhoPonto("${f.cpf||''}","tudo")'>Espelho de ponto (PDF)</button>
         <button class="btn-xs" style="color:var(--acc);border-color:rgba(16,185,129,.3)" onclick='readmitir(${f.id},"${(f.nome||'').replace(/"/g,'&quot;')}")'>Readmitir</button>
       </div>
     </div>`;
@@ -4946,15 +4947,15 @@ function carregarJsPDF(){
   return _jspdfPronto;
 }
 
-async function gerarEspelhoPonto(){
+async function gerarEspelhoPonto(cpfDireto, perDireto){
   if(!temAcesso('relatorios')){
     toast('Relatórios em PDF estão disponíveis nos planos pagos. Faça upgrade para liberar.','err');
     setTimeout(()=>abrirAssinarPlano&&abrirAssinarPlano(),400);
     return;
   }
   periodoCustomPrefixo='b';
-  const per=document.getElementById('b-per')?.value||'mes';
-  const cpfF=document.getElementById('b-func')?.value||'';
+  const per=perDireto||document.getElementById('b-per')?.value||'mes';
+  const cpfF=cpfDireto||document.getElementById('b-func')?.value||'';
   const{ini,fim}=getPeriodo(per);
   const lblPer={mes:'Mês atual','mes-ant':'Mês anterior',semana:'Esta semana',tudo:'Período completo'}[per]||per;
 
@@ -4982,7 +4983,7 @@ async function gerarEspelhoPonto(){
     porCpf[r.cpf].dias[r.data_local].push({hora:r.data_hora_local?.slice(11,16)||'00:00',tipo:r.tipo});
   });
 
-  const fmap={};funcionarios.forEach(f=>{fmap[f.cpf]=f;});
+  const fmap={};[...funcionarios,...(exFuncionarios||[])].forEach(f=>{fmap[f.cpf]=f;});
   const cpfsExib=cpfF?[cpfF]:funcionarios.map(f=>f.cpf);
   const { jsPDF } = window.jspdf;
   const doc=new jsPDF({unit:'mm',format:'a4'});
