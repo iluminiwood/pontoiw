@@ -3042,6 +3042,7 @@ async function confirmarAdd(){
     data_hora:new Date().toISOString(),
     data_hora_local:addCtx.data+'T'+hora,
     data_local:addCtx.data,tipo:'ENTRADA',origem:'MANUAL',motivo,
+    empresa_id:empresaAtual||1,
     sincronizado_em:new Date().toISOString()
   }).select();
   if(errIns){toast('Erro ao adicionar: '+errIns.message,'err');return;}
@@ -3700,10 +3701,10 @@ async function registrarDiaEspecial(cpf, nome, funcId, data, tipo){
   const id=Date.now();
   const {error:e1}=await sb.from('iw_afastamentos').insert({
     id, funcionario_id:funcId, funcionario_nome:nome, cpf,
-    tipo, data_inicio:data, data_fim:data, documento_path:null, documento_nome:null, observacao:null
+    tipo, data_inicio:data, data_fim:data, documento_path:null, documento_nome:null, observacao:null, empresa_id:empresaAtual||1
   });
   if(e1){ toast('Erro ao marcar: '+e1.message,'err'); return false; }
-  const {error:e2}=await sb.from('iw_afastamentos_dias').insert([{afastamento_id:id,funcionario_id:funcId,cpf,data}]);
+  const {error:e2}=await sb.from('iw_afastamentos_dias').insert([{afastamento_id:id,funcionario_id:funcId,cpf,data,empresa_id:empresaAtual||1}]);
   if(e2){ toast('Erro ao marcar dia: '+e2.message,'err'); return false; }
   return true;
 }
@@ -3861,7 +3862,7 @@ async function salvarAfastamento(){
   for(let d=new Date(inicio+'T12:00:00');d<=new Date(fim+'T12:00:00');d.setDate(d.getDate()+1)){
     const ds=d.toISOString().split('T')[0];
     const dw=d.getDay();
-    if(dw>=1&&dw<=5) dias.push({afastamento_id:id,funcionario_id:afastCtx.funcId,cpf:afastCtx.cpf,data:ds});
+    if(dw>=1&&dw<=5) dias.push({afastamento_id:id,funcionario_id:afastCtx.funcId,cpf:afastCtx.cpf,data:ds,empresa_id:empresaAtual||1});
   }
   if(dias.length) await sb.from('iw_afastamentos_dias').insert(dias);
 
@@ -4295,7 +4296,8 @@ async function saveFerias(){
     data_fim:fim||null,
     dias_gozados:gozados,
     status:!ini?'pendente':fim&&fim<=new Date().toISOString().split('T')[0]?'concluida':'em_gozo',
-    observacao:obs||null
+    observacao:obs||null,
+    empresa_id:empresaAtual||1
   };
 
   let feriasId;
@@ -4316,7 +4318,7 @@ async function saveFerias(){
     for(let d=new Date(ini+'T12:00:00');d<=new Date(fim+'T12:00:00');d.setDate(d.getDate()+1)){
       const ds=d.toISOString().split('T')[0];
       const dw=d.getDay();
-      if(dw>=1&&dw<=5) novosDias.push({ferias_id:feriasId,funcionario_id:ferCtx.funcId,cpf:ferCtx.cpf,data:ds});
+      if(dw>=1&&dw<=5) novosDias.push({ferias_id:feriasId,funcionario_id:ferCtx.funcId,cpf:ferCtx.cpf,data:ds,empresa_id:empresaAtual||1});
     }
   }
   // 2) Trava de segurança: confere quantos dias antigos existem para ESTA férias
