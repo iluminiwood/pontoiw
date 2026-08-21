@@ -1037,21 +1037,51 @@ body.light .toast{background:rgba(255,255,255,.97);}
 </div>
 
 <!-- MODAL ADV -->
+<div class="moverlay" id="m-sel-func-adv">
+  <div class="modal" style="padding:0;overflow:hidden">
+    <div style="padding:1.1rem 1.25rem .6rem"><div class="mtitle" style="margin:0">Advertir quem?</div></div>
+    <div id="sel-func-adv-lista" style="max-height:60vh;overflow-y:auto"></div>
+    <div class="sheet-item" style="justify-content:center;color:var(--t2);font-weight:600" onclick="closeModals()">Cancelar</div>
+  </div>
+</div>
+
 <div class="moverlay" id="m-adv">
   <div class="modal">
     <div class="mhandle"></div>
     <div class="mtitle">Nova advertência</div>
     <div class="msub" id="m-adv-sub"></div>
-    <div class="field"><label>Tipo</label>
+    <div class="field"><label>Grau</label>
+      <select id="adv-grau">
+        <option value="1a">1ª advertência</option>
+        <option value="2a">2ª advertência</option>
+        <option value="3a">3ª advertência</option>
+        <option value="suspensao">Suspensão</option>
+      </select>
+    </div>
+    <div class="field"><label>Modalidade</label>
+      <select id="adv-modalidade" onchange="advToggleImagem()">
+        <option value="verbal">Verbal</option>
+        <option value="escrita">Escrita</option>
+      </select>
+    </div>
+    <div class="field"><label>Motivo</label>
       <select id="adv-tipo">
         <option>Falta injustificada</option><option>Atraso recorrente</option>
         <option>Conduta inadequada</option><option>Descumprimento de norma</option><option>Outro</option>
       </select>
     </div>
     <div class="field"><label>Descrição</label><textarea id="adv-desc" rows="3"></textarea></div>
+    <div class="field" id="adv-imagem-box" style="display:none">
+      <label>Documento ou evidência (imagem)</label>
+      <input type="file" id="adv-imagem" accept="image/*" onchange="advPreviewImagem()" style="width:100%;font-size:13px;color:var(--t2)">
+      <div id="adv-imagem-preview" style="margin-top:8px;display:none">
+        <img id="adv-imagem-thumb" style="max-width:100%;max-height:180px;border-radius:10px;border:1px solid var(--b1)">
+        <button class="btn-xs" style="color:var(--r);margin-top:6px" onclick="advRemoverImagem()">Remover imagem</button>
+      </div>
+    </div>
     <div class="mactions">
       <button class="btn-sm" onclick="closeModals()">Cancelar</button>
-      <button class="btn" onclick="saveAdv()">Registrar</button>
+      <button class="btn" id="adv-btn-salvar" onclick="saveAdv()">Registrar</button>
     </div>
   </div>
 </div>
@@ -4607,14 +4637,20 @@ async function delEntrega(id){
 
 function renderAdv(c){
   if(!temAcesso('adv')){c.innerHTML=cardUpgrade('adv','essencial');return;}
-  c.innerHTML=`<div class="srow"><h3>Advertências</h3><div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--t2)">${advertencias.length} total</span><button class="btn-sm" onclick="gerarRelAdv()" style="white-space:nowrap;display:flex;align-items:center;gap:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>PDF</button></div></div><div id="al"></div>`;
+  c.innerHTML=`<div class="srow"><h3>Advertências</h3><div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--t2)">${advertencias.length} total</span><button class="btn-sm" onclick="novaAdvertencia()" style="white-space:nowrap;background:var(--acc);color:#000;font-weight:600">+ Nova</button><button class="btn-sm" onclick="gerarRelAdv()" style="white-space:nowrap;display:flex;align-items:center;gap:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>PDF</button></div></div><div id="al"></div>`;
   const al=document.getElementById('al');
   if(!advertencias.length){al.innerHTML='<div class="empty">Nenhuma advertência.</div>';return;}
   let advHtml='<div class="fgrid2">';
+  const GRAU_LBL={'1a':'1ª advertência','2a':'2ª advertência','3a':'3ª advertência','suspensao':'Suspensão'};
   advertencias.forEach(a=>{
+    const grauChip=a.grau?`<span class="chip" style="background:rgba(127,119,221,.15);color:#a99df5">${GRAU_LBL[a.grau]||a.grau}</span>`:'';
+    const modChip=a.modalidade?`<span class="chip" style="background:${a.modalidade==='escrita'?'rgba(56,189,248,.13);color:#7dd3fc':'rgba(138,138,154,.15);color:var(--t2)'}">${a.modalidade==='escrita'?'Escrita':'Verbal'}</span>`:'';
+    const imgHtml=a.imagem_url?`<div style="margin-top:8px"><img src="${a.imagem_url}" onclick="window.open('${a.imagem_url}','_blank')" style="max-width:100%;max-height:140px;border-radius:8px;border:1px solid var(--b1);cursor:pointer" title="Clique para ampliar"></div>`:'';
     advHtml+=`<div class="advcard">
-      <div style="font-size:13px;font-weight:700;margin-bottom:3px">${(a.funcionario_nome||'').split(' ')[0]} <span class="chip o">${a.tipo||''}</span></div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:5px">${(a.funcionario_nome||'').split(' ')[0]} <span class="chip o">${a.tipo||''}</span></div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px">${grauChip}${modChip}</div>
       <div style="font-size:12px;color:var(--t2);line-height:1.5">${a.descricao||'Sem descrição'}</div>
+      ${imgHtml}
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
         <span style="font-size:11px;color:var(--t3)">${a.data_registro||''}</span>
         <button class="btn-xs" style="color:var(--r);border-color:rgba(248,113,113,.3)" onclick="delAdv(${a.id})">Remover</button>
@@ -4630,17 +4666,99 @@ async function delAdv(id){
 }
 
 // ===== MODAIS =====
-function openModalAdv(func){currentAdvFunc=func;document.getElementById('m-adv-sub').textContent='Funcionário: '+func.nome.split(' ')[0];document.getElementById('m-adv').classList.add('open');}
+// Abre um seletor de funcionário e depois o modal de advertência (usado na aba, serve admin e encarregado)
+function novaAdvertencia(){
+  const lista=funcionarios.filter(f=>f.ativo!==false);
+  if(!lista.length){toast('Nenhum funcionário ativo.','info');return;}
+  const opts=lista.map(f=>`<div class="sheet-item" onclick='selFuncAdv(${f.id})'><span style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,${f.color||'#10b981'},${(f.color||'#10b981')}bb);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px">${f.nome[0]}</span> ${f.nome}</div>`).join('');
+  document.getElementById('sel-func-adv-lista').innerHTML=opts;
+  document.getElementById('m-sel-func-adv').classList.add('open');
+}
+function selFuncAdv(id){
+  const f=funcionarios.find(x=>x.id===id);
+  if(!f)return;
+  document.getElementById('m-sel-func-adv').classList.remove('open');
+  setTimeout(()=>openModalAdv({id:f.id,nome:f.nome,cpf:f.cpf||''}),180);
+}
+function openModalAdv(func){
+  currentAdvFunc=func;
+  document.getElementById('m-adv-sub').textContent='Funcionário: '+func.nome.split(' ')[0];
+  // reseta os campos
+  document.getElementById('adv-grau').value='1a';
+  document.getElementById('adv-modalidade').value='verbal';
+  document.getElementById('adv-desc').value='';
+  advRemoverImagem();
+  advToggleImagem();
+  document.getElementById('m-adv').classList.add('open');
+}
+// Mostra o campo de imagem só quando a modalidade é "escrita"
+function advToggleImagem(){
+  const esc=document.getElementById('adv-modalidade').value==='escrita';
+  document.getElementById('adv-imagem-box').style.display=esc?'block':'none';
+}
+let advImagemFile=null;
+function advPreviewImagem(){
+  const inp=document.getElementById('adv-imagem');
+  const f=inp.files&&inp.files[0];
+  if(!f)return;
+  advImagemFile=f;
+  const rd=new FileReader();
+  rd.onload=e=>{
+    document.getElementById('adv-imagem-thumb').src=e.target.result;
+    document.getElementById('adv-imagem-preview').style.display='block';
+  };
+  rd.readAsDataURL(f);
+}
+function advRemoverImagem(){
+  advImagemFile=null;
+  const inp=document.getElementById('adv-imagem'); if(inp) inp.value='';
+  const pv=document.getElementById('adv-imagem-preview'); if(pv) pv.style.display='none';
+}
+async function saveAdv(){
+  if(!currentAdvFunc)return;
+  const btn=document.getElementById('adv-btn-salvar');
+  btn.disabled=true; btn.textContent='Salvando...';
+  const grau=document.getElementById('adv-grau').value;
+  const modalidade=document.getElementById('adv-modalidade').value;
+  const advId=Date.now();
+  let imagem_url=null;
+
+  // Upload da imagem (se houver e for escrita)
+  if(modalidade==='escrita' && advImagemFile){
+    const ext=(advImagemFile.name.split('.').pop()||'jpg').toLowerCase();
+    const caminho=`adv_${advId}.${ext}`;
+    const {error:upErr}=await sb.storage.from('advertencias').upload(caminho, advImagemFile, {upsert:true});
+    if(upErr){
+      toast('Erro ao enviar imagem: '+upErr.message,'err');
+      btn.disabled=false; btn.textContent='Registrar'; return;
+    }
+    const {data:pub}=sb.storage.from('advertencias').getPublicUrl(caminho);
+    imagem_url=pub?.publicUrl||caminho;
+  }
+
+  const adv={
+    id:advId,
+    funcionario_id:currentAdvFunc.id,
+    funcionario_nome:currentAdvFunc.nome,
+    tipo:document.getElementById('adv-tipo').value,
+    grau, modalidade, imagem_url,
+    descricao:document.getElementById('adv-desc').value,
+    data_registro:new Date().toLocaleDateString('pt-BR'),
+    criado_em:new Date().toISOString(),
+    empresa_id:empresaAtual||1
+  };
+  const {error}=await sb.from('iw_advertencias').upsert(adv);
+  btn.disabled=false; btn.textContent='Registrar';
+  if(error){ toast('Erro ao salvar: '+error.message,'err'); return; }
+  advertencias.unshift(adv);
+  advRemoverImagem();
+  toast('Advertência registrada.','ok');
+  closeModals();
+  if(currentTab==='adv')renderAdv(document.getElementById('content'));
+}
 function closeModals(){document.querySelectorAll('.moverlay').forEach(m=>m.classList.remove('open'));currentAdvFunc=null;editCtx=null;addCtx=null;}
 document.querySelectorAll('.moverlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)closeModals();}));
 
-async function saveAdv(){
-  if(!currentAdvFunc)return;
-  const adv={id:Date.now(),funcionario_id:currentAdvFunc.id,funcionario_nome:currentAdvFunc.nome,tipo:document.getElementById('adv-tipo').value,descricao:document.getElementById('adv-desc').value,data_registro:new Date().toLocaleDateString('pt-BR'),criado_em:new Date().toISOString()};
-  await sb.from('iw_advertencias').upsert(adv);
-  advertencias.unshift(adv);document.getElementById('adv-desc').value='';toast('Advertência registrada.','ok');closeModals();
-  if(currentTab==='adv')renderAdv(document.getElementById('content'));
-}
 async function saveFunc(){
   const _planoAtual=PLANOS[PLANO]||PLANOS.free;
   const limite=_planoAtual.limite||3;
