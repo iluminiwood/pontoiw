@@ -1037,51 +1037,21 @@ body.light .toast{background:rgba(255,255,255,.97);}
 </div>
 
 <!-- MODAL ADV -->
-<div class="moverlay" id="m-sel-func-adv">
-  <div class="modal" style="padding:0;overflow:hidden">
-    <div style="padding:1.1rem 1.25rem .6rem"><div class="mtitle" style="margin:0">Advertir quem?</div></div>
-    <div id="sel-func-adv-lista" style="max-height:60vh;overflow-y:auto"></div>
-    <div class="sheet-item" style="justify-content:center;color:var(--t2);font-weight:600" onclick="closeModals()">Cancelar</div>
-  </div>
-</div>
-
 <div class="moverlay" id="m-adv">
   <div class="modal">
     <div class="mhandle"></div>
     <div class="mtitle">Nova advertência</div>
     <div class="msub" id="m-adv-sub"></div>
-    <div class="field"><label>Grau</label>
-      <select id="adv-grau">
-        <option value="1a">1ª advertência</option>
-        <option value="2a">2ª advertência</option>
-        <option value="3a">3ª advertência</option>
-        <option value="suspensao">Suspensão</option>
-      </select>
-    </div>
-    <div class="field"><label>Modalidade</label>
-      <select id="adv-modalidade" onchange="advToggleImagem()">
-        <option value="verbal">Verbal</option>
-        <option value="escrita">Escrita</option>
-      </select>
-    </div>
-    <div class="field"><label>Motivo</label>
+    <div class="field"><label>Tipo</label>
       <select id="adv-tipo">
         <option>Falta injustificada</option><option>Atraso recorrente</option>
         <option>Conduta inadequada</option><option>Descumprimento de norma</option><option>Outro</option>
       </select>
     </div>
     <div class="field"><label>Descrição</label><textarea id="adv-desc" rows="3"></textarea></div>
-    <div class="field" id="adv-imagem-box" style="display:none">
-      <label>Documento ou evidência (imagem)</label>
-      <input type="file" id="adv-imagem" accept="image/*" onchange="advPreviewImagem()" style="width:100%;font-size:13px;color:var(--t2)">
-      <div id="adv-imagem-preview" style="margin-top:8px;display:none">
-        <img id="adv-imagem-thumb" style="max-width:100%;max-height:180px;border-radius:10px;border:1px solid var(--b1)">
-        <button class="btn-xs" style="color:var(--r);margin-top:6px" onclick="advRemoverImagem()">Remover imagem</button>
-      </div>
-    </div>
     <div class="mactions">
       <button class="btn-sm" onclick="closeModals()">Cancelar</button>
-      <button class="btn" id="adv-btn-salvar" onclick="saveAdv()">Registrar</button>
+      <button class="btn" onclick="saveAdv()">Registrar</button>
     </div>
   </div>
 </div>
@@ -3042,7 +3012,6 @@ async function confirmarAdd(){
     data_hora:new Date().toISOString(),
     data_hora_local:addCtx.data+'T'+hora,
     data_local:addCtx.data,tipo:'ENTRADA',origem:'MANUAL',motivo,
-    empresa_id:empresaAtual||1,
     sincronizado_em:new Date().toISOString()
   }).select();
   if(errIns){toast('Erro ao adicionar: '+errIns.message,'err');return;}
@@ -3701,10 +3670,10 @@ async function registrarDiaEspecial(cpf, nome, funcId, data, tipo){
   const id=Date.now();
   const {error:e1}=await sb.from('iw_afastamentos').insert({
     id, funcionario_id:funcId, funcionario_nome:nome, cpf,
-    tipo, data_inicio:data, data_fim:data, documento_path:null, documento_nome:null, observacao:null, empresa_id:empresaAtual||1
+    tipo, data_inicio:data, data_fim:data, documento_path:null, documento_nome:null, observacao:null
   });
   if(e1){ toast('Erro ao marcar: '+e1.message,'err'); return false; }
-  const {error:e2}=await sb.from('iw_afastamentos_dias').insert([{afastamento_id:id,funcionario_id:funcId,cpf,data,empresa_id:empresaAtual||1}]);
+  const {error:e2}=await sb.from('iw_afastamentos_dias').insert([{afastamento_id:id,funcionario_id:funcId,cpf,data}]);
   if(e2){ toast('Erro ao marcar dia: '+e2.message,'err'); return false; }
   return true;
 }
@@ -3862,7 +3831,7 @@ async function salvarAfastamento(){
   for(let d=new Date(inicio+'T12:00:00');d<=new Date(fim+'T12:00:00');d.setDate(d.getDate()+1)){
     const ds=d.toISOString().split('T')[0];
     const dw=d.getDay();
-    if(dw>=1&&dw<=5) dias.push({afastamento_id:id,funcionario_id:afastCtx.funcId,cpf:afastCtx.cpf,data:ds,empresa_id:empresaAtual||1});
+    if(dw>=1&&dw<=5) dias.push({afastamento_id:id,funcionario_id:afastCtx.funcId,cpf:afastCtx.cpf,data:ds});
   }
   if(dias.length) await sb.from('iw_afastamentos_dias').insert(dias);
 
@@ -4296,8 +4265,7 @@ async function saveFerias(){
     data_fim:fim||null,
     dias_gozados:gozados,
     status:!ini?'pendente':fim&&fim<=new Date().toISOString().split('T')[0]?'concluida':'em_gozo',
-    observacao:obs||null,
-    empresa_id:empresaAtual||1
+    observacao:obs||null
   };
 
   let feriasId;
@@ -4318,7 +4286,7 @@ async function saveFerias(){
     for(let d=new Date(ini+'T12:00:00');d<=new Date(fim+'T12:00:00');d.setDate(d.getDate()+1)){
       const ds=d.toISOString().split('T')[0];
       const dw=d.getDay();
-      if(dw>=1&&dw<=5) novosDias.push({ferias_id:feriasId,funcionario_id:ferCtx.funcId,cpf:ferCtx.cpf,data:ds,empresa_id:empresaAtual||1});
+      if(dw>=1&&dw<=5) novosDias.push({ferias_id:feriasId,funcionario_id:ferCtx.funcId,cpf:ferCtx.cpf,data:ds});
     }
   }
   // 2) Trava de segurança: confere quantos dias antigos existem para ESTA férias
@@ -4489,7 +4457,16 @@ async function renderEpis(c){
   html+=`</div></div>`;
 
   // Histórico de entregas
-  html+=`<div class="tcard"><div class="thead-row" style="display:flex;align-items:center;justify-content:space-between"><span class="thead-title">Histórico de entregas</span><button class="btn-sm" onclick="gerarRelEpis()" style="white-space:nowrap;display:flex;align-items:center;gap:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>PDF</button></div>`;
+  html+=`<div class="tcard"><div class="thead-row" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px"><span class="thead-title">Histórico de entregas</span>
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <select id="epi-rel-func" style="background:var(--s2);border:1px solid var(--b1);border-radius:var(--r8);padding:6px 10px;font-family:var(--font);font-size:12px;color:var(--t1);outline:none;cursor:pointer;max-width:150px">
+        <option value="">Ficha por funcionário…</option>
+        ${funcionarios.map(f=>`<option value="${f.cpf}">${f.nome.split(' ')[0]}</option>`).join('')}
+      </select>
+      <button class="btn-sm accent" onclick="gerarFichaEpiFunc()" style="white-space:nowrap;display:flex;align-items:center;gap:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 11l-3 3-2-2"/></svg>Ficha</button>
+      <button class="btn-sm" onclick="gerarRelEpis()" style="white-space:nowrap;display:flex;align-items:center;gap:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>Geral</button>
+    </div>
+  </div>`;
   if(!listaEntregas.length){
     html+=`<div class="empty">Nenhuma entrega registrada.</div>`;
   } else {
@@ -4639,20 +4616,14 @@ async function delEntrega(id){
 
 function renderAdv(c){
   if(!temAcesso('adv')){c.innerHTML=cardUpgrade('adv','essencial');return;}
-  c.innerHTML=`<div class="srow"><h3>Advertências</h3><div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--t2)">${advertencias.length} total</span><button class="btn-sm" onclick="novaAdvertencia()" style="white-space:nowrap;background:var(--acc);color:#000;font-weight:600">+ Nova</button><button class="btn-sm" onclick="gerarRelAdv()" style="white-space:nowrap;display:flex;align-items:center;gap:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>PDF</button></div></div><div id="al"></div>`;
+  c.innerHTML=`<div class="srow"><h3>Advertências</h3><div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--t2)">${advertencias.length} total</span><button class="btn-sm" onclick="gerarRelAdv()" style="white-space:nowrap;display:flex;align-items:center;gap:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>PDF</button></div></div><div id="al"></div>`;
   const al=document.getElementById('al');
   if(!advertencias.length){al.innerHTML='<div class="empty">Nenhuma advertência.</div>';return;}
   let advHtml='<div class="fgrid2">';
-  const GRAU_LBL={'1a':'1ª advertência','2a':'2ª advertência','3a':'3ª advertência','suspensao':'Suspensão'};
   advertencias.forEach(a=>{
-    const grauChip=a.grau?`<span class="chip" style="background:rgba(127,119,221,.15);color:#a99df5">${GRAU_LBL[a.grau]||a.grau}</span>`:'';
-    const modChip=a.modalidade?`<span class="chip" style="background:${a.modalidade==='escrita'?'rgba(56,189,248,.13);color:#7dd3fc':'rgba(138,138,154,.15);color:var(--t2)'}">${a.modalidade==='escrita'?'Escrita':'Verbal'}</span>`:'';
-    const imgHtml=a.imagem_url?`<div style="margin-top:8px"><img src="${a.imagem_url}" onclick="window.open('${a.imagem_url}','_blank')" style="max-width:100%;max-height:140px;border-radius:8px;border:1px solid var(--b1);cursor:pointer" title="Clique para ampliar"></div>`:'';
     advHtml+=`<div class="advcard">
-      <div style="font-size:13px;font-weight:700;margin-bottom:5px">${(a.funcionario_nome||'').split(' ')[0]} <span class="chip o">${a.tipo||''}</span></div>
-      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px">${grauChip}${modChip}</div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:3px">${(a.funcionario_nome||'').split(' ')[0]} <span class="chip o">${a.tipo||''}</span></div>
       <div style="font-size:12px;color:var(--t2);line-height:1.5">${a.descricao||'Sem descrição'}</div>
-      ${imgHtml}
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
         <span style="font-size:11px;color:var(--t3)">${a.data_registro||''}</span>
         <button class="btn-xs" style="color:var(--r);border-color:rgba(248,113,113,.3)" onclick="delAdv(${a.id})">Remover</button>
@@ -4668,99 +4639,17 @@ async function delAdv(id){
 }
 
 // ===== MODAIS =====
-// Abre um seletor de funcionário e depois o modal de advertência (usado na aba, serve admin e encarregado)
-function novaAdvertencia(){
-  const lista=funcionarios.filter(f=>f.ativo!==false);
-  if(!lista.length){toast('Nenhum funcionário ativo.','info');return;}
-  const opts=lista.map(f=>`<div class="sheet-item" onclick='selFuncAdv(${f.id})'><span style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,${f.color||'#10b981'},${(f.color||'#10b981')}bb);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px">${f.nome[0]}</span> ${f.nome}</div>`).join('');
-  document.getElementById('sel-func-adv-lista').innerHTML=opts;
-  document.getElementById('m-sel-func-adv').classList.add('open');
-}
-function selFuncAdv(id){
-  const f=funcionarios.find(x=>x.id===id);
-  if(!f)return;
-  document.getElementById('m-sel-func-adv').classList.remove('open');
-  setTimeout(()=>openModalAdv({id:f.id,nome:f.nome,cpf:f.cpf||''}),180);
-}
-function openModalAdv(func){
-  currentAdvFunc=func;
-  document.getElementById('m-adv-sub').textContent='Funcionário: '+func.nome.split(' ')[0];
-  // reseta os campos
-  document.getElementById('adv-grau').value='1a';
-  document.getElementById('adv-modalidade').value='verbal';
-  document.getElementById('adv-desc').value='';
-  advRemoverImagem();
-  advToggleImagem();
-  document.getElementById('m-adv').classList.add('open');
-}
-// Mostra o campo de imagem só quando a modalidade é "escrita"
-function advToggleImagem(){
-  const esc=document.getElementById('adv-modalidade').value==='escrita';
-  document.getElementById('adv-imagem-box').style.display=esc?'block':'none';
-}
-let advImagemFile=null;
-function advPreviewImagem(){
-  const inp=document.getElementById('adv-imagem');
-  const f=inp.files&&inp.files[0];
-  if(!f)return;
-  advImagemFile=f;
-  const rd=new FileReader();
-  rd.onload=e=>{
-    document.getElementById('adv-imagem-thumb').src=e.target.result;
-    document.getElementById('adv-imagem-preview').style.display='block';
-  };
-  rd.readAsDataURL(f);
-}
-function advRemoverImagem(){
-  advImagemFile=null;
-  const inp=document.getElementById('adv-imagem'); if(inp) inp.value='';
-  const pv=document.getElementById('adv-imagem-preview'); if(pv) pv.style.display='none';
-}
-async function saveAdv(){
-  if(!currentAdvFunc)return;
-  const btn=document.getElementById('adv-btn-salvar');
-  btn.disabled=true; btn.textContent='Salvando...';
-  const grau=document.getElementById('adv-grau').value;
-  const modalidade=document.getElementById('adv-modalidade').value;
-  const advId=Date.now();
-  let imagem_url=null;
-
-  // Upload da imagem (se houver e for escrita)
-  if(modalidade==='escrita' && advImagemFile){
-    const ext=(advImagemFile.name.split('.').pop()||'jpg').toLowerCase();
-    const caminho=`adv_${advId}.${ext}`;
-    const {error:upErr}=await sb.storage.from('advertencias').upload(caminho, advImagemFile, {upsert:true});
-    if(upErr){
-      toast('Erro ao enviar imagem: '+upErr.message,'err');
-      btn.disabled=false; btn.textContent='Registrar'; return;
-    }
-    const {data:pub}=sb.storage.from('advertencias').getPublicUrl(caminho);
-    imagem_url=pub?.publicUrl||caminho;
-  }
-
-  const adv={
-    id:advId,
-    funcionario_id:currentAdvFunc.id,
-    funcionario_nome:currentAdvFunc.nome,
-    tipo:document.getElementById('adv-tipo').value,
-    grau, modalidade, imagem_url,
-    descricao:document.getElementById('adv-desc').value,
-    data_registro:new Date().toLocaleDateString('pt-BR'),
-    criado_em:new Date().toISOString(),
-    empresa_id:empresaAtual||1
-  };
-  const {error}=await sb.from('iw_advertencias').upsert(adv);
-  btn.disabled=false; btn.textContent='Registrar';
-  if(error){ toast('Erro ao salvar: '+error.message,'err'); return; }
-  advertencias.unshift(adv);
-  advRemoverImagem();
-  toast('Advertência registrada.','ok');
-  closeModals();
-  if(currentTab==='adv')renderAdv(document.getElementById('content'));
-}
+function openModalAdv(func){currentAdvFunc=func;document.getElementById('m-adv-sub').textContent='Funcionário: '+func.nome.split(' ')[0];document.getElementById('m-adv').classList.add('open');}
 function closeModals(){document.querySelectorAll('.moverlay').forEach(m=>m.classList.remove('open'));currentAdvFunc=null;editCtx=null;addCtx=null;}
 document.querySelectorAll('.moverlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)closeModals();}));
 
+async function saveAdv(){
+  if(!currentAdvFunc)return;
+  const adv={id:Date.now(),funcionario_id:currentAdvFunc.id,funcionario_nome:currentAdvFunc.nome,tipo:document.getElementById('adv-tipo').value,descricao:document.getElementById('adv-desc').value,data_registro:new Date().toLocaleDateString('pt-BR'),criado_em:new Date().toISOString()};
+  await sb.from('iw_advertencias').upsert(adv);
+  advertencias.unshift(adv);document.getElementById('adv-desc').value='';toast('Advertência registrada.','ok');closeModals();
+  if(currentTab==='adv')renderAdv(document.getElementById('content'));
+}
 async function saveFunc(){
   const _planoAtual=PLANOS[PLANO]||PLANOS.free;
   const limite=_planoAtual.limite||3;
@@ -5409,6 +5298,88 @@ async function gerarRelEpis(){
     margin:{left:14,right:14}
   });
   _pdfFim(doc,tGer,'epis-entregues-'+new Date().toISOString().slice(0,10)+'.pdf');
+}
+
+// ===== FICHA DE EPI POR FUNCIONÁRIO (individual, com assinaturas) =====
+async function gerarFichaEpiFunc(){
+  const cpf=document.getElementById('epi-rel-func')?.value||'';
+  if(!cpf){ toast('Escolha um funcionário na lista ao lado.','info'); return; }
+  const f=[...funcionarios,...(exFuncionarios||[])].find(x=>x.cpf===cpf);
+  if(!f){ toast('Funcionário não encontrado.','err'); return; }
+
+  const r=await _pdfStart('Ficha de Controle de EPI'); if(!r) return;
+  const {doc,tGer}=r;
+
+  // Busca só as entregas deste funcionário
+  const{data:entregas}=await sb.from('iw_epi_entregas').select('*').eq('cpf',cpf).order('criado_em',{ascending:true}).limit(500);
+  if(!entregas||!entregas.length){ tGer&&tGer.remove(); toast('Este funcionário não tem entregas de EPI registradas.','err'); return; }
+
+  const fmtDH=iso=>{ if(!iso)return'—'; const d=new Date(iso); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); };
+
+  // Cabeçalho com dados do funcionário
+  doc.setTextColor(40,40,50);
+  doc.setFont('helvetica','bold'); doc.setFontSize(11);
+  doc.text('Funcionário: '+f.nome,14,32);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.text('Cargo: '+(f.cargo||'—')+'     CPF: '+(f.cpf||'—'),14,38);
+  doc.text('Admissão: '+(f.admissao?fmtData(f.admissao):'—')+'     Empresa: '+(empresaNome||'—'),14,43);
+
+  // Declaração de recebimento (texto legal — reforça a ficha)
+  doc.setDrawColor(220,220,225); doc.setFillColor(248,248,250);
+  doc.roundedRect(14,48,182,20,2,2,'FD');
+  doc.setFontSize(8); doc.setTextColor(70,70,80);
+  const declaracao='Declaro ter recebido, gratuitamente, os Equipamentos de Proteção Individual (EPIs) relacionados nesta ficha, '
+    +'estando ciente da obrigatoriedade de uso durante a jornada, da guarda e conservação, e de comunicar qualquer '
+    +'dano ou extravio. Comprometo-me a devolvê-los ao fim do contrato (CLT art. 158 e NR-6).';
+  doc.text(doc.splitTextToSize(declaracao,176),17,53);
+
+  let y=74;
+
+  // Cada entrega: bloco com os EPIs + a assinatura daquela entrega
+  for(let idx=0;idx<entregas.length;idx++){
+    const e=entregas[idx];
+    const itens=e.itens||[];
+    // calcula altura necessária do bloco (linha de cabeçalho + itens + assinatura)
+    const alturaBloco = 10 + itens.length*5 + 22;
+    if(y+alturaBloco>270){ doc.addPage(); y=20; }
+
+    // Cabeçalho da entrega
+    doc.setFillColor(16,185,129);
+    doc.rect(14,y,182,6,'F');
+    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(8);
+    doc.text('Entrega '+(idx+1)+'  ·  '+fmtDH(e.criado_em)+(e.encarregado?('  ·  por '+e.encarregado):''),16,y+4.2);
+    y+=9;
+
+    // Itens entregues
+    doc.setTextColor(50,50,60); doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+    if(itens.length){
+      itens.forEach(i=>{
+        const linha='•  '+(i.qtd?i.qtd+'x ':'')+(i.nome||'EPI')+(i.ca?'  (CA '+i.ca+')':'')+(i.validade?'  · validade: '+fmtData(i.validade):'');
+        doc.text(linha,18,y); y+=5;
+      });
+    } else { doc.text('• (sem itens detalhados)',18,y); y+=5; }
+    if(e.observacao){ doc.setFontSize(7.5); doc.setTextColor(110,110,120); doc.text('Obs: '+e.observacao,18,y); y+=4.5; doc.setFontSize(8.5); doc.setTextColor(50,50,60); }
+
+    // Assinatura: a imagem da entrega, ou linha em branco
+    y+=2;
+    if(e.assinatura && /^data:image/.test(e.assinatura)){
+      try{
+        doc.addImage(e.assinatura,'PNG',18,y,50,16);
+      }catch(err){ /* se a imagem falhar, cai pra linha em branco */
+        doc.setDrawColor(120,120,130); doc.line(18,y+14,88,y+14);
+      }
+      doc.setDrawColor(120,120,130); doc.line(18,y+16,88,y+16);
+      doc.setFontSize(7); doc.setTextColor(120,120,130);
+      doc.text('Assinatura do funcionário (coletada na entrega)',18,y+19.5);
+    } else {
+      doc.setDrawColor(120,120,130); doc.line(18,y+13,88,y+13);
+      doc.setFontSize(7); doc.setTextColor(120,120,130);
+      doc.text('Assinatura do funcionário',18,y+16.5);
+    }
+    y+=24;
+  }
+
+  _pdfFim(doc,tGer,'ficha-epi-'+(f.nome.split(' ')[0].toLowerCase())+'-'+new Date().toISOString().slice(0,10)+'.pdf');
 }
 
 
